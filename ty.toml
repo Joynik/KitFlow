@@ -1,5 +1,4 @@
 [environment]
-extra-paths = ["stubs"]
 
 [src]
 respect-ignore-files = true
