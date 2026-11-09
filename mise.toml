@@ -1,0 +1,767 @@
+# Наборы фреймворк/тесты: django/django, fastapi/pytest, python/pytest, javascript/bun, nextjs/bun, swift/swift, rust/cargo.
+[vars]
+# Сервер: значения по умолчанию; параметры из .env имеют приоритет.
+server_host_default = "127.0.0.1"
+server_port_default = 8000
+
+# Проверки и сборка: один или несколько стеков через пробел, например "fastapi nextjs swift".
+# Варианты: django, fastapi, python, javascript, nextjs, swift, rust; none — отключить.
+framework = "django"
+
+# Тесты: один или несколько инструментов через пробел; выбор не зависит от framework.
+# Python: django/pytest/unittest; JavaScript: bun/script; Swift: swift; Rust: cargo; none — отключить.
+test_runner = "django"
+
+# Только для test_runner со значением script: имя команды в разделе scripts файла package.json.
+# Например, "test" запускает bun run test, а "test:unit" — bun run test:unit. Это не режим Python.
+test_script = "test"
+
+# Команда сборки JavaScript/Django из package.json; для других проектов измените имя.
+javascript_build_script = "css:build"
+
+# Папки частей проекта относительно mise.toml; "." означает корень. Пробелы в путях допустимы.
+python_directory = "."  # Django, FastAPI, обычный Python и их тесты.
+javascript_directory = "."  # JavaScript, Next.js, команды package.json и их тесты.
+swift_directory = "."  # Папка Package.swift либо папка с проектом Xcode.
+rust_directory = "."  # Папка Cargo.toml.
+
+# FastAPI: настройки используются только при наличии fastapi в framework.
+# Модуль:объект приложения относительно python_directory; фабрики не поддерживаются.
+fastapi_app = "app.main:app"
+
+# SwiftPM использует Package.swift; Xcode использует проект или рабочую область.
+swift_backend = "swiftpm"  # Варианты: swiftpm, xcode
+xcode_project = ""  # Путь к .xcodeproj или .xcworkspace относительно swift_directory; обязателен для xcode
+xcode_scheme = ""  # Общая схема с выбранными тестами
+xcode_destination = "platform=macOS"  # Для iOS укажите доступный симулятор или устройство
+
+# Миграции: auto выбирает единственный инструмент; при нескольких кандидатах нужен явный выбор.
+# Можно указать несколько инструментов через пробел, например "alembic script". Они изменяют базы данных.
+migration_backend = "auto"  # Варианты: auto, django, alembic, script, none; auto и none используются отдельно.
+migration_create_script = "db:makemigrations"  # Команда из package.json; читает имя из MIGRATION_NAME
+migration_apply_script = "db:migrate"  # Команда из package.json
+
+# Подготовка сервера: пути на хосте относительно mise.toml; согласуйте их с bind-монтированиями Compose.
+server_files_directory = "media"  # Папка пользовательских файлов; подготовка не создаёт базу.
+# СУБД для подготовки, бэкапа и восстановления; Prisma использует свою СУБД, отдельного режима нет.
+database_backend = "sqlite"  # Варианты: sqlite, postgres, none. Подготовка новой базы — только sqlite/none.
+# PostgreSQL: задайте PGHOST, PGPORT, PGDATABASE, PGUSER и пароль через .pgpass или PGPASSWORD.
+# Нативные команды читают окружение mise; Docker-команды читают PG-параметры внутри выбранного сервиса.
+database_sqlite_path = "db.sqlite3"  # Файл SQLite на хосте; используется только при backend = sqlite.
+database_init_sql = ""  # Необязательный SQL-файл, например deployment/init.sql; только для новой SQLite.
+# Docker: сервис должен работать; для SQLite скрипт database.py должен быть доступен внутри образа.
+database_docker_service = "web"  # Для PostgreSQL укажите сервис с pg_dump/psql и настройками PG-подключения.
+database_docker_sqlite_path = "/app/data/db.sqlite3"  # Путь SQLite внутри контейнера.
+database_compose_file = "deployment/compose.yml"
+
+# Переводы: один или несколько инструментов через пробел, например "babel script".
+i18n_backend = "django"  # Варианты: django, babel, script, none; none используется отдельно.
+i18n_source_language = "en"
+i18n_languages = "ru uk"  # Целевые языки; исходный язык не включать.
+i18n_directory = "locale"  # Каталоги переводов Babel
+i18n_babel_config = "babel.cfg"
+i18n_script = "translations"  # Имя команды package.json; используется при наличии script в i18n_backend.
+
+[settings]
+task.run_auto_install = false
+
+[env]
+_.file = ".env"
+PROJECT_FRAMEWORK = "{{ vars.framework }}"
+SERVER_FILES_DIRECTORY = "{{ vars.server_files_directory }}"
+DATABASE_BACKEND = "{{ vars.database_backend }}"
+DATABASE_SQLITE_PATH = "{{ vars.database_sqlite_path }}"
+DATABASE_INIT_SQL = "{{ vars.database_init_sql }}"
+DATABASE_DOCKER_SERVICE = "{{ vars.database_docker_service }}"
+DATABASE_DOCKER_SQLITE_PATH = "{{ vars.database_docker_sqlite_path }}"
+DATABASE_COMPOSE_FILE = "{{ vars.database_compose_file }}"
+PROJECT_TEST_RUNNER = "{{ vars.test_runner }}"
+PROJECT_TEST_SCRIPT = "{{ vars.test_script }}"
+PROJECT_JAVASCRIPT_BUILD_SCRIPT = "{{ vars.javascript_build_script }}"
+PROJECT_FASTAPI_APP = "{{ vars.fastapi_app }}"
+PROJECT_PYTHON_DIRECTORY = "{{ config_root }}/{{ vars.python_directory }}"
+PROJECT_JAVASCRIPT_DIRECTORY = "{{ config_root }}/{{ vars.javascript_directory }}"
+PROJECT_SWIFT_DIRECTORY = "{{ config_root }}/{{ vars.swift_directory }}"
+PROJECT_RUST_DIRECTORY = "{{ config_root }}/{{ vars.rust_directory }}"
+PROJECT_SWIFT_BACKEND = "{{ vars.swift_backend }}"
+PROJECT_XCODE_PROJECT = "{{ vars.xcode_project }}"
+PROJECT_XCODE_SCHEME = "{{ vars.xcode_scheme }}"
+PROJECT_XCODE_DESTINATION = "{{ vars.xcode_destination }}"
+PROJECT_MIGRATION_BACKEND = "{{ vars.migration_backend }}"
+PROJECT_MIGRATION_CREATE_SCRIPT = "{{ vars.migration_create_script }}"
+PROJECT_MIGRATION_APPLY_SCRIPT = "{{ vars.migration_apply_script }}"
+I18N_BACKEND = "{{ vars.i18n_backend }}"
+I18N_SOURCE_LANGUAGE = "{{ vars.i18n_source_language }}"
+I18N_LANGUAGES = "{{ vars.i18n_languages }}"
+I18N_DIRECTORY = "{{ vars.i18n_directory }}"
+I18N_BABEL_CONFIG = "{{ vars.i18n_babel_config }}"
+I18N_SCRIPT = "{{ vars.i18n_script }}"
+
+[tasks.help]
+alias = "default"
+description = "Показать все задачи проекта с описаниями"
+quiet = true
+run = "mise tasks ls"
+
+[tasks._dev]
+hide = true
+description = "Запустить сервер с автоматической перезагрузкой при изменении кода"
+run = 'uv run granian --interface "${GRANIAN_INTERFACE:-asginl}" config.asgi:application --host "${GRANIAN_HOST:-{{ vars.server_host_default }}}" --port "${GRANIAN_PORT:-{{ vars.server_port_default }}}" --reload'
+
+[tasks._run]
+hide = true
+description = "Запустить сервер без автоматической перезагрузки"
+run = 'uv run granian --interface "${GRANIAN_INTERFACE:-asginl}" config.asgi:application --host "${GRANIAN_HOST:-{{ vars.server_host_default }}}" --port "${GRANIAN_PORT:-{{ vars.server_port_default }}}"'
+
+[tasks.run]
+description = "Собрать frontend и запустить сервер"
+run = [{ task = "build" }, { task = "_run" }]
+
+[tasks.dev]
+description = "Собрать frontend и запустить сервер с автоматической перезагрузкой"
+run = [{ task = "build" }, { task = "_dev" }]
+
+[tasks.makemigrations]
+description = "Создать миграцию выбранным инструментом; необязательный аргумент — имя"
+usage = 'arg "[name]" help="Migration name"'
+run = """
+set -efu
+backends=$(mise run _migration-backends)
+for backend in $backends; do
+  (
+    case "$backend" in
+      django|alembic) cd "$PROJECT_PYTHON_DIRECTORY" ;;
+      script) cd "$PROJECT_JAVASCRIPT_DIRECTORY" ;;
+    esac
+    case "$backend" in
+      django)
+        if [ -n "${usage_name:-}" ]; then
+          uv run python manage.py makemigrations --name "$usage_name"
+        else
+          uv run python manage.py makemigrations
+        fi
+        ;;
+      alembic) uv run alembic revision --autogenerate -m "${usage_name:-update_schema}" ;;
+      script)
+        export MIGRATION_NAME="${usage_name:-update_schema}"
+        bun run "$PROJECT_MIGRATION_CREATE_SCRIPT"
+        ;;
+      none) echo 'Migrations disabled for the selected framework/backend.' ;;
+      *) echo "Unsupported migration backend: $backend" >&2; exit 1 ;;
+    esac
+  )
+done
+"""
+
+[tasks.migrate]
+description = "Применить миграции выбранным инструментом"
+run = """
+set -efu
+backends=$(mise run _migration-backends)
+for backend in $backends; do
+  (
+    case "$backend" in
+      django|alembic) cd "$PROJECT_PYTHON_DIRECTORY" ;;
+      script) cd "$PROJECT_JAVASCRIPT_DIRECTORY" ;;
+    esac
+    case "$backend" in
+      django) uv run python manage.py migrate ;;
+      alembic) uv run alembic upgrade head ;;
+      script) bun run "$PROJECT_MIGRATION_APPLY_SCRIPT" ;;
+      none) echo 'Migrations disabled for the selected framework/backend.' ;;
+      *) echo "Unsupported migration backend: $backend" >&2; exit 1 ;;
+    esac
+  )
+done
+"""
+
+[tasks._migration-backends]
+hide = true
+quiet = true
+run = """
+set -efu
+backends=$PROJECT_MIGRATION_BACKEND
+if [ "$backends" = auto ]; then
+  mise run _validate frameworks
+  backends=""
+  for framework in $PROJECT_FRAMEWORK; do
+    case "$framework" in
+      django) backend=django ;;
+      fastapi) backend=alembic ;;
+      javascript|nextjs) backend=script ;;
+      *) continue ;;
+    esac
+    case " $backends " in *" $backend "*) continue ;; esac
+    backends="${backends:+$backends }$backend"
+  done
+  case "$backends" in
+    "") backends=none ;;
+    *" "*) echo 'Неоднозначный выбор миграций: укажите migration_backend явно.' >&2; exit 1 ;;
+  esac
+fi
+set -- $backends
+[ "$#" -gt 0 ] || { echo 'Укажите migration_backend.' >&2; exit 1; }
+count=$#
+selected=""
+for backend in $backends; do
+  directory=.
+  case "$backend" in
+    django|alembic) directory=$PROJECT_PYTHON_DIRECTORY ;;
+    script) directory=$PROJECT_JAVASCRIPT_DIRECTORY ;;
+    none) [ "$count" -eq 1 ] || { echo 'none нельзя сочетать с другими инструментами миграций.' >&2; exit 1; } ;;
+    *) echo "Неизвестный инструмент миграций: $backend" >&2; exit 1 ;;
+  esac
+  [ -d "$directory" ] || { echo "Папка не найдена: $directory" >&2; exit 1; }
+  case " $selected " in *" $backend "*) continue ;; esac
+  selected="${selected:+$selected }$backend"
+done
+printf '%s\n' "$selected"
+"""
+
+[tasks.createsuperuser]
+description = "Создать пользователя с правами администратора Django"
+run = 'cd "$PROJECT_PYTHON_DIRECTORY" && uv run python manage.py createsuperuser'
+
+[tasks.check]
+description = "Проверить линтеры, типы и форматирование без изменения файлов"
+depends = ["lint", "typecheck"]
+run = """
+set -efu
+mise run _validate frameworks
+seen=" "
+for framework in $PROJECT_FRAMEWORK; do
+  case "$framework" in django|fastapi|python) family=python ;; *) family=$framework ;; esac
+  case "$seen" in *" $family "*) continue ;; esac
+  seen="$seen$family "
+  (
+    case "$family" in
+      python) cd "$PROJECT_PYTHON_DIRECTORY" ;;
+      swift) cd "$PROJECT_SWIFT_DIRECTORY" ;;
+      rust) cd "$PROJECT_RUST_DIRECTORY" ;;
+    esac
+    case "$family" in
+      python) ruff format . --check ;;
+      swift) swift format lint --recursive --strict . ;;
+      rust) cargo fmt --check ;;
+    esac
+  )
+done
+if [ -f "$PROJECT_JAVASCRIPT_DIRECTORY/package.json" ]; then
+  (cd "$PROJECT_JAVASCRIPT_DIRECTORY"; bun fmt --no-script --check --no-error-on-unmatched-pattern .)
+fi
+rumdl fmt . --check
+for framework in $PROJECT_FRAMEWORK; do
+  if [ "$framework" = django ] && [ -d "$PROJECT_PYTHON_DIRECTORY/templates" ]; then
+    (cd "$PROJECT_PYTHON_DIRECTORY"; uv run djlint templates/ --check --quiet --github-output)
+    break
+  fi
+done
+"""
+
+[tasks.lint]
+description = "Проверить код и документацию выбранного стека"
+run = """
+set -efu
+mise run _validate frameworks
+seen=" "
+for framework in $PROJECT_FRAMEWORK; do
+  case "$framework" in django|fastapi|python) family=python ;; *) family=$framework ;; esac
+  case "$seen" in *" $family "*) continue ;; esac
+  seen="$seen$family "
+  (
+    case "$family" in
+      python) cd "$PROJECT_PYTHON_DIRECTORY" ;;
+      swift) cd "$PROJECT_SWIFT_DIRECTORY" ;;
+      rust) cd "$PROJECT_RUST_DIRECTORY" ;;
+    esac
+    case "$family" in
+      python) ruff check . --output-format concise ;;
+      swift) swiftlint lint --strict ;;
+      rust) cargo clippy --all-targets ;;
+    esac
+  )
+done
+if [ -f "$PROJECT_JAVASCRIPT_DIRECTORY/package.json" ]; then
+  (cd "$PROJECT_JAVASCRIPT_DIRECTORY"; bun lint --no-script --no-error-on-unmatched-pattern .)
+fi
+rumdl check .
+for framework in $PROJECT_FRAMEWORK; do
+  if [ "$framework" = django ] && [ -d "$PROJECT_PYTHON_DIRECTORY/templates" ]; then
+    (cd "$PROJECT_PYTHON_DIRECTORY"; uv run djlint templates/ --lint)
+    break
+  fi
+done
+"""
+
+[tasks.lint-format]
+description = "Исправить и отформатировать код выбранного стека"
+run = """
+set -efu
+mise run _validate frameworks
+seen=" "
+for framework in $PROJECT_FRAMEWORK; do
+  case "$framework" in django|fastapi|python) family=python ;; *) family=$framework ;; esac
+  case "$seen" in *" $family "*) continue ;; esac
+  seen="$seen$family "
+  (
+    case "$family" in
+      python) cd "$PROJECT_PYTHON_DIRECTORY" ;;
+      swift) cd "$PROJECT_SWIFT_DIRECTORY" ;;
+      rust) cd "$PROJECT_RUST_DIRECTORY" ;;
+    esac
+    case "$family" in
+      python)
+        ruff check . --fix --output-format concise
+        ruff format .
+        ;;
+      swift)
+        swiftlint lint --fix
+        swift format --in-place --recursive .
+        ;;
+      rust) cargo fmt ;;
+    esac
+  )
+done
+if [ -f "$PROJECT_JAVASCRIPT_DIRECTORY/package.json" ]; then
+  (cd "$PROJECT_JAVASCRIPT_DIRECTORY"; bun lint --no-script --fix --no-error-on-unmatched-pattern .; bun fmt --no-script .)
+fi
+rumdl fmt .
+for framework in $PROJECT_FRAMEWORK; do
+  if [ "$framework" = django ] && [ -d "$PROJECT_PYTHON_DIRECTORY/templates" ]; then
+    (cd "$PROJECT_PYTHON_DIRECTORY"; uv run djlint templates/ --reformat)
+    break
+  fi
+done
+"""
+
+[tasks.typecheck]
+description = "Проверить типы выбранного стека"
+run = """
+set -efu
+mise run _validate frameworks
+seen=" "
+for framework in $PROJECT_FRAMEWORK; do
+  case "$framework" in django|fastapi|python) family=python ;; *) family=$framework ;; esac
+  case "$seen" in *" $family "*) continue ;; esac
+  seen="$seen$family "
+  (
+    case "$family" in
+      python) cd "$PROJECT_PYTHON_DIRECTORY" ;;
+      swift) cd "$PROJECT_SWIFT_DIRECTORY" ;;
+      rust) cd "$PROJECT_RUST_DIRECTORY" ;;
+    esac
+    case "$family" in
+      python) ty check . --output-format concise ;;
+      swift) mise run _swift build Debug ;;
+      rust) cargo check --all-targets ;;
+    esac
+  )
+done
+if [ -f "$PROJECT_JAVASCRIPT_DIRECTORY/tsconfig.json" ]; then
+  (cd "$PROJECT_JAVASCRIPT_DIRECTORY"; bun check --no-script --no-pretty)
+else
+  echo 'Проверка TypeScript пропущена: нет tsconfig.json.'
+fi
+"""
+
+[tasks.test]
+description = "Последовательно запустить все инструменты из vars.test_runner"
+run = """
+set -efu
+mise run _validate runners
+seen=" "
+for runner in $PROJECT_TEST_RUNNER; do
+  case "$seen" in *" $runner "*) continue ;; esac
+  seen="$seen$runner "
+  (
+    case "$runner" in
+      django|pytest|unittest) cd "$PROJECT_PYTHON_DIRECTORY" ;;
+      bun|script) cd "$PROJECT_JAVASCRIPT_DIRECTORY" ;;
+      swift) cd "$PROJECT_SWIFT_DIRECTORY" ;;
+      cargo) cd "$PROJECT_RUST_DIRECTORY" ;;
+    esac
+    case "$runner" in
+      django) uv run python manage.py test --noinput ;;
+      pytest) uv run pytest ;;
+      unittest) uv run python -m unittest discover -s tests ;;
+      bun) bun test ;;
+      swift) mise run _swift test Debug ;;
+      cargo) cargo test ;;
+      script) bun run "$PROJECT_TEST_SCRIPT" ;;
+      none) echo 'Тесты отключены: test_runner=none.' ;;
+    esac
+  )
+done
+"""
+
+[tasks._validate]
+hide = true
+usage = 'arg "<selection>"'
+run = """
+set -efu
+case "$usage_selection" in
+  frameworks) items=$PROJECT_FRAMEWORK ;;
+  runners) items=$PROJECT_TEST_RUNNER ;;
+  translations) items=$I18N_BACKEND ;;
+  *) exit 1 ;;
+esac
+set -- $items
+[ "$#" -gt 0 ] || { echo 'Список выбранных инструментов не должен быть пустым.' >&2; exit 1; }
+count=$#
+for item in $items; do
+  directory=.
+  case "$usage_selection:$item" in
+    frameworks:django|frameworks:fastapi|frameworks:python|runners:django|runners:pytest|runners:unittest|translations:django|translations:babel)
+      directory=$PROJECT_PYTHON_DIRECTORY ;;
+    frameworks:javascript|frameworks:nextjs|runners:bun|runners:script|translations:script)
+      directory=$PROJECT_JAVASCRIPT_DIRECTORY ;;
+    frameworks:swift|runners:swift) directory=$PROJECT_SWIFT_DIRECTORY ;;
+    frameworks:rust|runners:cargo) directory=$PROJECT_RUST_DIRECTORY ;;
+    *:none)
+      [ "$count" -eq 1 ] || { echo 'none нельзя сочетать с другими значениями.' >&2; exit 1; }
+      ;;
+    *) echo "Неизвестное значение $usage_selection: $item" >&2; exit 1 ;;
+  esac
+  [ -d "$directory" ] || { echo "Папка не найдена: $directory" >&2; exit 1; }
+done
+"""
+
+[tasks.build]
+description = "Собрать все выбранные части проекта; для DIYCat — frontend"
+run = """
+set -efu
+mise run _validate frameworks
+seen=" "
+for framework in $PROJECT_FRAMEWORK; do
+  case "$framework" in
+    django|javascript|nextjs) family=javascript ;;
+    *) family=$framework ;;
+  esac
+  case "$seen" in *" $family "*) continue ;; esac
+  seen="$seen$family "
+  (
+    case "$family" in
+      javascript)
+        cd "$PROJECT_JAVASCRIPT_DIRECTORY"
+        case " $PROJECT_FRAMEWORK " in
+          *" nextjs "*) bun run --no-script next build ;;
+          *) bun run "$PROJECT_JAVASCRIPT_BUILD_SCRIPT" ;;
+        esac
+        ;;
+      swift) mise run _swift build Debug ;;
+      rust) cd "$PROJECT_RUST_DIRECTORY"; cargo build ;;
+      *) echo "Отдельная сборка не настроена: $framework." ;;
+    esac
+  )
+done
+"""
+
+[tasks.build-release]
+description = "Собрать Swift или Rust с оптимизацией для выпуска"
+run = """
+set -efu
+mise run _validate frameworks
+native=false
+for framework in $PROJECT_FRAMEWORK; do
+  case "$framework" in swift|rust) native=true ;; esac
+done
+[ "$native" = true ] || { echo 'Сборка для выпуска настроена только для Swift и Rust.' >&2; exit 1; }
+seen=" "
+for framework in $PROJECT_FRAMEWORK; do
+  case "$seen" in *" $framework "*) continue ;; esac
+  seen="$seen$framework "
+  case "$framework" in
+    swift) mise run _swift build Release ;;
+    rust) (cd "$PROJECT_RUST_DIRECTORY"; cargo build --release) ;;
+    *) echo "Сборка для выпуска пропущена: $framework." ;;
+  esac
+done
+"""
+
+[tasks._swift]
+hide = true
+description = "Выбрать SwiftPM или Xcode для сборки и тестов"
+usage = 'arg "<action>"; arg "<configuration>"'
+run = """
+set -eu
+cd "$PROJECT_SWIFT_DIRECTORY"
+case "$usage_action" in build|test|resolve) ;; *) exit 1 ;; esac
+case "$usage_configuration" in Debug|Release) ;; *) exit 1 ;; esac
+case "$PROJECT_SWIFT_BACKEND" in
+  swiftpm)
+    case "$usage_configuration" in Debug) configuration=debug ;; Release) configuration=release ;; esac
+    if [ "$usage_action" = resolve ]; then
+      swift package resolve
+    else
+      swift "$usage_action" -c "$configuration"
+    fi
+    ;;
+  xcode)
+    : "${PROJECT_XCODE_PROJECT:?Укажите xcode_project}"
+    : "${PROJECT_XCODE_SCHEME:?Укажите xcode_scheme}"
+    : "${PROJECT_XCODE_DESTINATION:?Укажите xcode_destination}"
+    case "$PROJECT_XCODE_PROJECT" in
+      *.xcworkspace) set -- -workspace "$PROJECT_XCODE_PROJECT" ;;
+      *.xcodeproj) set -- -project "$PROJECT_XCODE_PROJECT" ;;
+      *) echo 'xcode_project должен оканчиваться на .xcodeproj или .xcworkspace.' >&2; exit 1 ;;
+    esac
+    if [ "$usage_action" = resolve ]; then usage_action=-resolvePackageDependencies; fi
+    xcodebuild "$@" -scheme "$PROJECT_XCODE_SCHEME" -destination "$PROJECT_XCODE_DESTINATION" -configuration "$usage_configuration" "$usage_action"
+    ;;
+  *) echo "Неизвестный swift_backend: $PROJECT_SWIFT_BACKEND" >&2; exit 1 ;;
+esac
+"""
+
+[tasks.install]
+description = "Установить зависимости выбранных частей проекта"
+run = """
+set -efu
+mise run _validate frameworks
+seen=" "
+for framework in $PROJECT_FRAMEWORK; do
+  case "$framework" in django|fastapi|python) family=python ;; *) family=$framework ;; esac
+  case "$seen" in *" $family "*) continue ;; esac
+  seen="$seen$family "
+  (
+    case "$family" in
+      python) cd "$PROJECT_PYTHON_DIRECTORY" ;;
+      swift) cd "$PROJECT_SWIFT_DIRECTORY" ;;
+      rust) cd "$PROJECT_RUST_DIRECTORY" ;;
+    esac
+    case "$family" in
+      python) uv sync --locked ;;
+      swift) mise run _swift resolve Debug ;;
+      rust) cargo fetch --locked ;;
+    esac
+  )
+done
+if [ -f "$PROJECT_JAVASCRIPT_DIRECTORY/package.json" ]; then
+  (cd "$PROJECT_JAVASCRIPT_DIRECTORY"; bun install --frozen-lockfile)
+fi
+"""
+
+[tasks.update]
+description = "Обновить зависимости всех выбранных частей проекта"
+run = """
+set -efu
+mise run _validate frameworks
+seen=" "
+for framework in $PROJECT_FRAMEWORK; do
+  case "$framework" in django|fastapi|python) family=python ;; *) family=$framework ;; esac
+  case "$seen" in *" $family "*) continue ;; esac
+  seen="$seen$family "
+  (
+    case "$family" in
+      python) cd "$PROJECT_PYTHON_DIRECTORY" ;;
+      swift) cd "$PROJECT_SWIFT_DIRECTORY" ;;
+      rust) cd "$PROJECT_RUST_DIRECTORY" ;;
+    esac
+    case "$family" in
+      python) uv lock --upgrade; uv sync --link-mode=copy ;;
+      swift)
+        case "$PROJECT_SWIFT_BACKEND" in
+          swiftpm) swift package update ;;
+          xcode) echo 'Обновите версии пакетов в Xcode; install разрешает зависимости проекта.' >&2; exit 1 ;;
+          *) echo "Неизвестный swift_backend: $PROJECT_SWIFT_BACKEND" >&2; exit 1 ;;
+        esac
+        ;;
+      rust) cargo update ;;
+    esac
+  )
+done
+if [ -f "$PROJECT_JAVASCRIPT_DIRECTORY/package.json" ]; then
+  (cd "$PROJECT_JAVASCRIPT_DIRECTORY"; bun update)
+fi
+"""
+
+[tasks.setup]
+description = "Установить зависимости и собрать проект без изменения базы"
+run = [{ task = "install" }, { task = "build" }]
+
+[tasks.app-check]
+description = "Последовательно проверить приложения всех выбранных фреймворков"
+run = """
+set -efu
+mise run _validate frameworks
+seen=" "
+for framework in $PROJECT_FRAMEWORK; do
+  case "$seen" in *" $framework "*) continue ;; esac
+  seen="$seen$framework "
+  (
+    case "$framework" in
+      django|fastapi) cd "$PROJECT_PYTHON_DIRECTORY" ;;
+      nextjs) cd "$PROJECT_JAVASCRIPT_DIRECTORY" ;;
+    esac
+    case "$framework" in
+      django)
+        uv run python manage.py check
+        uv run python manage.py makemigrations --check --dry-run
+        ;;
+      fastapi)
+        uv run python -c 'import importlib, os; module, name = os.environ["PROJECT_FASTAPI_APP"].split(":", 1); app = getattr(importlib.import_module(module), name); app.openapi(); print("FastAPI import and OpenAPI generation passed; startup was not checked.")'
+        ;;
+      nextjs) bun run --no-script next build ;;
+      *) echo "Дополнительной проверки приложения нет: $framework; используйте check и test." ;;
+    esac
+  )
+done
+"""
+
+[tasks.verify]
+description = "Последовательно проверить код, приложение и тесты"
+run = [{ task = "check" }, { task = "app-check" }, { task = "test" }]
+
+[tasks.translations]
+description = "Последовательно обновить переводы всеми инструментами из vars"
+run = """
+set -efu
+mise run _validate translations
+seen=" "
+for backend in $I18N_BACKEND; do
+  case "$seen" in *" $backend "*) continue ;; esac
+  seen="$seen$backend "
+  (
+    case "$backend" in
+      django|babel) cd "$PROJECT_PYTHON_DIRECTORY" ;;
+      script) cd "$PROJECT_JAVASCRIPT_DIRECTORY" ;;
+    esac
+    case "$backend" in
+      none) echo 'Translations disabled: i18n_backend=none.' ;;
+      django|babel|script)
+        if [ -z "$I18N_SOURCE_LANGUAGE" ] || [ -z "$I18N_LANGUAGES" ]; then
+          echo 'Set i18n_source_language and at least one target in i18n_languages.' >&2
+          exit 1
+        fi
+        for language in $I18N_LANGUAGES; do
+          if [ "$language" = "$I18N_SOURCE_LANGUAGE" ]; then
+            echo 'i18n_languages must contain target locales only, not the source locale.' >&2
+            exit 1
+          fi
+        done
+        case "$backend" in
+          django)
+            set --
+            for language in $I18N_LANGUAGES; do
+              set -- "$@" -l "$language"
+            done
+            uv run python manage.py makemessages "$@"
+            uv run python manage.py compilemessages "$@"
+            ;;
+          babel)
+            mkdir -p "$I18N_DIRECTORY"
+            uv run pybabel extract -F "$I18N_BABEL_CONFIG" -o "$I18N_DIRECTORY/messages.pot" .
+            for language in $I18N_LANGUAGES; do
+              if [ -f "$I18N_DIRECTORY/$language/LC_MESSAGES/messages.po" ]; then
+                uv run pybabel update -i "$I18N_DIRECTORY/messages.pot" -d "$I18N_DIRECTORY" -l "$language"
+              else
+                uv run pybabel init -i "$I18N_DIRECTORY/messages.pot" -d "$I18N_DIRECTORY" -l "$language"
+              fi
+              uv run pybabel compile -d "$I18N_DIRECTORY" -l "$language"
+            done
+            ;;
+          script) bun run "$I18N_SCRIPT" ;;
+        esac
+        ;;
+      *) echo "Неизвестный инструмент переводов: $backend" >&2; exit 1 ;;
+    esac
+  )
+done
+"""
+
+[tasks.env-local]
+description = "Создать локальный .env из примера, сохранив существующий файл"
+run = """
+if [ -e .env ]; then
+  echo '.env already exists; edit it manually.'
+  exit 1
+fi
+(set -C; cat .env.example > .env)
+"""
+
+[tasks.env-server]
+description = "Создать серверный .env в корне, сохранив существующий файл"
+run = """
+if [ -e .env ]; then
+  echo '.env already exists; edit it manually using deployment/.env.example.'
+  exit 1
+fi
+(set -C; cat deployment/.env.example > .env)
+"""
+
+[tasks.server-prepare-files]
+description = "Создать папку пользовательских файлов и показать UID/GID; базу не изменять"
+run = """
+set -eu
+if [ "$(id -u)" -eq 0 ]; then
+  echo 'Запустите задачу от владельца данных, а не от root.' >&2
+  exit 1
+fi
+: "${SERVER_FILES_DIRECTORY:?Укажите server_files_directory}"
+mkdir -p -- "$SERVER_FILES_DIRECTORY"
+printf 'APP_UID=%s\nAPP_GID=%s\n' "$(id -u)" "$(id -g)"
+"""
+
+[tasks.server-prepare-db]
+description = "Создать новую SQLite; необязательный SQL импортировать общей логикой восстановления"
+run = "uv run python deployment/database.py prepare"
+
+[tasks.db-backup]
+description = "Выгрузить SQLite/PostgreSQL в новый SQL-файл; существующий файл не перезаписывать"
+usage = 'arg "<file>" help="Путь к новому SQL-файлу"'
+run = 'uv run python deployment/database.py backup "$usage_file"'
+
+[tasks.db-restore]
+description = "Восстановить SQLite/PostgreSQL из SQL; заменяет данные, остановите запись приложения"
+usage = 'arg "<file>" help="Путь к SQL-файлу для восстановления"'
+run = 'uv run python deployment/database.py restore "$usage_file"'
+
+[tasks.server-db-backup]
+description = "Выгрузить базу из работающего Docker-сервиса в новый SQL-файл на хосте"
+usage = 'arg "<file>" help="Путь к новому SQL-файлу на хосте"'
+run = 'uv run python deployment/database.py backup "$usage_file" --docker'
+
+[tasks.server-db-restore]
+description = "Восстановить базу Docker-сервиса из SQL-файла на хосте; заменяет данные"
+usage = 'arg "<file>" help="Путь к SQL-файлу на хосте"'
+run = 'uv run python deployment/database.py restore "$usage_file" --docker'
+
+[tasks.server-check]
+description = "Проверить Compose с корневым .env без вывода секретов"
+run = "docker compose --env-file .env -f deployment/compose.yml config --quiet"
+
+[tasks.server-up]
+description = "Обновить базовые образы, собрать и запустить сервер; запуск применяет миграции"
+run = [
+  "docker compose --env-file .env -f deployment/compose.yml build --pull",
+  "docker compose --env-file .env -f deployment/compose.yml up -d",
+]
+
+[tasks.server-status]
+description = "Показать состояние серверных контейнеров"
+run = "docker compose --env-file .env -f deployment/compose.yml ps"
+
+[tasks.server-logs]
+description = "Показать последние 100 строк журналов и следить за новыми"
+run = "docker compose --env-file .env -f deployment/compose.yml logs --tail=100 --follow"
+
+[tasks.server-stop]
+description = "Остановить контейнеры, сохранив данные и тома"
+run = "docker compose --env-file .env -f deployment/compose.yml down"
+
+[tasks.server-certificate]
+description = "Сохранить корневой сертификат Caddy в caddy-local-root.crt"
+run = """
+set -eu
+certificate=$(docker compose --env-file .env -f deployment/compose.yml exec -T caddy cat /data/caddy/pki/authorities/local/root.crt)
+printf '%s\n' "$certificate" > caddy-local-root.crt
+"""
+
+[tasks.server-static-permissions]
+description = "Восстановить права только тома статики после смены UID/GID"
+run = [
+  "docker compose --env-file .env -f deployment/compose.yml build web",
+  """
+  docker compose --env-file .env -f deployment/compose.yml run --rm --no-deps --user 0 --entrypoint sh web \
+    -c 'chown -R "$(id -u appuser):$(id -g appuser)" /app/staticfiles'
+  """,
+]

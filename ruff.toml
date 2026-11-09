@@ -1,0 +1,56 @@
+cache-dir = ".ruff_cache"
+
+line-length = 100
+indent-width = 4
+
+extend-exclude = [
+  "**/migrations/**",
+]
+
+[format]
+# Whether to enable the unstable preview style formatting.
+preview = false
+
+# Use double quotes for strings.
+quote-style = "double"
+
+# Indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Automatically detect the appropriate line ending.
+line-ending = "auto"
+
+# Whether to format code blocks in docstrings.
+docstring-code-format = true
+
+# This only has an effect when the `docstring-code-format` setting is enabled.
+docstring-code-line-length = 100  # "dynamic"
+
+[lint]
+select = [
+  "E",  # pycodestyle errors
+  "W",  # pycodestyle warnings
+  "F",  # Undefined names, unused imports and other errors
+  "I",  # Import sorting
+  "A",  # Shadowing Python built-ins
+  "B",  # Common bugs and suspicious constructs
+  "C4",  # Comprehension improvements
+  "UP",  # Modern Python syntax
+  "PD",  # Pandas-specific linting
+  "PERF",  # Common performance issues
+  "PT",  # pytest conventions
+  "SIM",  # Code simplification
+  "ARG001",  # Unused function arguments
+  "DJ",  # Django conventions
+  "FAST",  # FastAPI conventions
+]
+ignore = [
+  "E501",  # Allow long lines that the formatter cannot split
+  "W191",  # Indentation is handled by the formatter
+]
+
+[lint.pyupgrade]
+keep-runtime-typing = true
