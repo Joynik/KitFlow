@@ -22,6 +22,9 @@ def main() -> int:
     root = Path(__file__).resolve().parents[1]
     architecture = platform.machine().lower()
     architecture = {"aarch64": "arm64", "amd64": "x86_64"}.get(architecture, architecture)
+    supported = {"macos": {"arm64"}, "linux": {"arm64", "x86_64"}}
+    if architecture not in supported[system]:
+        parser.error(f"Unsupported standalone target: {system}-{architecture}")
     output = root / "dist/standalone" / f"{system}-{architecture}"
     output.mkdir(parents=True, exist_ok=True)
     command = [

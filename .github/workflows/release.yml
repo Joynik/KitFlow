@@ -1,4 +1,4 @@
-name: Standalone release
+name: Release
 
 on:
   push:
@@ -24,10 +24,10 @@ jobs:
         include:
           - os: macos-15
             platform: macos-arm64
-          - os: macos-15-intel
-            platform: macos-x86_64
-          - os: ubuntu-22.04
+          - os: ubuntu-24.04
             platform: linux-x86_64
+          - os: ubuntu-24.04-arm
+            platform: linux-arm64
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:

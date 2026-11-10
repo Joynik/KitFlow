@@ -160,11 +160,11 @@ Version tag → Checks → Native builds → Checksums → Draft release
 Manual release workflow → Checks → Native build artifacts
 ```
 
-`Standalone release` builds macOS ARM64, macOS Intel and Linux x86_64 archives. Each build extracts
-its archive into a temporary directory and checks initialization and status using the example box.
-The archives contain the runtime but no templates. Linux builds use Ubuntu 22.04; compatibility with
-older Linux systems is not guaranteed. macOS deployment requirements depend on the build runner and
-bundled Python runtime.
+`Release` builds macOS ARM64, Linux ARM64 and Linux x86_64 archives. Each build extracts its archive
+into a temporary directory and checks initialization and status using the example box. The archives
+contain the runtime but no templates. Linux builds use Ubuntu 24.04; compatibility with older Linux
+systems is not guaranteed. macOS deployment requirements depend on the build runner and bundled
+Python runtime.
 
 1. Prepare the version in `pyproject.toml` and a dated release section in `CHANGELOG.md`.
 2. Commit the release changes after checks pass.
@@ -193,5 +193,6 @@ brew update
 brew upgrade joynik/tap/kitflow
 ```
 
-The formula installs the standalone runtime without Python dependencies. Current release targets are
-macOS 15 or newer on ARM64 and Intel, and Linux x86_64. It does not replace your local box.
+The formula installs the standalone runtime without Python dependencies. Supported distribution
+targets are macOS 15 or newer on ARM64, and Linux on ARM64 and x86_64. It does not replace your
+local box.

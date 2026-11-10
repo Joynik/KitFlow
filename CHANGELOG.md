@@ -2,12 +2,6 @@
 
 ## Unreleased
 
-### Added
-
-- Automatic Homebrew formula updates after release publication.
-
-## 0.1.0 — 2026-11-10
-
 ### Changed
 
 - Store the local box directly in `~/.config/kitflow`, without a nested `box/` directory.
@@ -21,7 +15,9 @@
 
 ### Added
 
-- GitHub checks and native standalone build workflows with checksums and draft releases.
+- Automatic Homebrew formula updates after release publication.
+- GitHub checks and native build workflows for macOS ARM64 and Linux ARM64/x86_64, with checksums
+  and draft releases.
 - Empty document creation without template files using `empty = true` and `mode = "once"`.
 - English CLI, interface, example Box and user documentation.
 - Interactive component selection with keyboard and mouse support.

@@ -7,6 +7,8 @@ synchronization.
 
 ## Install with Homebrew
 
+Available after the first release is published.
+
 ```bash
 brew install joynik/tap/kitflow
 ```
@@ -47,5 +49,5 @@ a platform-specific directory and installation archive in `dist/`. It requires a
 standalone builds also require `patchelf`. Build separately on each target operating system and
 architecture. The standalone application includes its runtime and dependencies, but no box
 templates. GitHub Actions checks changes and builds release archives; see the
-[workflow instructions](docs/INSTRUCTION.md#github-actions). Homebrew publication is not included
-yet.
+[workflow instructions](docs/INSTRUCTION.md#github-actions). Published releases update the Homebrew
+formula automatically.

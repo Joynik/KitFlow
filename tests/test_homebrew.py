@@ -41,6 +41,8 @@ def test_formula_preserves_standalone_runtime_and_platform_checksums():
     result = module.formula(release, checksums)
     for asset in release["assets"]:
         assert asset["browser_download_url"] in result
+    assert "macos-x86_64" not in result
+    assert "depends_on arch: :arm64" in result
     assert 'libexec.install Dir["*"]' in result
     assert 'bin.install_symlink libexec/"kitflow"' in result
 

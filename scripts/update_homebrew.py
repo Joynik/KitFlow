@@ -5,7 +5,7 @@ import json
 import re
 from pathlib import Path
 
-PLATFORMS = ("macos-arm64", "macos-x86_64", "linux-x86_64")
+PLATFORMS = ("macos-arm64", "linux-arm64", "linux-x86_64")
 
 
 def formula(release: dict, checksums: str) -> str:
@@ -49,18 +49,17 @@ class Kitflow < Formula
 
   on_macos do
     depends_on macos: :sequoia
+    depends_on arch: :arm64
 
-    if Hardware::CPU.arm?
-{archive("macos-arm64", "      ")}
-    else
-{archive("macos-x86_64", "      ")}
-    end
+{archive("macos-arm64", "    ")}
   end
 
   on_linux do
-    depends_on arch: :x86_64
-
-{archive("linux-x86_64", "    ")}
+    if Hardware::CPU.arm?
+{archive("linux-arm64", "      ")}
+    else
+{archive("linux-x86_64", "      ")}
+    end
   end
 
   livecheck do
