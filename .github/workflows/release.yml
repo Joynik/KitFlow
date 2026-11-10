@@ -1,0 +1,107 @@
+name: Standalone release
+
+on:
+  push:
+    tags: ['[0-9]*.[0-9]*.[0-9]*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+
+  build:
+    needs: checks
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            platform: macos-arm64
+          - os: macos-15-intel
+            platform: macos-x86_64
+          - os: ubuntu-22.04
+            platform: linux-x86_64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v9
+        with:
+          enable-cache: true
+          python-version: '3.14'
+      - name: Validate release version
+        if: github.ref_type == 'tag'
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          uv run --no-project python - <<'PY'
+          import os
+          import re
+          import tomllib
+          from pathlib import Path
+          tag = os.environ['RELEASE_TAG']
+          version = tomllib.loads(Path('pyproject.toml').read_text())['project']['version']
+          if not re.fullmatch(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)', tag):
+              raise SystemExit('Release tag must use MAJOR.MINOR.PATCH without a prefix')
+          if tag != version:
+              raise SystemExit(f'Tag {tag} does not match package version {version}')
+          changelog = Path('CHANGELOG.md').read_text()
+          if not re.search(r'^## ' + re.escape(tag) + r' — \d{4}-\d{2}-\d{2}$', changelog, re.M):
+              raise SystemExit('Prepare a dated changelog section before releasing')
+          PY
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y patchelf ccache
+      - run: uv sync --locked --group build
+      - name: Build standalone archive
+        run: uv run --no-sync python scripts/build_standalone.py --jobs 3
+      - name: Verify relocated archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          smoke_dir=$(mktemp -d)
+          trap 'rm -rf "$smoke_dir"' EXIT
+          tar -xzf dist/kitflow-*-${{ matrix.platform }}.tar.gz -C "$smoke_dir"
+          mkdir "$smoke_dir/project"
+          "$smoke_dir/kitflow/kitflow" --version
+          "$smoke_dir/kitflow/kitflow" init --catalog "$GITHUB_WORKSPACE/box" --project "$smoke_dir/project" --components python,ruff --yes
+          "$smoke_dir/kitflow/kitflow" status --catalog "$GITHUB_WORKSPACE/box" --project "$smoke_dir/project"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: standalone-${{ matrix.platform }}
+          path: dist/kitflow-*-${{ matrix.platform }}.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  release:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: standalone-*
+          path: release-assets
+          merge-multiple: true
+      - name: Create checksums and draft release
+        working-directory: release-assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          sha256sum ./*.tar.gz > SHA256SUMS
+          gh release create "$RELEASE_TAG" ./*.tar.gz SHA256SUMS --verify-tag --draft --title "$RELEASE_TAG" --generate-notes
