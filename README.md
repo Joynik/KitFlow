@@ -5,6 +5,12 @@ components in a keyboard- and mouse-driven interface, review the plan, and apply
 first use downloads an example box; later operations use your local files without GitHub
 synchronization.
 
+## Install with Homebrew
+
+```bash
+brew install joynik/tap/kitflow
+```
+
 ## Install from source
 
 Requires Python 3.14 and uv:

@@ -1,0 +1,62 @@
+name: Update Homebrew tap
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Published release tag
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homebrew-tap
+  cancel-in-progress: false
+
+jobs:
+  update:
+    if: github.event_name == 'workflow_dispatch' || (!github.event.release.prerelease && !github.event.release.draft)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          repository: Joynik/homebrew-tap
+          ref: main
+          path: tap
+          ssh-key: ${{ secrets.HOMEBREW_TAP_SSH_KEY }}
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: '3.14'
+      - name: Fetch published release and generate formula
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.version || github.event.release.tag_name }}
+        run: |
+          gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" > "$RUNNER_TEMP/release.json"
+          gh release download "$RELEASE_TAG" --pattern SHA256SUMS --dir "$RUNNER_TEMP"
+          uv run --no-project python scripts/update_homebrew.py --release "$RUNNER_TEMP/release.json" --checksums "$RUNNER_TEMP/SHA256SUMS" --tap tap
+          ruby -c tap/Formula/kitflow.rb
+      - name: Commit and push formula
+        working-directory: tap
+        env:
+          RELEASE_TAG: ${{ inputs.version || github.event.release.tag_name }}
+        run: |
+          git diff --check
+          git add Formula/kitflow.rb
+          if git diff --cached --quiet; then
+            echo 'The tap already contains this release.'
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "chore(kitflow): update to $RELEASE_TAG"
+          git pull --rebase origin main
+          git push origin HEAD:main

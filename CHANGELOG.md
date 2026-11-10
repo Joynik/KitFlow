@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+
+- Automatic Homebrew formula updates after release publication.
+
 ## 0.1.0 — 2026-11-10
 
 ### Changed

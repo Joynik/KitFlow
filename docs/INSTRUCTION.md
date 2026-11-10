@@ -179,4 +179,19 @@ final creation step for the same release fails. Artifacts are retained for 14 da
 
 Private repositories use the workflow's built-in `GITHUB_TOKEN`. No personal token is required for
 creating releases in the same repository. GitHub-hosted runner usage remains subject to the
-account's Actions limits and billing. Homebrew distribution is not configured by these workflows.
+account's Actions limits and billing. After publication, `Update Homebrew tap` updates
+`Formula/kitflow.rb` in `Joynik/homebrew-tap`. It validates the published asset metadata against
+`SHA256SUMS` before committing the formula. The `HOMEBREW_TAP_SSH_KEY` secret contains a
+write-enabled deploy key restricted to the tap. A manual run with a published version can retry a
+failed formula update without rebuilding. The updater refuses to downgrade an existing formula.
+
+## Install and update with Homebrew
+
+```bash
+brew install joynik/tap/kitflow
+brew update
+brew upgrade joynik/tap/kitflow
+```
+
+The formula installs the standalone runtime without Python dependencies. Current release targets are
+macOS 15 or newer on ARM64 and Intel, and Linux x86_64. It does not replace your local box.
