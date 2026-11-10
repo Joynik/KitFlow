@@ -1,0 +1,13 @@
+# Local environment and generated files
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.rumdl_cache/
+.coverage
+.env
+.DS_Store
+build/
+dist/
+*.egg-info/

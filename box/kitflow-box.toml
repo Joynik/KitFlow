@@ -1,0 +1,265 @@
+# KitFlow catalog: all paths are relative to this directory.
+schema = 1
+
+[[components]]
+id = "python"
+label = "Python"
+category = "Languages"
+description = "Base Python project files."
+requires = []
+conflicts = []
+
+[[components]]
+id = "javascript"
+label = "JavaScript"
+category = "Languages"
+description = "Project language; select checks separately."
+requires = []
+conflicts = []
+
+[[components]]
+id = "typescript"
+label = "TypeScript"
+category = "Languages"
+description = "Project language; select checks separately."
+requires = []
+conflicts = []
+
+[[components]]
+id = "django"
+label = "Django"
+category = "Frameworks"
+description = "Project checks, migrations, user creation and development server."
+requires = ["python"]
+conflicts = ["fastapi"]
+
+[[components]]
+id = "fastapi"
+label = "FastAPI"
+category = "Frameworks"
+description = "Stack selection only; start commands depend on the application layout."
+requires = ["python"]
+conflicts = ["django"]
+
+[[components]]
+id = "postgresql"
+label = "PostgreSQL"
+category = "Databases"
+description = "Database selection only; backup commands require connection configuration."
+requires = []
+conflicts = ["sqlite"]
+
+[[components]]
+id = "sqlite"
+label = "SQLite"
+category = "Databases"
+description = "Database selection without server installation."
+requires = []
+conflicts = ["postgresql"]
+
+[[components]]
+id = "docker"
+label = "Docker Compose"
+category = "Infrastructure"
+description = "Start, stop and view logs for an existing Compose project."
+requires = []
+conflicts = []
+
+[[components]]
+id = "ruff"
+label = "Ruff"
+category = "Checks"
+description = "Python linting and formatting."
+requires = ["python"]
+conflicts = []
+
+[[components]]
+id = "ty"
+label = "ty"
+category = "Checks"
+description = "Python type checking."
+requires = ["python"]
+conflicts = []
+
+[[components]]
+id = "rumdl"
+label = "rumdl"
+category = "Checks"
+description = "Markdown checks."
+requires = []
+conflicts = []
+
+[[components]]
+id = "djlint"
+label = "djLint"
+category = "Checks"
+description = "Django template checks."
+requires = ["django"]
+conflicts = []
+
+[[components]]
+id = "agents"
+label = "Agent instructions"
+category = "Instructions"
+description = "Generic agent instructions; an empty PROJECT.md is created once."
+requires = []
+conflicts = []
+
+[[files]]
+id = "readme"
+path = "README.md"
+empty = true
+when = []
+mode = "once"
+
+[[files]]
+id = "project"
+path = "PROJECT.md"
+empty = true
+when = ["agents"]
+mode = "once"
+
+[[files]]
+id = "gitignore"
+path = ".gitignore"
+template = "templates/gitignore"
+when = []
+mode = "managed"
+
+[[files]]
+id = "pyproject"
+path = "pyproject.toml"
+template = "templates/pyproject.toml"
+when = ["python"]
+mode = "managed"
+
+[[files]]
+id = "python-version"
+path = ".python-version"
+template = "templates/.python-version"
+when = ["python"]
+mode = "managed"
+
+[[files]]
+id = "ruff"
+path = "ruff.toml"
+template = "templates/ruff.toml"
+when = ["ruff"]
+mode = "managed"
+
+[[files]]
+id = "ty"
+path = "ty.toml"
+template = "templates/ty.toml"
+when = ["ty"]
+mode = "managed"
+
+[[files]]
+id = "rumdl"
+path = "rumdl.toml"
+template = "templates/rumdl.toml"
+when = ["rumdl"]
+mode = "managed"
+
+[[files]]
+id = "djlint"
+path = ".djlintrc"
+template = "templates/djlintrc.json"
+when = ["djlint"]
+mode = "managed"
+
+[[files]]
+id = "agents"
+path = "AGENTS.md"
+template = "templates/AGENTS.md"
+when = ["agents"]
+mode = "managed"
+
+[[files]]
+id = "standards"
+path = "STANDARDS.md"
+template = "templates/STANDARDS.md"
+when = ["agents"]
+mode = "managed"
+
+[[files]]
+id = "tools"
+path = "TOOLS.md"
+template = "templates/TOOLS.md"
+when = ["agents"]
+mode = "managed"
+
+[[tasks]]
+name = "lint"
+template = "tasks/ruff-lint.sh"
+when = ["ruff"]
+
+[[tasks]]
+name = "lint"
+template = "tasks/django-lint.sh"
+when = ["django"]
+
+[[tasks]]
+name = "lint"
+template = "tasks/django-template-lint.sh"
+when = ["djlint"]
+
+[[tasks]]
+name = "lint"
+template = "tasks/rumdl.sh"
+when = ["rumdl"]
+
+[[tasks]]
+name = "format"
+template = "tasks/ruff-format.sh"
+when = ["ruff"]
+
+[[tasks]]
+name = "format-check"
+template = "tasks/ruff-format-check.sh"
+when = ["ruff"]
+
+[[tasks]]
+name = "typecheck"
+template = "tasks/ty.sh"
+when = ["ty"]
+
+[[tasks]]
+name = "db:makemigrations"
+template = "tasks/django-makemigrations.sh"
+when = ["django"]
+
+[[tasks]]
+name = "db:migrate"
+template = "tasks/django-migrate.sh"
+when = ["django"]
+
+[[tasks]]
+name = "db:superuser"
+template = "tasks/django-superuser.sh"
+when = ["django"]
+
+[[tasks]]
+name = "start"
+template = "tasks/django-start.sh"
+when = ["django"]
+
+[[tasks]]
+name = "docker:up"
+template = "tasks/docker-up.sh"
+when = ["docker"]
+
+[[tasks]]
+name = "docker:down"
+template = "tasks/docker-down.sh"
+when = ["docker"]
+
+[[tasks]]
+name = "docker:logs"
+template = "tasks/docker-logs.sh"
+when = ["docker"]
+
+[[env]]
+name = "PYTHONUNBUFFERED"
+value = "1"
+when = ["python"]

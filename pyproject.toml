@@ -1,0 +1,32 @@
+[project]
+name = "kitflow"
+version = "0.1.0"
+description = "Declarative project standards and composed mise tasks"
+requires-python = ">=3.14"
+authors = [{ name = "Joynik", email = "joynik@gmail.com" }]
+dependencies = [
+  "certifi>=2026.10.23",
+  "textual>=8.2.8",
+  "tomlkit>=0.15.2",
+]
+
+[project.scripts]
+kitflow = "kitflow.cli:main"
+
+[dependency-groups]
+build = [
+    "nuitka>=4.3.5",
+]
+dev = [
+  "pytest>=9.2.0",
+  "pytest-asyncio>=1.4.1.post1",
+  "ruff>=0.17.4",
+  "ty>=0.0.100",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"

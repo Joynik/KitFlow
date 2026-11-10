@@ -1,0 +1,23 @@
+[environment]
+
+[src]
+respect-ignore-files = true
+
+exclude = [
+  ".venv",
+  "venv",
+  "node_modules",
+  "__pypackages__",
+  "**/migrations/**",
+]
+
+[terminal]
+output-format = "concise"
+error-on-warning = false
+
+[rules]
+unused-awaitable = "error"
+unused-ignore-comment = "warn"
+unused-type-ignore-comment = "warn"
+redundant-condition = "warn"
+pydantic-discarded-extra-argument = "warn"

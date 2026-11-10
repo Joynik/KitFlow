@@ -130,3 +130,8 @@ test_db.sqlite3-*
 
 # Folder
 media/*
+
+# Public example box contains neutral instruction templates
+!box/templates/AGENTS.md
+!box/templates/STANDARDS.md
+!box/templates/TOOLS.md

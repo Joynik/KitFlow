@@ -1,0 +1,57 @@
+schema = 1
+
+[[components]]
+id = "python"
+label = "Python"
+category = "Languages"
+
+[[components]]
+id = "django"
+label = "Django"
+category = "Frameworks"
+requires = ["python"]
+
+[[components]]
+id = "ruff"
+label = "Ruff"
+category = "Checks"
+requires = ["python"]
+
+[[components]]
+id = "agents"
+label = "Agent instructions"
+category = "Instructions"
+
+[[files]]
+id = "readme"
+path = "README.md"
+empty = true
+mode = "once"
+
+[[files]]
+id = "project"
+path = "PROJECT.md"
+empty = true
+mode = "once"
+when = ["agents"]
+
+[[files]]
+id = "ruff"
+path = "ruff.toml"
+template = "templates/ruff.toml"
+when = ["ruff"]
+
+[[tasks]]
+name = "lint"
+template = "ruff.sh"
+when = ["ruff"]
+
+[[tasks]]
+name = "lint"
+template = "django.sh"
+when = ["django"]
+
+[[env]]
+name = "PYTHONUNBUFFERED"
+value = "1"
+when = ["python"]
