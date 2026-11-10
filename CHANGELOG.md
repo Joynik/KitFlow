@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0 — 2026-11-10
+
 ### Changed
 
 - Store the local box directly in `~/.config/kitflow`, without a nested `box/` directory.
