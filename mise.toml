@@ -3,13 +3,13 @@ task.run_auto_install = false
 
 [tasks.typecheck]
 description = "Check Python types"
-run = "ty check src tests scripts"
+run = "ty check ."
 
 [tasks.format]
 description = "Format Python code and Markdown documentation"
 run = [
   "ruff format src tests scripts",
-  "rumdl fmt README.md CHANGELOG.md docs box/README.md box/templates/AGENTS.md box/templates/STANDARDS.md box/templates/TOOLS.md",
+  "rumdl fmt .",
 ]
 
 [tasks.build]
