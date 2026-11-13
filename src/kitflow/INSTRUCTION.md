@@ -28,6 +28,7 @@ box unchanged.
 ~/.config/kitflow/
 ├── INSTRUCTION.md       This guide
 ├── kitflow-box.toml     Available components and rules for applying files
+├── profiles/            Optional ready-made component selections
 ├── templates/           Configuration files and agent instructions
 └── tasks/               Shell commands used to build mise tasks
 ```
@@ -49,7 +50,8 @@ when = ["python"]
 KitFlow copies every file inside `templates/vscode` into the project's `.vscode`, including hidden
 files and nested folders. Updates manage each file separately and preserve personal files. Empty
 folders are ignored. Relative symbolic links are preserved without copying or checking their target
-contents. Missing targets are allowed. Absolute links are rejected. See [CATALOG.md](CATALOG.md) for the full format.
+contents. Missing targets are allowed. Absolute links are rejected. See [CATALOG.md](CATALOG.md) for
+the full format.
 
 ## Set up a project
 
@@ -58,7 +60,9 @@ cd /path/to/project
 kitflow init
 ```
 
-1. Choose components, such as Python, Ruff and agent instructions.
+1. Choose a profile, or select **Custom setup** to choose components yourself. With a profile,
+   select **Review plan** to continue or **Customize selection** to adjust its components. If your
+   box has no profiles, the component menu opens directly.
 2. Use Up/Down within a list, Right to enter components, and Left to return to categories. Enter or
    Space toggles a component. Tab focuses **Review plan**; further presses switch between the
    buttons. Mouse clicks also work.
@@ -68,6 +72,32 @@ kitflow init
 Required dependencies are selected automatically. KitFlow saves the selection and managed file state
 in the project's `kitflow.toml`. Keep this file, including its state tables. Run `kitflow init`
 again to add or remove components.
+
+## Use a profile
+
+A profile is a ready-made component selection. Choose one in `kitflow init`, or use its filename
+without `.toml`:
+
+```bash
+kitflow init -r django-docker
+kitflow init --profile django-docker -y
+```
+
+To create your own, save this as `profiles/my-python.toml` in your local box:
+
+```toml
+name = "My Python"
+description = "Python with Ruff and agent instructions."
+components = ["python", "ruff", "agents"]
+```
+
+Use component IDs from your `kitflow-box.toml`. Run `kitflow check`, then
+`kitflow init -r my-python`. Choose one profile at a time. `-r` cannot be combined with `-c`.
+Required dependencies are added automatically. `-y` confirms a plan, but never overwrites conflicts.
+
+The project saves the final selection. Editing a profile does not change existing projects during
+`update`. To apply its new selection, run `init -r PROFILE` again and review the plan. Existing
+user-owned exclusions remain in effect.
 
 ## Update project files
 
@@ -102,8 +132,9 @@ block to take control of it. Install tools yourself, then run tasks with `mise r
 
 Run `kitflow check` after editing your box or project configuration. It checks the box and, when
 present, the current project's `kitflow.toml`. It validates fields, dependencies, paths, template
-availability, TOML/JSON file syntax and managed mise blocks. It does not download files, change them
-or run tools. Tool-specific settings and shell commands are not checked against external tools.
+availability, profiles, TOML/JSON file syntax and managed mise blocks. It does not download files,
+change them or run tools. Tool-specific settings and shell commands are not checked against external
+tools.
 
 ```bash
 kitflow check

@@ -130,3 +130,18 @@ def test_failed_download_does_not_change_the_box(boxes, monkeypatch):
         box_update.refresh_box(destination, lambda *_args: True)
     assert (destination / "templates/ruff.toml").read_bytes() == before
     assert not list(destination.parent.glob(".box-refresh-*"))
+
+
+def test_invalid_merged_profile_prevents_box_writes(boxes):
+    destination, incoming = boxes
+    profiles = incoming / "profiles"
+    profiles.mkdir()
+    (profiles / "broken.toml").write_text('name = "Broken"\ncomponents = ["missing"]')
+    before = {
+        p.relative_to(destination): p.read_bytes() for p in destination.rglob("*") if p.is_file()
+    }
+    with pytest.raises(KitFlowError, match="Unknown component"):
+        box_update.refresh_box(destination, lambda *_args: True)
+    assert {
+        p.relative_to(destination): p.read_bytes() for p in destination.rglob("*") if p.is_file()
+    } == before

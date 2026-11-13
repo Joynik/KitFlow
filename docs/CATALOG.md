@@ -7,6 +7,7 @@ component IDs. An empty condition applies to every project.
 ```text
 box/
 ├── kitflow-box.toml       Components, conditions and output paths
+├── profiles/          Optional named component selections
 ├── templates/         Whole-file templates
 └── tasks/             Shell fragments, without mise table headers
 ```
@@ -36,6 +37,37 @@ Dependencies are recursive. Unknown dependencies and dependency cycles are rejec
 checked against the resolved selection. Category labels and component descriptions come from the
 catalog.
 
+## Profiles
+
+Create one TOML file per profile in `profiles/`, directly under the box directory:
+
+```toml
+# profiles/django-docker.toml
+name = "Django + Docker"
+description = "Django with PostgreSQL, Docker and checks."
+components = ["django", "postgresql", "docker", "ruff", "ty", "agents"]
+```
+
+The filename without `.toml` is the profile ID. Use lowercase letters, digits, underscores or
+hyphens, starting with a letter. `name` and `components` are required; `description` is optional.
+Component IDs must exist in `kitflow-box.toml`. Dependencies are added automatically. Duplicate
+component IDs, conflicts and unknown fields are rejected. Profile definitions must be regular TOML
+files, not symbolic links. Profiles are optional; KitFlow uses the existing component menu when none
+exist.
+
+Select one profile with `kitflow init --profile django-docker`, or choose it in the setup menu. The
+menu offers **Review plan** and **Customize selection**. Custom setup preserves an existing
+project's component selection. `--profile/-r` and `--components/-c` cannot be combined.
+
+Profiles supply a starting selection. The project saves only the final component list, not a live
+profile reference. Editing a profile does not change projects during `update`. Run `init --profile`
+again to apply a profile's new selection after reviewing the plan. Existing user-owned exclusions
+remain in effect; use `--manage` or the component menu to restore management.
+
+Inheritance and combining multiple profiles are not supported. Run `kitflow check` after editing
+profiles; it validates every profile and reports errors with file paths. Initial box setup and
+explicit standard-box refresh include example profiles from the same GitHub commit as the templates.
+
 ## Whole files
 
 ```toml
@@ -49,11 +81,13 @@ mode = "managed"
 
 Every component listed in `when` must be selected. File IDs must be unique. Output paths must also
 be unique. Use `mode = "once"` for files that must never be updated or deleted after creation. Files
-are copied as bytes. Parameter substitution is not implemented. Nested paths and relative symbolic links are supported. Paths outside the project are rejected. `.git`, `.beads`, `.venv` and `kitflow.toml` are
-reserved targets. `mise.toml` is reserved for block management.
+are copied as bytes. Parameter substitution is not implemented. Nested paths and relative symbolic
+links are supported. Paths outside the project are rejected. `.git`, `.beads`, `.venv` and
+`kitflow.toml` are reserved targets. `mise.toml` is reserved for block management.
 
 Keep output paths stable for an existing artifact ID. A path migration requires explicitly retiring
-the old artifact before adopting the new path. Empty directories and recursive directory deletion are not supported.
+the old artifact before adopting the new path. Empty directories and recursive directory deletion
+are not supported.
 
 ## Directory templates
 
@@ -67,16 +101,16 @@ template = "templates/vscode"
 when = ["python"]
 ```
 
-Hidden files and directories are included, such as `.env.example` and `.nested/settings.json`.
-Each file is managed independently. Its ID combines the rule ID and relative path, for example
+Hidden files and directories are included, such as `.env.example` and `.nested/settings.json`. Each
+file is managed independently. Its ID combines the rule ID and relative path, for example
 `editor-settings/settings.json`. Use this ID with `--manage` to restore management of an excluded
 file. Keep rule IDs and output paths stable.
 
 Updates include new files and remove unchanged managed files missing from the template. Modified
 files require a conflict decision. Personal files are preserved. Empty directories are ignored;
-existing directories are not deleted. Special files and absolute symbolic links are rejected. `mode = "once"`
-applies separately to each file. Files are copied as bytes; executable permissions are not copied.
-`kitflow check` also checks TOML and JSON files inside directory templates.
+existing directories are not deleted. Special files and absolute symbolic links are rejected.
+`mode = "once"` applies separately to each file. Files are copied as bytes; executable permissions
+are not copied. `kitflow check` also checks TOML and JSON files inside directory templates.
 
 ## Symbolic links
 
@@ -86,10 +120,10 @@ contents. A target may be missing; KitFlow preserves the link so the target can 
 Relative targets may contain `..`; the destination is interpreted from the link's new location.
 Absolute link targets are rejected.
 
-A `template` can itself be a relative link, or a directory can contain relative links. Updates compare
-link target text, detect manual changes and use the usual conflict decisions. Removal deletes only
-the link. KitFlow never writes through it. Output parent directories must be real directories;
-KitFlow rejects paths that traverse a symbolic link.
+A `template` can itself be a relative link, or a directory can contain relative links. Updates
+compare link target text, detect manual changes and use the usual conflict decisions. Removal
+deletes only the link. KitFlow never writes through it. Output parent directories must be real
+directories; KitFlow rejects paths that traverse a symbolic link.
 
 ## Composed tasks
 

@@ -15,6 +15,7 @@ from kitflow.box_update import refresh_box
 from kitflow.catalog import KitFlowError
 from kitflow.check import configuration_issues
 from kitflow.engine import CONFIG, apply, load_config, plan
+from kitflow.profiles import load_profiles
 from kitflow.settings import box_path, config_directory
 from kitflow.source import load_box, read_instructions
 
@@ -26,7 +27,7 @@ def parser() -> argparse.ArgumentParser:
         description="KitFlow — project standards over mise", add_help=False
     )
     result.add_argument("--help", "-h", action="help", help="show this help message and exit")
-    result.add_argument("--version", "-v", action="version", version="KitFlow 0.4.0")
+    result.add_argument("--version", "-v", action="version", version="KitFlow 0.5.0")
     result.add_argument(
         "--instruction",
         "-i",
@@ -61,7 +62,14 @@ Without a command, prepare the local box or offer to refresh an existing box.
         "--box", "-b", type=Path, help="Use another box directory for this command only"
     )
     result.add_argument("--catalog", dest="box", type=Path, help=argparse.SUPPRESS)
-    result.add_argument(
+    setup = result.add_mutually_exclusive_group()
+    setup.add_argument(
+        "--profile",
+        "-r",
+        metavar="ID",
+        help="Use one local box profile as the complete starting selection (init only)",
+    )
+    setup.add_argument(
         "--components",
         "-c",
         metavar="IDS",
@@ -122,12 +130,18 @@ def show_plan(result):
 
 def run(args: argparse.Namespace) -> int:
     if args.instruction:
-        if args.command or args.components is not None or args.manage or args.yes:
+        if (
+            args.command
+            or args.profile is not None
+            or args.components is not None
+            or args.manage
+            or args.yes
+        ):
             raise KitFlowError("Use --instruction without a command or project actions")
         console.print(Markdown(read_instructions(args.box)))
         return 0
     if args.command == "check":
-        if args.components is not None or args.manage or args.yes:
+        if args.profile is not None or args.components is not None or args.manage or args.yes:
             raise KitFlowError("check accepts --box and --project, without project actions")
         box = args.box.resolve() if args.box else box_path()
         root = args.project.resolve()
@@ -148,7 +162,13 @@ def run(args: argparse.Namespace) -> int:
         console.print("Configuration checks passed.", style="green")
         return 0
     if args.command == "config":
-        if args.box or args.components is not None or args.manage or args.yes:
+        if (
+            args.box
+            or args.profile is not None
+            or args.components is not None
+            or args.manage
+            or args.yes
+        ):
             raise KitFlowError(
                 "config displays the user configuration location; it accepts no options"
             )
@@ -156,7 +176,7 @@ def run(args: argparse.Namespace) -> int:
         console.print(f"Local box: {box_path()}", markup=False)
         return 0
     if args.command is None:
-        if args.components is not None or args.manage or args.yes:
+        if args.profile is not None or args.components is not None or args.manage or args.yes:
             raise KitFlowError("Use init to select project components or apply a plan")
         existing = args.box is None and box_path().exists()
         catalog, _ = load_box(args.box)
@@ -195,6 +215,8 @@ def run(args: argparse.Namespace) -> int:
     command = args.command
     if command != "init" and not exists:
         raise KitFlowError("Run kitflow init first")
+    if args.profile is not None and command != "init":
+        raise KitFlowError("--profile is available only for init")
     if args.components is not None and command != "init":
         raise KitFlowError("--components is available only for init")
     if args.manage and command != "init":
@@ -202,10 +224,11 @@ def run(args: argparse.Namespace) -> int:
     if (
         command == "init"
         and args.components is None
+        and args.profile is None
         and not args.manage
         and (not sys.stdin.isatty() or args.yes)
     ):
-        raise KitFlowError("Use --components for non-interactive init")
+        raise KitFlowError("Use --profile or --components for non-interactive init")
     document = load_config(root)
     catalog, source = load_box(args.box)
     selection = document["selection"]
@@ -219,16 +242,33 @@ def run(args: argparse.Namespace) -> int:
     if command == "init":
         if args.components is not None:
             selected = [x.strip() for x in args.components.split(",") if x.strip()]
+        elif args.profile is not None:
+            profiles = load_profiles(catalog)
+            if args.profile not in profiles:
+                available = ", ".join(profiles) or "none"
+                raise KitFlowError(
+                    f"Unknown profile: {args.profile}. Available profiles: {available}"
+                )
+            selected = profiles[args.profile].components
         elif not args.manage:
-            if not sys.stdin.isatty() or args.yes:
-                raise KitFlowError("Use --components for non-interactive init")
-            from kitflow.tui import Configurator
+            from kitflow.tui import Configurator, ProfilePicker
 
-            chosen = Configurator(catalog, selected, excluded).run()
-            if chosen is None:
-                console.print("Cancelled. No files were changed.")
-                return 0
-            selected, excluded = chosen.components, chosen.excluded
+            profiles = load_profiles(catalog)
+            customize = True
+            if profiles:
+                setup = ProfilePicker(profiles).run()
+                if setup is None:
+                    console.print("Cancelled. No files were changed.")
+                    return 0
+                if setup.profile is not None:
+                    selected = profiles[setup.profile].components
+                customize = setup.customize
+            if customize:
+                chosen = Configurator(catalog, selected, excluded).run()
+                if chosen is None:
+                    console.print("Cancelled. No files were changed.")
+                    return 0
+                selected, excluded = chosen.components, chosen.excluded
     selection["excluded"] = excluded
     result = plan(root, catalog, selected, document)
     console.print(f"Project: {root}", markup=False)

@@ -17,6 +17,7 @@ from pathlib import Path
 import certifi
 
 from kitflow.catalog import Catalog, KitFlowError, safe_path
+from kitflow.profiles import load_profiles
 from kitflow.settings import box_path
 
 MAX_FILE_BYTES = 2 * 1024 * 1024
@@ -123,8 +124,27 @@ def seed_box(destination: Path):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(content)
                 downloaded.add(name)
+        tree = json.loads(
+            fetch(
+                f"https://api.github.com/repos/{DEFAULT_REPOSITORY}/git/trees/{commit}?recursive=1"
+            )
+        )
+        if tree.get("truncated"):
+            raise KitFlowError("GitHub returned an incomplete box file list")
+        for entry in tree["tree"]:
+            name = entry["path"]
+            if not name.startswith("box/profiles/") or not name.endswith(".toml"):
+                continue
+            relative = name.removeprefix("box/")
+            if len(Path(relative).parts) != 2:
+                continue
+            if entry.get("type") != "blob" or entry.get("mode") not in {"100644", "100755"}:
+                raise KitFlowError(f"Profile must be a regular TOML file: {name}")
+            target = safe_path(staging, relative)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(fetch(content_url(DEFAULT_REPOSITORY, commit, name)))
         (staging / "INSTRUCTION.md").write_text(read_instructions(staging), encoding="utf-8")
-        Catalog(staging)
+        load_profiles(Catalog(staging))
         staging.rename(destination)
         staging = None
     except (urllib.error.URLError, TimeoutError, OSError) as error:

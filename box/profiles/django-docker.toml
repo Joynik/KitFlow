@@ -1,0 +1,3 @@
+name = "Django + Docker"
+description = "Django with PostgreSQL, Docker Compose, checks and agent instructions."
+components = ["django", "postgresql", "docker", "ruff", "ty", "rumdl", "agents"]

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.5.0 — 2026-11-13
+
+### Added
+
+- Choose one local profile from `profiles/*.toml` during `init`, with actions to review the plan or
+  customize the selection. Use `--profile/-r` for setup without the menu.
+- Validate profile fields, dependencies and conflicts with `kitflow check`. Projects save the final
+  selection, so profile edits do not change existing projects during `update`.
+- Include Python, Django and Django + Docker example profiles in standard box setup and refresh.
+
 ## 0.4.0 — 2026-11-13
 
 ### Added

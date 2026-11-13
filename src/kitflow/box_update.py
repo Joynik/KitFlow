@@ -9,6 +9,7 @@ from pathlib import Path
 
 from kitflow.catalog import Catalog, KitFlowError, safe_path
 from kitflow.engine import atomic_write, read_file
+from kitflow.profiles import load_profiles
 from kitflow.source import seed_box
 
 
@@ -45,7 +46,7 @@ def refresh_box(destination: Path, decide: Callable[[str, bytes | None, bytes], 
                 preview.write_bytes(after)
             if not writes:
                 return 0
-            Catalog(merged)
+            load_profiles(Catalog(merged))
             for name, before in snapshots.items():
                 if read_file(safe_path(destination, name)) != before:
                     raise KitFlowError(f"{name} changed during review; run kitflow again")

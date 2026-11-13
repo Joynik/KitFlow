@@ -10,19 +10,34 @@ from kitflow import cli, settings, source
 from kitflow.catalog import KitFlowError
 
 
-def downloads(monkeypatch):
+def downloads(monkeypatch, fixture: Path | None = None):
     calls = []
-    fixture = Path(__file__).parent / "fixtures/catalog"
+    fixture_root = fixture or Path(__file__).parent / "fixtures/catalog"
     commit = "a" * 40
 
     def fetch(url):
         calls.append(url)
         if "/commits/" in url:
             return json.dumps({"sha": commit}).encode()
+        if "/git/trees/" in url:
+            assert url.endswith(f"/{commit}?recursive=1")
+            return json.dumps(
+                {
+                    "truncated": False,
+                    "tree": [
+                        {
+                            "path": "box/" + path.relative_to(fixture_root).as_posix(),
+                            "type": "blob",
+                            "mode": "100644",
+                        }
+                        for path in (fixture_root / "profiles").glob("*.toml")
+                    ],
+                }
+            ).encode()
         prefix = f"https://api.github.com/repos/{source.DEFAULT_REPOSITORY}/contents/box/"
         assert url.startswith(prefix)
         assert url.endswith(f"?ref={commit}")
-        return (fixture / url[len(prefix) :].split("?")[0]).read_bytes()
+        return (fixture_root / url[len(prefix) :].split("?")[0]).read_bytes()
 
     monkeypatch.setattr(source, "fetch", fetch)
     return calls
@@ -125,3 +140,40 @@ def test_private_content_request_uses_token_and_raw_media_type(monkeypatch):
     assert "test-only-token" not in requests[0].full_url
     with pytest.raises(KitFlowError, match="api.github.com"):
         source.fetch("https://example.com/kitflow-box.toml")
+
+
+def test_first_use_downloads_profiles_from_the_same_commit(tmp_path, monkeypatch):
+    import shutil
+
+    from kitflow.profiles import load_profiles
+
+    fixture = tmp_path / "fixture"
+    shutil.copytree(Path(__file__).parent / "fixtures/catalog", fixture)
+    (fixture / "profiles").mkdir()
+    (fixture / "profiles/django.toml").write_text('name = "Django"\ncomponents = ["django"]')
+    calls = downloads(monkeypatch, fixture)
+    catalog, _ = source.load_box()
+    assert load_profiles(catalog)["django"].components == ["python", "django"]
+    assert any("/contents/box/profiles/django.toml?ref=" + "a" * 40 in url for url in calls)
+
+
+@pytest.mark.parametrize(("truncated", "mode"), [(True, "100644"), (False, "120000")])
+def test_invalid_profile_download_keeps_initial_box_absent(monkeypatch, truncated, mode):
+    downloads(monkeypatch)
+    original = source.fetch
+
+    def invalid_tree(url):
+        if "/git/trees/" in url:
+            return json.dumps(
+                {
+                    "truncated": truncated,
+                    "tree": [{"path": "box/profiles/example.toml", "type": "blob", "mode": mode}],
+                }
+            ).encode()
+        return original(url)
+
+    monkeypatch.setattr(source, "fetch", invalid_tree)
+    with pytest.raises(KitFlowError, match="incomplete|regular TOML"):
+        source.load_box()
+    assert not settings.box_path().exists()
+    assert not list(settings.config_directory().glob(".box-download-*"))

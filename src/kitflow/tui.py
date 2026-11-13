@@ -12,6 +12,7 @@ from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, Footer, Header, Label, ListItem, ListView, SelectionList, Static
 
 from kitflow.catalog import Catalog, KitFlowError
+from kitflow.profiles import Profile
 
 
 @dataclass
@@ -169,6 +170,110 @@ class Configurator(App[Selection | None]):
     @on(Button.Pressed, "#continue")
     def action_continue(self):
         self.exit(Selection(self.catalog.resolve(sorted(self.chosen)), sorted(self.excluded)))
+
+    @on(Button.Pressed, "#cancel")
+    def action_cancel(self):
+        self.exit(None)
+
+
+@dataclass(frozen=True)
+class SetupChoice:
+    profile: str | None
+    customize: bool
+
+
+class ProfilePicker(App[SetupChoice | None]):
+    TITLE = "KitFlow"
+    SUB_TITLE = "Choose a setup"
+    CSS = (
+        Configurator.CSS
+        + """
+    #profiles { height: 1fr; margin: 1 2; background: #203248; border: round #5d8fa9; }
+    #profiles ListItem { padding: 0 1; }
+    #details { height: 6; padding: 1 2; }
+    """
+    )
+    BINDINGS = [
+        Binding("left", "focus_profiles", "Setups", priority=True),
+        Binding("right", "choose", "Open", priority=True),
+        Binding("tab", "focus_buttons", "Actions", priority=True),
+        Binding("ctrl+s", "review", "Review plan"),
+        Binding("escape", "cancel", "Cancel"),
+    ]
+
+    def __init__(self, profiles: dict[str, Profile]):
+        super().__init__()
+        self.profiles = profiles
+        self.profile_ids = [None, *profiles]
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield Static(
+            "Choose a setup. Enter/Right opens actions; Left returns to setups.", id="intro"
+        )
+        yield ListView(
+            ListItem(Label("Custom setup")),
+            *(ListItem(Label(Text(profile.name))) for profile in self.profiles.values()),
+            id="profiles",
+        )
+        yield Static("", id="details", markup=False)
+        with Horizontal(id="buttons"):
+            yield Button("Cancel", id="cancel")
+            yield Button("Customize selection", id="customize")
+            yield Button("Review plan", variant="primary", id="continue", disabled=True)
+        yield Footer()
+
+    @property
+    def selected_profile(self) -> str | None:
+        index = self.query_one("#profiles", ListView).index or 0
+        return self.profile_ids[index]
+
+    def on_mount(self):
+        self.query_one("#profiles").focus()
+        self.show_details()
+
+    @on(ListView.Highlighted, "#profiles")
+    def show_details(self):
+        identity = self.selected_profile
+        review = self.query_one("#continue", Button)
+        review.disabled = identity is None
+        if identity is None:
+            text = (
+                "Choose components manually. An existing project's current selection is preserved."
+            )
+        else:
+            profile = self.profiles[identity]
+            text = f"{profile.description}\nProfile: {identity}\nComponents: {', '.join(profile.components) or 'none'}"
+        self.query_one("#details", Static).update(text)
+
+    @on(ListView.Selected, "#profiles")
+    def action_choose(self):
+        if self.selected_profile is None:
+            self.action_customize()
+        else:
+            self.query_one("#continue").focus()
+
+    def action_focus_profiles(self):
+        self.query_one("#profiles").focus()
+
+    def action_focus_buttons(self):
+        actions = (
+            ["continue", "customize", "cancel"]
+            if self.selected_profile
+            else ["customize", "cancel"]
+        )
+        buttons = [self.query_one(f"#{identity}") for identity in actions]
+        index = (buttons.index(self.focused) + 1) % len(buttons) if self.focused in buttons else 0
+        buttons[index].focus()
+
+    @on(Button.Pressed, "#continue")
+    def action_review(self):
+        if self.selected_profile is not None:
+            self.exit(SetupChoice(self.selected_profile, False))
+
+    @on(Button.Pressed, "#customize")
+    def action_customize(self):
+        self.exit(SetupChoice(self.selected_profile, True))
 
     @on(Button.Pressed, "#cancel")
     def action_cancel(self):

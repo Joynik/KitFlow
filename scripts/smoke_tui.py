@@ -42,7 +42,7 @@ with tempfile.TemporaryDirectory() as project, tempfile.TemporaryDirectory() as 
         process.wait(timeout=3)
         assert process.returncode == 0, process.returncode
         assert b"Traceback" not in output, output[-5000:]
-        assert b"Choose components." in output, output[-1000:]
+        assert b"Choose components." in output or b"Choose a setup." in output, output[-1000:]
         assert b"Cancelled. No files were changed." in output, output[-1000:]
         assert not os.listdir(project), os.listdir(project)
         print("Standalone instructions, interactive startup and Escape cancellation passed.")
