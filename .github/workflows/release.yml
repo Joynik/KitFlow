@@ -74,6 +74,7 @@ jobs:
           mkdir "$smoke_dir/project"
           "$smoke_dir/kitflow/kitflow" -v
           uv run --no-sync python scripts/smoke_tui.py "$smoke_dir/kitflow/kitflow"
+          uv run --no-sync python scripts/smoke_templates.py "$smoke_dir/kitflow/kitflow"
           "$smoke_dir/kitflow/kitflow" init -b "$GITHUB_WORKSPACE/box" -p "$smoke_dir/project" -c python,ruff -y
           "$smoke_dir/kitflow/kitflow" status --box "$GITHUB_WORKSPACE/box" --project "$smoke_dir/project"
           "$smoke_dir/kitflow/kitflow" check -b "$GITHUB_WORKSPACE/box" -p "$smoke_dir/project"

@@ -62,7 +62,9 @@ def validate_project(root: Path) -> dict:
         location = f"state.artifacts.{identity}"
         known_fields(record, {"path", "kind", "key", "sha256", "once"}, location)
         if isinstance(record.get("path"), str):
-            safe_path(root, record["path"])
+            safe_path(
+                root, record["path"], allow_link=record.get("kind", "file") in {"file", "symlink"}
+            )
         if "once" in record and type(record["once"]) is not bool:
             raise KitFlowError(f"{location}.once must be a boolean")
         checksum = record.get("sha256")
@@ -104,17 +106,19 @@ def configuration_issues(box: Path, project: Path) -> list[tuple[Path, str]]:
         for row in catalog.data.get("files", []):
             if row.get("empty") is True:
                 continue
-            target = safe_path(catalog.root, row["template"])
-            suffix = Path(row["path"]).suffix.lower()
-            if target.suffix.lower() in {".toml", ".json"}:
-                suffix = target.suffix.lower()
-            if (target, suffix) in checked:
-                continue
-            checked.add((target, suffix))
-            try:
-                validate_syntax(target, suffix)
-            except errors as error:
-                issues.append((target, str(error)))
+            for _, output, target in catalog.file_templates(row):
+                if target is None or target.is_symlink():
+                    continue
+                suffix = Path(output).suffix.lower()
+                if target.suffix.lower() in {".toml", ".json"}:
+                    suffix = target.suffix.lower()
+                if (target, suffix) in checked:
+                    continue
+                checked.add((target, suffix))
+                try:
+                    validate_syntax(target, suffix)
+                except errors as error:
+                    issues.append((target, str(error)))
     if not project.is_dir():
         issues.append((project, "Project directory does not exist"))
         return issues
@@ -134,8 +138,9 @@ def configuration_issues(box: Path, project: Path) -> list[tuple[Path, str]]:
             artifacts = {}
         excluded = document["selection"].get("excluded", [])
         formats = {
-            row["id"]: Path(row.get("template", "")).suffix.lower()
+            identity: source.suffix.lower() if source is not None else ""
             for row in catalog.data.get("files", [])
+            for identity, _, source in catalog.file_templates(row)
         }
         for identity, artifact in artifacts.items():
             if artifact.kind != "file" or identity in excluded:

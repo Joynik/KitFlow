@@ -29,9 +29,13 @@ template = "django.sh"
 """)
     catalog = Catalog(tmp_path)
     assert catalog.resolve(["django"]) == ["python", "django"]
-    content = catalog.render(["django"])["task.lint"].content.decode()
+    artifact = catalog.render(["django"])["task.lint"]
+    assert isinstance(artifact.content, bytes)
+    content = artifact.content.decode()
     assert content.index("ruff") < content.index("manage.py")
-    assert "manage.py" not in catalog.render(["python"])["task.lint"].content.decode()
+    python = catalog.render(["python"])["task.lint"].content
+    assert isinstance(python, bytes)
+    assert "manage.py" not in python.decode()
 
 
 @pytest.mark.parametrize("name", ["../outside", "/tmp/outside", ".git/config", "kitflow.toml"])

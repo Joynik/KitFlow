@@ -22,8 +22,11 @@ console = Console(highlight=False)
 
 
 def parser() -> argparse.ArgumentParser:
-    result = argparse.ArgumentParser(description="KitFlow — project standards over mise")
-    result.add_argument("--version", "-v", action="version", version="KitFlow 0.3.0")
+    result = argparse.ArgumentParser(
+        description="KitFlow — project standards over mise", add_help=False
+    )
+    result.add_argument("--help", "-h", action="help", help="show this help message and exit")
+    result.add_argument("--version", "-v", action="version", version="KitFlow 0.4.0")
     result.add_argument(
         "--instruction",
         "-i",
@@ -79,8 +82,16 @@ Without a command, prepare the local box or offer to refresh an existing box.
 
 
 def show_diff(change):
-    before = (change.before or b"").decode(errors="replace").splitlines(keepends=True)
-    after = (change.after or b"").decode(errors="replace").splitlines(keepends=True)
+    def lines(content):
+        text = (
+            f"symlink -> {content}\n"
+            if isinstance(content, str)
+            else (content or b"").decode(errors="replace")
+        )
+        return text.splitlines(keepends=True)
+
+    before = lines(change.before)
+    after = lines(change.after)
     difference = "".join(
         difflib.unified_diff(
             before,

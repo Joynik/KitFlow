@@ -16,8 +16,9 @@ from kitflow.catalog import Artifact, Catalog, KitFlowError, safe_path
 CONFIG = "kitflow.toml"
 
 
-def digest(content: bytes) -> str:
-    return hashlib.sha256(content).hexdigest()
+def digest(content: bytes | str) -> str:
+    value = b"symlink\0" + os.fsencode(content) if isinstance(content, str) else content
+    return hashlib.sha256(value).hexdigest()
 
 
 def read_file(path: Path) -> bytes | None:
@@ -28,6 +29,11 @@ def read_file(path: Path) -> bytes | None:
             raise KitFlowError(f"Expected a file: {path}")
         return path.read_bytes()
     return None
+
+
+def read_entry(path: Path) -> bytes | str | None:
+    """Read a file or the literal link target, never the target contents."""
+    return os.readlink(path) if path.is_symlink() else read_file(path)
 
 
 def load_config(root: Path) -> dict:
@@ -53,11 +59,11 @@ def load_config(root: Path) -> dict:
             if not isinstance(record, dict) or not isinstance(record.get("path"), str):
                 raise KitFlowError(f"Invalid state record: {identity}")
             kind = record.get("kind", "file")
-            if kind not in {"file", "task", "env"}:
+            if kind not in {"file", "symlink", "task", "env"}:
                 raise KitFlowError(f"Invalid artifact kind: {identity}")
-            if kind != "file" and record["path"] != "mise.toml":
+            if kind in {"task", "env"} and record["path"] != "mise.toml":
                 raise KitFlowError("Task and environment state must target mise.toml")
-            if kind == "file" and record["path"] == "mise.toml":
+            if kind in {"file", "symlink"} and record["path"] == "mise.toml":
                 raise KitFlowError("mise.toml cannot be managed as a whole file")
             for field_name in ("key", "sha256"):
                 if not isinstance(record.get(field_name), str):
@@ -73,8 +79,8 @@ def load_config(root: Path) -> dict:
 @dataclass
 class Change:
     artifact: Artifact
-    before: bytes | None
-    after: bytes | None
+    before: bytes | str | None
+    after: bytes | str | None
     operation: str
     conflict: bool = False
     reason: str = ""
@@ -87,7 +93,7 @@ class Plan:
     document: dict
     selected: list[str]
     changes: list[Change] = field(default_factory=list)
-    snapshots: dict[str, bytes | None] = field(default_factory=dict)
+    snapshots: dict[str, bytes | str | None] = field(default_factory=dict)
 
 
 def plan(root: Path, catalog: Catalog, selected: list[str], document: dict) -> Plan:
@@ -114,13 +120,14 @@ def plan(root: Path, catalog: Catalog, selected: list[str], document: dict) -> P
     for identity, artifact in candidates.items():
         if identity in excluded:
             continue
-        path = safe_path(root, artifact.path)
-        current_file = read_file(path)
+        path = safe_path(root, artifact.path, allow_link=artifact.kind in {"file", "symlink"})
+        current_file = read_entry(path)
         result.snapshots[artifact.path] = current_file
         current = current_file
         record = records.get(identity)
         target = desired.get(identity)
-        if artifact.kind != "file":
+        if artifact.kind in {"task", "env"}:
+            assert not isinstance(current_file, str)
             text = (current_file or b"").decode()
             mise.parse(text)
             span = mise.blocks(text).get(identity)
@@ -145,13 +152,21 @@ def plan(root: Path, catalog: Catalog, selected: list[str], document: dict) -> P
                 result.changes.append(Change(artifact, None, target.content, "create"))
             continue
         if target and current == target.content:
-            if not record or record.get("sha256") != digest(current):
+            if (
+                not record
+                or record.get("sha256") != digest(current)
+                or record.get("kind", "file") != target.kind
+            ):
                 result.changes.append(Change(artifact, current, target.content, "adopt"))
             continue
         if not target and current is None:
             result.changes.append(Change(artifact, None, None, "forget"))
             continue
-        conflict = current is not None and (not record or digest(current) != record.get("sha256"))
+        conflict = current is not None and (
+            not record
+            or digest(current) != record.get("sha256")
+            or isinstance(current, str) != (record.get("kind", "file") == "symlink")
+        )
         operation = "delete" if not target else "create" if current is None else "update"
         result.changes.append(
             Change(
@@ -167,14 +182,19 @@ def plan(root: Path, catalog: Catalog, selected: list[str], document: dict) -> P
     return result
 
 
-def atomic_write(path: Path, content: bytes, mode: int | None = None):
+def atomic_write(path: Path, content: bytes | str, mode: int | None = None):
     descriptor, temporary = tempfile.mkstemp(prefix=".kitflow-", dir=path.parent)
     try:
-        with os.fdopen(descriptor, "wb") as stream:
-            stream.write(content)
-            stream.flush()
-            os.fsync(stream.fileno())
-        os.chmod(temporary, mode if mode is not None else 0o644)
+        if isinstance(content, str):
+            os.close(descriptor)
+            Path(temporary).unlink()
+            os.symlink(content, temporary)
+        else:
+            with os.fdopen(descriptor, "wb") as stream:
+                stream.write(content)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.chmod(temporary, mode if mode is not None else 0o644)
         os.replace(temporary, path)
     finally:
         Path(temporary).unlink(missing_ok=True)
@@ -203,8 +223,10 @@ def _apply(result: Plan, source: dict):
     state = document.setdefault("state", {})
     records = state.setdefault("artifacts", {})
     document["source"] = source
-    writes: dict[str, bytes | None] = {}
-    mise_text = (result.snapshots.get("mise.toml") or b"").decode()
+    writes: dict[str, bytes | str | None] = {}
+    mise_snapshot = result.snapshots.get("mise.toml")
+    assert not isinstance(mise_snapshot, str)
+    mise_text = (mise_snapshot or b"").decode()
     for change in result.changes:
         artifact = change.artifact
         if change.decision == "skip":
@@ -216,10 +238,11 @@ def _apply(result: Plan, source: dict):
         if change.operation == "forget":
             records.pop(artifact.id, None)
             continue
-        if artifact.kind == "file":
+        if artifact.kind in {"file", "symlink"}:
             if change.operation != "adopt":
                 writes[artifact.path] = change.after
         else:
+            assert not isinstance(change.after, str)
             mise_text = mise.replace(mise_text, artifact, change.after)
             writes["mise.toml"] = mise_text.encode()
         if change.after is None:
@@ -237,15 +260,23 @@ def _apply(result: Plan, source: dict):
         mise.parse(mise_text)
     writes[CONFIG] = tomlkit.dumps(document).encode()
     for name, before in result.snapshots.items():
-        path = result.root / CONFIG if name == CONFIG else safe_path(result.root, name)
-        if read_file(path) != before:
+        path = (
+            result.root / CONFIG
+            if name == CONFIG
+            else safe_path(result.root, name, allow_link=name != "mise.toml")
+        )
+        if read_entry(path) != before:
             raise KitFlowError(f"{name} changed after planning; run the command again")
     changed = []
     directories = []
     modes = {}
     try:
         for name, content in writes.items():
-            path = result.root / CONFIG if name == CONFIG else safe_path(result.root, name)
+            path = (
+                result.root / CONFIG
+                if name == CONFIG
+                else safe_path(result.root, name, allow_link=name != "mise.toml")
+            )
             missing = []
             parent = path.parent
             while not parent.exists():
@@ -254,7 +285,9 @@ def _apply(result: Plan, source: dict):
             for parent in reversed(missing):
                 parent.mkdir()
                 directories.append(parent)
-            modes[name] = path.stat().st_mode & 0o777 if path.exists() else None
+            modes[name] = (
+                path.stat().st_mode & 0o777 if not path.is_symlink() and path.exists() else None
+            )
             changed.append(name)
             if content is None:
                 path.unlink(missing_ok=True)

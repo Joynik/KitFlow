@@ -165,7 +165,7 @@ def test_mise_modified_blocks_conflict_and_can_be_restored(tmp_path):
     assert 'run="standard"' in path.read_text()
 
 
-def test_plan_rejects_symlink_and_config_comments_survive(tmp_path):
+def test_plan_protects_existing_symlink_and_config_comments_survive(tmp_path):
     artifacts = {"ruff": Artifact("ruff", "ruff.toml", b"standard")}
     apply(make_plan(tmp_path, artifacts), {})
     config = tmp_path / "kitflow.toml"
@@ -174,8 +174,11 @@ def test_plan_rejects_symlink_and_config_comments_survive(tmp_path):
     assert config.read_text().startswith("# My selection\n")
     (tmp_path / "ruff.toml").unlink()
     (tmp_path / "ruff.toml").symlink_to("/tmp")
-    with pytest.raises(KitFlowError, match="Symbolic links"):
-        make_plan(tmp_path, artifacts)
+    result = make_plan(tmp_path, artifacts)
+    assert result.changes[0].conflict
+    with pytest.raises(KitFlowError, match="Resolve conflicts"):
+        apply(result, {})
+    assert (tmp_path / "ruff.toml").is_symlink()
 
 
 def test_concurrent_kitflow_application_is_rejected(tmp_path):

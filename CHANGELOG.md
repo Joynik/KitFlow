@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.4.0 — 2026-11-13
+
+### Added
+
+- Preserve relative symbolic links as links without traversing or validating target contents, with
+  conflict protection and safe removal. Absolute links are rejected.
+- Use directory templates, including hidden files and nested directories, with per-file updates,
+  conflict protection and TOML/JSON validation. Personal files are preserved.
+
+### Fixed
+
+- Show `--help, -h` in the same long-option-first order as other CLI options.
+
 ## 0.3.0 — 2026-11-13
 
 ### Added

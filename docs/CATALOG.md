@@ -49,13 +49,47 @@ mode = "managed"
 
 Every component listed in `when` must be selected. File IDs must be unique. Output paths must also
 be unique. Use `mode = "once"` for files that must never be updated or deleted after creation. Files
-are copied as bytes. Parameter substitution is not implemented. Nested paths are supported. Symbolic
-links and paths outside the project are rejected. `.git`, `.beads`, `.venv` and `kitflow.toml` are
+are copied as bytes. Parameter substitution is not implemented. Nested paths and relative symbolic links are supported. Paths outside the project are rejected. `.git`, `.beads`, `.venv` and `kitflow.toml` are
 reserved targets. `mise.toml` is reserved for block management.
 
 Keep output paths stable for an existing artifact ID. A path migration requires explicitly retiring
-the old artifact before adopting the new path. Directory trees can be represented by individual file
-entries. Empty directories and recursive directory deletion are not supported.
+the old artifact before adopting the new path. Empty directories and recursive directory deletion are not supported.
+
+## Directory templates
+
+A `template` may point to a directory. Its contents are copied recursively under `path`:
+
+```toml
+[[files]]
+id = "editor-settings"
+path = ".vscode"
+template = "templates/vscode"
+when = ["python"]
+```
+
+Hidden files and directories are included, such as `.env.example` and `.nested/settings.json`.
+Each file is managed independently. Its ID combines the rule ID and relative path, for example
+`editor-settings/settings.json`. Use this ID with `--manage` to restore management of an excluded
+file. Keep rule IDs and output paths stable.
+
+Updates include new files and remove unchanged managed files missing from the template. Modified
+files require a conflict decision. Personal files are preserved. Empty directories are ignored;
+existing directories are not deleted. Special files and absolute symbolic links are rejected. `mode = "once"`
+applies separately to each file. Files are copied as bytes; executable permissions are not copied.
+`kitflow check` also checks TOML and JSON files inside directory templates.
+
+## Symbolic links
+
+Relative symbolic links are copied as links, including links to directories. The link target text is
+preserved exactly. KitFlow does not traverse links, copy their target contents or validate those
+contents. A target may be missing; KitFlow preserves the link so the target can be supplied later.
+Relative targets may contain `..`; the destination is interpreted from the link's new location.
+Absolute link targets are rejected.
+
+A `template` can itself be a relative link, or a directory can contain relative links. Updates compare
+link target text, detect manual changes and use the usual conflict decisions. Removal deletes only
+the link. KitFlow never writes through it. Output parent directories must be real directories;
+KitFlow rejects paths that traverse a symbolic link.
 
 ## Composed tasks
 

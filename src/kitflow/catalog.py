@@ -1,6 +1,7 @@
 """Declarative components and deterministic template composition."""
 
 import json
+import os
 import re
 import tomllib
 from dataclasses import dataclass
@@ -11,7 +12,7 @@ class KitFlowError(Exception):
     """An actionable configuration or safety error."""
 
 
-def safe_path(root: Path, name: str) -> Path:
+def safe_path(root: Path, name: str, *, allow_link: bool = False) -> Path:
     parts = PurePosixPath(name).parts
     if (
         not parts
@@ -24,12 +25,13 @@ def safe_path(root: Path, name: str) -> Path:
     if parts[0] in {".git", ".beads", ".venv"} or name == "kitflow.toml":
         raise KitFlowError(f"Reserved path: {name}")
     path = root.joinpath(*parts)
-    for parent in [path, *path.parents]:
+    for parent in list(path.parents) if allow_link else [path, *path.parents]:
         if parent == root:
             break
         if parent.is_symlink():
             raise KitFlowError(f"Symbolic links are not managed: {name}")
-    if not path.resolve().is_relative_to(root.resolve()):
+    resolved = path.parent.resolve() if allow_link else path.resolve()
+    if not resolved.is_relative_to(root.resolve()):
         raise KitFlowError(f"Path escapes root: {name}")
     return path
 
@@ -48,7 +50,7 @@ class Component:
 class Artifact:
     id: str
     path: str
-    content: bytes
+    content: bytes | str
     once: bool = False
     kind: str = "file"
     key: str = ""
@@ -155,26 +157,81 @@ class Catalog:
     def template(self, name: str) -> bytes:
         return safe_path(self.root, name).read_bytes()
 
+    @staticmethod
+    def link_target(path: Path) -> str:
+        target = os.readlink(path)
+        if Path(target).is_absolute():
+            raise KitFlowError(f"Only relative symbolic links are supported: {path}")
+        return target
+
+    def file_templates(self, row: dict) -> list[tuple[str, str, Path | None]]:
+        """Expand a directory into stable file IDs, including hidden entries."""
+        if row.get("empty") is True:
+            return [(row["id"], row["path"], None)]
+        source = safe_path(self.root, row["template"], allow_link=True)
+        if source.is_symlink():
+            self.link_target(source)
+            return [(row["id"], row["path"], source)]
+        if not source.is_dir():
+            if not source.is_file():
+                raise KitFlowError(f"Template is not a regular file: {source}")
+            return [(row["id"], row["path"], source)]
+        result = []
+
+        def visit(directory: Path):
+            for entry in sorted(directory.iterdir()):
+                safe_path(self.root, entry.relative_to(self.root).as_posix(), allow_link=True)
+                if entry.is_symlink():
+                    self.link_target(entry)
+                    relative = entry.relative_to(source).as_posix()
+                    result.append((f"{row['id']}/{relative}", f"{row['path']}/{relative}", entry))
+                elif entry.is_dir():
+                    visit(entry)
+                elif entry.is_file():
+                    relative = entry.relative_to(source).as_posix()
+                    result.append((f"{row['id']}/{relative}", f"{row['path']}/{relative}", entry))
+                else:
+                    raise KitFlowError(f"Template is not a regular file: {entry}")
+
+        visit(source)
+        return result
+
     def render(self, selected: list[str], *, check_conflicts: bool = True) -> dict[str, Artifact]:
         chosen = set(self.resolve(selected, check_conflicts=check_conflicts))
         result = {}
         paths = set()
+        file_ids = set()
         for row in self.data.get("files", []):
             if not self.enabled(row, chosen):
                 continue
             identity, path = row["id"], row["path"]
-            if not re.fullmatch(r"[a-z][a-z0-9_-]*", identity) or identity in result:
+            if not re.fullmatch(r"[a-z][a-z0-9_-]*", identity) or identity in file_ids:
                 raise KitFlowError(f"Invalid or duplicate file ID: {identity}")
-            safe_path(self.root, path)
-            if path == "mise.toml" or path in paths:
+            file_ids.add(identity)
+            safe_path(self.root, path, allow_link=True)
+            if path == "mise.toml":
                 raise KitFlowError(f"Duplicate or reserved file target: {path}")
-            paths.add(path)
-            result[identity] = Artifact(
-                identity,
-                path,
-                b"" if row.get("empty") is True else self.template(row["template"]),
-                row.get("mode") == "once",
-            )
+            for file_id, target, source in self.file_templates(row):
+                safe_path(self.root, target, allow_link=True)
+                if target == "mise.toml" or any(
+                    target == existing
+                    or PurePosixPath(target) in PurePosixPath(existing).parents
+                    or PurePosixPath(existing) in PurePosixPath(target).parents
+                    for existing in paths
+                ):
+                    raise KitFlowError(f"Duplicate or reserved file target: {target}")
+                paths.add(target)
+                is_link = source is not None and source.is_symlink()
+                content = b""
+                if source is not None:
+                    content = self.link_target(source) if is_link else source.read_bytes()
+                result[file_id] = Artifact(
+                    file_id,
+                    target,
+                    content,
+                    row.get("mode") == "once",
+                    kind="symlink" if is_link else "file",
+                )
         tasks: dict[str, list[str]] = {}
         for row in self.data.get("tasks", []):
             if self.enabled(row, chosen):

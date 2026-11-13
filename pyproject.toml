@@ -1,6 +1,6 @@
 [project]
 name = "kitflow"
-version = "0.3.0"
+version = "0.4.0"
 description = "Declarative project standards and composed mise tasks"
 requires-python = ">=3.14"
 authors = [{ name = "Joynik", email = "joynik@gmail.com" }]

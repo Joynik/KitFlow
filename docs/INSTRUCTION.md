@@ -36,6 +36,21 @@ Edit this directory yourself and keep a backup. For example, change `templates/r
 your Ruff settings. The next project update will offer those settings. See `docs/CATALOG.md` in the
 KitFlow repository for the box format.
 
+A template can also be a folder. Add a rule to `kitflow-box.toml`:
+
+```toml
+[[files]]
+id = "editor-settings"
+path = ".vscode"
+template = "templates/vscode"
+when = ["python"]
+```
+
+KitFlow copies every file inside `templates/vscode` into the project's `.vscode`, including hidden
+files and nested folders. Updates manage each file separately and preserve personal files. Empty
+folders are ignored. Relative symbolic links are preserved without copying or checking their target
+contents. Missing targets are allowed. Absolute links are rejected. See [CATALOG.md](CATALOG.md) for the full format.
+
 ## Set up a project
 
 ```bash
