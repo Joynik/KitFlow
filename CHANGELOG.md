@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+## 0.2.0 — 2026-11-13
+
+### Fixed
+
+- Prevent the standalone component selector from crashing while inspecting Textual event
+  annotations.
+
+### Added
+
+- Support `-v` as a short alias for `--version`.
+- Describe commands in help and add `-p`, `-b`, `-c` and `-m` shortcuts.
+- Read the concise English usage guide offline with `--instruction` or `-i`.
+- Include `INSTRUCTION.md` when preparing a new user box.
+- Offer to refresh the standard box on repeated startup, with per-file differences and confirmation
+  while preserving personal files.
+
+### Changed
+
+- Running `kitflow` without a command prepares the box without configuring a project. Use `init` to
+  create or change project selections.
+- Use `--box` instead of `--catalog` to select a box for one command. The old option remains
+  accepted for compatibility.
+
 ## 0.1.0 — 2026-11-10
 
 ### Changed

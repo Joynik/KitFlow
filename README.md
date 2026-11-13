@@ -2,12 +2,10 @@
 
 KitFlow is a Python CLI for starting projects and maintaining configuration standards. Select
 components in a keyboard- and mouse-driven interface, review the plan, and apply templates. The
-first use downloads an example box; later operations use your local files without GitHub
-synchronization.
+first use downloads an example box. Later runs can review box updates on request; project commands
+use your local files.
 
 ## Install with Homebrew
-
-Available after the first release is published.
 
 ```bash
 brew install joynik/tap/kitflow
@@ -24,12 +22,14 @@ uv tool install .
 ## Example
 
 ```bash
+kitflow
 kitflow init
 kitflow update
+kitflow -i
 ```
 
 From this checkout, test unpublished templates with
-`uv run kitflow init --project /path/to/project --catalog ./box`. See
+`uv run kitflow init --project /path/to/project --box ./box`. See
 [the user instructions](docs/INSTRUCTION.md) and [the box format](docs/CATALOG.md).
 
 ## Develop and build
@@ -49,5 +49,5 @@ a platform-specific directory and installation archive in `dist/`. It requires a
 standalone builds also require `patchelf`. Build separately on each target operating system and
 architecture. The standalone application includes its runtime and dependencies, but no box
 templates. GitHub Actions checks changes and builds release archives; see the
-[workflow instructions](docs/INSTRUCTION.md#github-actions). Published releases update the Homebrew
-formula automatically.
+[release workflow](.github/workflows/release.yml). Published releases update the Homebrew formula
+automatically.

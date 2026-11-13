@@ -1,5 +1,7 @@
 """Keyboard and mouse component selector; no disk writes in the UI."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 from rich.text import Text

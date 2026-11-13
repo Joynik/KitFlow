@@ -6,32 +6,69 @@ import sys
 from pathlib import Path
 
 from rich.console import Console
+from rich.markdown import Markdown
 from rich.prompt import Confirm, Prompt
 from rich.syntax import Syntax
 from rich.table import Table
 
+from kitflow.box_update import refresh_box
 from kitflow.catalog import KitFlowError
 from kitflow.engine import CONFIG, apply, load_config, plan
 from kitflow.settings import box_path, config_directory
-from kitflow.source import load_box
+from kitflow.source import load_box, read_instructions
 
 console = Console(highlight=False)
 
 
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description="KitFlow — project standards over mise")
-    result.add_argument("--version", action="version", version="KitFlow 0.1.0")
+    result.add_argument("--version", "-v", action="version", version="KitFlow 0.2.0")
     result.add_argument(
-        "command", nargs="?", choices=["init", "update", "status", "diff", "config"]
+        "--instruction",
+        "-i",
+        action="store_true",
+        help="Read the usage guide in the terminal (works offline)",
     )
-    result.add_argument("--project", type=Path, default=Path.cwd(), help="Project directory")
-    result.add_argument("--catalog", type=Path, help="Use a local box for this operation")
-    result.add_argument("--components", help="Comma-separated component IDs for init")
+    result.add_argument(
+        "command",
+        nargs="?",
+        choices=["init", "update", "status", "diff", "config"],
+        help="Action to perform; omit to prepare your box or review box updates",
+    )
+    result.epilog = """Commands:
+  init    Choose or change project components and apply the plan
+  update  Apply local templates to the project's saved selection
+  status  List pending changes without applying them
+  diff    Show proposed file differences without applying them
+  config  Show the local box location without creating it
+
+Without a command, prepare the local box or offer to refresh an existing box.
+"""
+    result.formatter_class = argparse.RawDescriptionHelpFormatter
+    result.add_argument(
+        "--project",
+        "-p",
+        type=Path,
+        default=Path.cwd(),
+        help="Target project directory (default: current directory)",
+    )
+    result.add_argument(
+        "--box", "-b", type=Path, help="Use another box directory for this command only"
+    )
+    result.add_argument("--catalog", dest="box", type=Path, help=argparse.SUPPRESS)
+    result.add_argument(
+        "--components",
+        "-c",
+        metavar="IDS",
+        help="Complete component selection without the menu, e.g. python,ruff (init only)",
+    )
     result.add_argument(
         "--manage",
+        "-m",
         action="append",
         default=[],
-        help="Return an excluded artifact to management (init)",
+        metavar="ID",
+        help="Let KitFlow manage an excluded file or block again; repeat for multiple IDs (init only)",
     )
     result.add_argument(
         "--yes", "-y", action="store_true", help="Confirm plan; never overwrite conflicts"
@@ -71,19 +108,57 @@ def show_plan(result):
 
 
 def run(args: argparse.Namespace) -> int:
+    if args.instruction:
+        if args.command or args.components is not None or args.manage or args.yes:
+            raise KitFlowError("Use --instruction without a command or project actions")
+        console.print(Markdown(read_instructions(args.box)))
+        return 0
     if args.command == "config":
-        if args.catalog or args.components is not None or args.manage or args.yes:
+        if args.box or args.components is not None or args.manage or args.yes:
             raise KitFlowError(
                 "config displays the user configuration location; it accepts no options"
             )
         console.print(f"Configuration: {config_directory()}", markup=False)
         console.print(f"Local box: {box_path()}", markup=False)
         return 0
+    if args.command is None:
+        if args.components is not None or args.manage or args.yes:
+            raise KitFlowError("Use init to select project components or apply a plan")
+        existing = args.box is None and box_path().exists()
+        catalog, _ = load_box(args.box)
+        if (
+            existing
+            and sys.stdin.isatty()
+            and Confirm.ask(
+                "Download updates for the standard box? Existing differences require approval",
+                default=False,
+            )
+        ):
+
+            def decide(name: str, before: bytes | None, after: bytes) -> bool:
+                difference = "".join(
+                    difflib.unified_diff(
+                        (before or b"").decode(errors="replace").splitlines(keepends=True),
+                        after.decode(errors="replace").splitlines(keepends=True),
+                        fromfile=f"local/{name}",
+                        tofile=f"incoming/{name}",
+                    )
+                )
+                console.print(Syntax(difference, "diff", word_wrap=True))
+                return Confirm.ask(f"Apply this box file: {name}?", default=False)
+
+            count = refresh_box(box_path(), decide)
+            console.print(f"Box files updated: {count}. Personal files were preserved.")
+        elif existing and not sys.stdin.isatty():
+            console.print("Existing box kept. Run kitflow in a terminal to review box updates.")
+        console.print(f"Box ready: {catalog.root}", markup=False)
+        console.print("Edit this box to define your standards. Run kitflow init in a project.")
+        return 0
     root = args.project.resolve()
     if not root.is_dir():
         raise KitFlowError(f"Project directory does not exist: {root}")
     exists = (root / CONFIG).exists()
-    command = args.command or "init"
+    command = args.command
     if command != "init" and not exists:
         raise KitFlowError("Run kitflow init first")
     if args.components is not None and command != "init":
@@ -98,7 +173,7 @@ def run(args: argparse.Namespace) -> int:
     ):
         raise KitFlowError("Use --components for non-interactive init")
     document = load_config(root)
-    catalog, source = load_box(args.catalog)
+    catalog, source = load_box(args.box)
     selection = document["selection"]
     selected = list(selection.get("components", []))
     excluded = list(selection.get("excluded", []))

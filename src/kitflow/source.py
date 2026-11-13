@@ -1,4 +1,4 @@
-"""Seed a user-owned box once; all later operations read local files."""
+"""Download the example box; project operations read local files."""
 
 import fcntl
 import json
@@ -11,6 +11,7 @@ import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
+from importlib.resources import files
 from pathlib import Path
 
 import certifi
@@ -22,6 +23,18 @@ MAX_FILE_BYTES = 2 * 1024 * 1024
 
 
 DEFAULT_REPOSITORY = "Joynik/KitFlow"
+
+
+def read_instructions(local: Path | None = None) -> str:
+    """Prefer user instructions; fall back to the bundled usage guide offline."""
+    instruction = (local if local is not None else box_path()) / "INSTRUCTION.md"
+    if instruction.is_file():
+        return instruction.read_text(encoding="utf-8")
+    compiled = globals().get("__compiled__")
+    if compiled is not None:
+        # A package data directory named kitflow would collide with the executable.
+        return (Path(compiled.python_runtime_dir) / "INSTRUCTION.md").read_text(encoding="utf-8")
+    return files("kitflow").joinpath("INSTRUCTION.md").read_text(encoding="utf-8")
 
 
 def fetch(url: str) -> bytes:
@@ -110,12 +123,13 @@ def seed_box(destination: Path):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(content)
                 downloaded.add(name)
+        (staging / "INSTRUCTION.md").write_text(read_instructions(staging), encoding="utf-8")
         Catalog(staging)
         staging.rename(destination)
         staging = None
     except (urllib.error.URLError, TimeoutError, OSError) as error:
         raise KitFlowError(
-            f"Cannot prepare the initial box: {error}. Retry online or use --catalog PATH."
+            f"Cannot prepare the initial box: {error}. Retry online or use --box PATH."
         ) from error
     except (KeyError, ValueError, TypeError) as error:
         raise KitFlowError(f"Invalid initial box: {error}") from error

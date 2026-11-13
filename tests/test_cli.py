@@ -3,6 +3,8 @@ import sys
 import tomllib
 from pathlib import Path
 
+from kitflow import cli, settings
+
 CATALOG = Path(__file__).parent / "fixtures/catalog"
 
 
@@ -15,7 +17,7 @@ def invoke(project, *arguments):
             *arguments,
             "--project",
             str(project),
-            "--catalog",
+            "--box",
             str(CATALOG),
         ],
         capture_output=True,
@@ -52,3 +54,66 @@ def test_init_needs_explicit_noninteractive_selection(tmp_path):
     result = invoke(tmp_path, "init", "--yes")
     assert result.returncode == 2
     assert not list(tmp_path.iterdir())
+
+
+def test_short_options_configure_another_project_and_restore_management(tmp_path):
+    command = [sys.executable, "-m", "kitflow"]
+    options = ["-p", str(tmp_path), "-b", str(CATALOG), "-y"]
+    result = subprocess.run(
+        [*command, "init", "-c", "ruff", *options], capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert (tmp_path / "ruff.toml").exists()
+    assert not settings.box_path().exists()
+    config = tmp_path / "kitflow.toml"
+    config.write_text(config.read_text().replace("excluded = []", 'excluded = ["ruff"]'))
+    result = subprocess.run(
+        [*command, "init", "-m", "ruff", *options], capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert tomllib.loads(config.read_text())["selection"]["excluded"] == []
+
+
+def test_instruction_is_available_offline_without_creating_the_box():
+    result = subprocess.run([sys.executable, "-m", "kitflow", "-i"], capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Using KitFlow" in result.stdout
+    assert not settings.box_path().exists()
+
+
+def test_instruction_prefers_the_selected_local_box(tmp_path):
+    (tmp_path / "INSTRUCTION.md").write_text("# My custom guide\n")
+    result = subprocess.run(
+        [sys.executable, "-m", "kitflow", "--instruction", "-b", str(tmp_path)],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    assert "My custom guide" in result.stdout
+    assert not settings.box_path().exists()
+
+
+def test_help_describes_commands_and_box_options():
+    help_text = cli.parser().format_help()
+    for description in [
+        "Choose or change project components",
+        "Apply local templates",
+        "List pending changes",
+        "Show proposed file differences",
+        "Show the local box location",
+    ]:
+        assert description in help_text
+    assert "--box" in help_text
+    assert "--catalog" not in help_text
+
+
+def test_config_does_not_prepare_the_box(capsys):
+    assert cli.run(cli.parser().parse_args(["config"])) == 0
+    assert str(settings.box_path()) in capsys.readouterr().out.replace("\n", "")
+    assert not settings.box_path().exists()
+
+
+def test_bundled_guide_matches_published_instructions():
+    from kitflow.source import read_instructions
+
+    assert read_instructions() == (Path(__file__).parents[1] / "docs/INSTRUCTION.md").read_text()

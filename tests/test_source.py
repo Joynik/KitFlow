@@ -2,10 +2,11 @@ import io
 import json
 import urllib.error
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
-from kitflow import settings, source
+from kitflow import cli, settings, source
 from kitflow.catalog import KitFlowError
 
 
@@ -35,10 +36,27 @@ def test_first_use_downloads_once_and_keeps_user_edits(monkeypatch):
     assert calls
     assert not any("empty.md" in url for url in calls)
     assert not (catalog.root / "snapshot.json").exists()
+    assert (catalog.root / "INSTRUCTION.md").read_text() == source.read_instructions(Path("box"))
+    (catalog.root / "INSTRUCTION.md").write_text("My box instructions\n")
     (catalog.root / "templates/ruff.toml").write_text("line-length = 120\n")
     calls.clear()
     catalog, _ = source.load_box()
     assert catalog.render(["ruff"])["ruff"].content == b"line-length = 120\n"
+    assert not calls
+    assert (catalog.root / "INSTRUCTION.md").read_text() == "My box instructions\n"
+
+
+def test_bare_command_prepares_the_box_without_touching_the_project(tmp_path, monkeypatch):
+    calls = downloads(monkeypatch)
+    project = tmp_path / "project"
+    project.mkdir()
+    monkeypatch.chdir(project)
+    assert cli.run(cli.parser().parse_args([])) == 0
+    assert (settings.box_path() / "kitflow-box.toml").exists()
+    assert (settings.box_path() / "INSTRUCTION.md").exists()
+    assert not list(project.iterdir())
+    calls.clear()
+    assert cli.run(cli.parser().parse_args([])) == 0
     assert not calls
 
 
@@ -77,6 +95,16 @@ def test_local_override_needs_no_bootstrap(monkeypatch):
     assert metadata == {"local": str(fixture.resolve())}
     assert "python" in catalog.components
     assert not settings.config_directory().exists()
+
+
+def test_compiled_instructions_use_the_runtime_directory(tmp_path, monkeypatch):
+    runtime = tmp_path / "runtime"
+    runtime.mkdir()
+    (runtime / "INSTRUCTION.md").write_text("# Installed guide\n")
+    monkeypatch.setattr(
+        source, "__compiled__", SimpleNamespace(python_runtime_dir=str(runtime)), raising=False
+    )
+    assert source.read_instructions() == "# Installed guide\n"
 
 
 def test_private_content_request_uses_token_and_raw_media_type(monkeypatch):

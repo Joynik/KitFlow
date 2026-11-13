@@ -1,198 +1,142 @@
-# KitFlow instructions
+# Using KitFlow
 
-KitFlow copies configuration from your local `box` and keeps project files up to date. A box
-contains component definitions, file templates and mise task fragments.
+KitFlow copies your configuration templates into projects and keeps those files up to date. It also
+builds mise tasks from the components you select. Install the required tools separately.
 
 ```text
-First use: GitHub example → ~/.config/kitflow
-Everyday use: Local box → Component selection → Change plan → Confirmation → Project files
+Prepare your box → Edit your templates → Initialize a project → Preview changes → Update
 ```
 
-## Install and start
+## Prepare your box
 
-A standalone distribution includes the application runtime and dependencies. Keep its executable and
-accompanying libraries together. The archive is extracted once during installation, not when the
-command starts. Templates are not included in the executable or the standalone directory.
-
-For installation from source, use Python 3.14 and uv:
+Run this once:
 
 ```bash
-uv tool install .
+kitflow
 ```
 
-1. Open your project directory.
-2. Run `kitflow init`.
-3. Select components.
-4. Review the plan and confirm it.
+KitFlow downloads the example box into `~/.config/kitflow`. It does not change your project. If you
+use `XDG_CONFIG_HOME`, the location is `$XDG_CONFIG_HOME/kitflow` instead.
 
-On first use, KitFlow downloads the example `box/` from its GitHub repository. It installs the
-example in `~/.config/kitflow`. If `XDG_CONFIG_HOME` is set, KitFlow uses `$XDG_CONFIG_HOME/kitflow`
-instead. An incomplete download is discarded before the user box becomes available. Run
-`kitflow config` to display the local configuration location without downloading anything.
-
-After that initial download, your box is independent of GitHub. KitFlow does not synchronize,
-refresh or replace it automatically. An existing but invalid box produces an error instead of
-triggering a replacement download.
-
-## Your local box
+On later runs, KitFlow asks whether to download updates for the standard box. Answer **No** to keep
+your box without contacting GitHub. Answer **Yes** to download a preview. KitFlow shows each
+differing file and asks before applying it. Decline a file to keep your version. Personal files are
+not deleted. KitFlow checks the combined configuration before writing. A failed download leaves your
+box unchanged.
 
 ```text
 ~/.config/kitflow/
-├── kitflow-box.toml
-├── templates/
-└── tasks/
+├── INSTRUCTION.md       This guide
+├── kitflow-box.toml     Available components and rules for applying files
+├── templates/           Configuration files and agent instructions
+└── tasks/               Shell commands used to build mise tasks
 ```
 
-Edit these files directly to define your standards. Add components, change templates and adjust task
-fragments as needed. You do not need a GitHub repository to maintain your box. Back up the `kitflow`
-directory using your preferred backup tool. Restore it in the same configuration location on another
-device. Local template edits become available to all projects that use this box.
+Edit this directory yourself and keep a backup. For example, change `templates/ruff.toml` to define
+your Ruff settings. The next project update will offer those settings. See `docs/CATALOG.md` in the
+KitFlow repository for the box format.
 
-Changes to the installed program do not replace your box. Use your own backup or file-management
-workflow to replace the example or restore your standards. All referenced template files must exist.
-Use `empty = true` with `mode = "once"` to create an empty document without a template.
-
-## Initialize or configure a project
-
-`kitflow init` opens the component selector. Running it again loads the existing selection so you
-can add or remove components. Running `kitflow` without a subcommand also opens this selector.
-
-Arrow keys move the highlight. Enter or Space toggles a selection. Tab changes the focused area. The
-mouse selects entries and activates buttons. Ctrl+S opens the change plan. Escape cancels selection.
-
-Mandatory dependencies are added automatically. The menu removes dependent components when you
-deselect their prerequisite. KitFlow saves the resolved selection and installed file state in
-`kitflow.toml`.
-
-For non-interactive initialization or reconfiguration, supply the complete selection:
+## Set up a project
 
 ```bash
-kitflow init --components python,ruff,ty,rumdl,agents --yes
-kitflow init --components python,ruff,agents --yes
+cd /path/to/project
+kitflow init
 ```
 
-## Update a project
+1. Choose components, such as Python, Ruff and agent instructions.
+2. Use arrows to move and Enter or Space to select. Tab changes the focused area; mouse clicks work
+   too.
+3. Press Ctrl+S or click **Review plan**.
+4. Review the proposed changes and confirm. Escape cancels the menu.
 
-1. Edit your local box or the project's component selection as needed.
-2. Run `kitflow update` in the project directory.
-3. Review file additions, updates and removals.
-4. Resolve any conflicts and confirm the plan.
+Required dependencies are selected automatically. KitFlow saves the selection and managed file state
+in the project's `kitflow.toml`. Keep this file, including its state tables. Run `kitflow init`
+again to add or remove components.
 
-`update` reads the current project selection and your current local templates. It does not contact
-GitHub after the user box exists. You can also edit the component list directly in `kitflow.toml`
-before updating. Keep the installed state tables: they detect local edits and identify obsolete
-managed files.
+## Update project files
 
-Use `kitflow update --yes` to confirm a conflict-free plan automatically. `--yes` does not authorize
-overwriting conflicting files.
-
-## Ownership and conflicts
-
-Ordinary managed configuration files are updated as whole files. Files are compared with the
-checksums saved after the last installation. For a conflict, choose `replace`, `skip`, `keep` or
-`quit`. `keep` makes the artifact user-owned and records an exclusion. During initial adoption,
-skipping an existing user file also records an exclusion. An identical existing file is adopted
-without replacement.
-
-Unchanged files belonging to removed components are deleted after confirmation. Modified files
-require a conflict decision. KitFlow does not recursively delete directories. Files with
-`mode = "once"` are created only if absent and are never updated or deleted afterward.
-
-Return an excluded artifact to management in the selector or run:
+After editing your box, run these commands in each project you want to update:
 
 ```bash
-kitflow init --manage ARTIFACT-ID
+kitflow status   # List files and blocks that need changes
+kitflow diff     # Show proposed content changes, not past history
+kitflow update   # Review and apply the changes
 ```
 
-Files are checked again after confirmation. A changed file cancels application. Writes use temporary
-files and replacement; handled write failures trigger rollback. A directory lock prevents concurrent
-KitFlow applications on macOS and Linux. This is not a durable multi-file transaction against power
-loss or process termination.
+Unchanged files from removed components are deleted after confirmation. Modified files require an
+explicit decision. KitFlow does not recursively delete directories.
 
-## mise
+If a managed file was edited in the project, KitFlow shows the differences and asks:
 
-KitFlow builds tasks and `[env]` entries from selected components. It does not install tools or
-manage `[tools]`. Install the required tools separately, then run tasks with `mise run TASK`.
+| Answer | Result |
+| --- | --- |
+| `replace` | Apply the proposed update or removal |
+| `skip` | Leave it unchanged for this update |
+| `keep` | Leave it unchanged and stop managing it |
+| `quit` | Cancel without applying changes |
 
-Matching task fragments are combined in catalog order with `set -eu` before the commands. Removing a
-component rebuilds the managed tasks without its fragments.
+At first setup, skipping an existing file also leaves it under your control. An identical file can
+be adopted without replacement. Files marked `mode = "once"`, including the example README.md and
+PROJECT.md, are created only if absent. KitFlow never updates or deletes them afterward.
 
-Remove both KitFlow markers to take ownership of a task or environment entry. Removing only one
-marker causes an error before files are written. Manual changes inside a marked block receive the
-same conflict protection as whole files.
+KitFlow manages marked tasks and environment entries in `mise.toml`. Remove both markers around a
+block to take control of it. Install tools yourself, then run tasks with `mise run TASK`.
 
-## Inspection and local testing
+## Commands and options
 
 | Command | Purpose |
 | --- | --- |
-| `kitflow init` | Create or edit the project's component selection |
-| `kitflow update` | Apply local templates to the current selection |
-| `kitflow status` | Show pending changes without applying them |
-| `kitflow diff` | Show file differences without applying them |
-| `kitflow config` | Show the configuration directory and local box path |
+| `kitflow` | Prepare the local box, or offer to review box updates |
+| `kitflow init` | Choose or change project components |
+| `kitflow update` | Apply the current box to the saved selection |
+| `kitflow status` | List pending changes |
+| `kitflow diff` | Show proposed file differences |
+| `kitflow config` | Show configuration paths without creating the box |
+| `kitflow -i` | Read this guide in the terminal, including offline |
+| `kitflow -h` | Show command help |
+| `kitflow -v` | Show the installed version |
 
-`status` and `diff` return 0 when files are current and 1 when changes are pending. Commands return
-2 for errors or unresolved non-interactive conflicts. Use `--project PATH` to operate on another
-directory.
-
-For an unpublished local example, bypass the user box for one operation:
-
-```bash
-kitflow init --catalog /path/to/box
-kitflow update --catalog /path/to/box
-```
-
-This override does not install or replace the shared user box. Without `--catalog`, every project
-uses the shared box in the configuration directory. Legacy remote-source metadata in a project does
-not select a remote source. The next successful application records the local box model.
-
-See [the box format reference](CATALOG.md) to define components and templates.
-
-## GitHub Actions
-
-`Checks` runs on branch pushes, pull requests and manual requests. It checks Ruff linting and
-formatting, ty types and Python package builds. Tests run on Linux and macOS with Python 3.14.
-Development tool versions come from `uv.lock`.
-
-```text
-Branch / PR → Checks
-Version tag → Checks → Native builds → Checksums → Draft release
-Manual release workflow → Checks → Native build artifacts
-```
-
-`Release` builds macOS ARM64, Linux ARM64 and Linux x86_64 archives. Each build extracts its archive
-into a temporary directory and checks initialization and status using the example box. The archives
-contain the runtime but no templates. Linux builds use Ubuntu 24.04; compatibility with older Linux
-systems is not guaranteed. macOS deployment requirements depend on the build runner and bundled
-Python runtime.
-
-1. Prepare the version in `pyproject.toml` and a dated release section in `CHANGELOG.md`.
-2. Commit the release changes after checks pass.
-3. Create a matching `MAJOR.MINOR.PATCH` tag without a `v` prefix.
-4. Push the tag when release preparation is authorized.
-5. Review the generated draft, archives and `SHA256SUMS`.
-6. Publish the draft when publication is authorized.
-
-A manual run builds downloadable workflow artifacts without creating a release. Tag runs create a
-draft only after all checks and builds pass. Existing releases are not overwritten; rerunning the
-final creation step for the same release fails. Artifacts are retained for 14 days.
-
-Private repositories use the workflow's built-in `GITHUB_TOKEN`. No personal token is required for
-creating releases in the same repository. GitHub-hosted runner usage remains subject to the
-account's Actions limits and billing. After publication, `Update Homebrew tap` updates
-`Formula/kitflow.rb` in `Joynik/homebrew-tap`. It validates the published asset metadata against
-`SHA256SUMS` before committing the formula. The `HOMEBREW_TAP_SSH_KEY` secret contains a
-write-enabled deploy key restricted to the tap. A manual run with a published version can retry a
-failed formula update without rebuilding. The updater refuses to downgrade an existing formula.
-
-## Install and update with Homebrew
+Use `--project/-p` to work on a project from another directory:
 
 ```bash
-brew install joynik/tap/kitflow
+kitflow init -p /path/to/project
+kitflow update -p /path/to/project
+```
+
+Use `--box/-b` to select a different box for one command. The path points to the directory
+containing `kitflow-box.toml`. Repeat this option for later commands that should use that box.
+
+```bash
+kitflow init -b /path/to/my-box
+kitflow update -b /path/to/my-box
+```
+
+Use `--components/-c` to supply the **complete selection** without the menu. These are component IDs
+from `kitflow-box.toml`, separated by commas. Omitted components are removed from the selection.
+Dependencies are added automatically. `--yes/-y` confirms a plan but never overwrites conflicts.
+
+```bash
+kitflow init -c python,ruff,ty -y
+```
+
+Use `--manage/-m` with an excluded file or block ID to let KitFlow manage it again. Find IDs in
+`kitflow-box.toml`; task IDs use `task.NAME` and environment IDs use `env.NAME`. Repeat `-m` for
+multiple IDs. This operation still checks conflicts and asks for confirmation.
+
+```bash
+kitflow init -m ruff
+```
+
+You can also change the component list in the project's `kitflow.toml` and run `kitflow update`.
+Keep the state tables so KitFlow can detect manual edits and obsolete files. `status` and `diff`
+return exit code 1 when changes are pending, 0 when current, and 2 on errors.
+
+## Update the program
+
+```bash
 brew update
 brew upgrade joynik/tap/kitflow
 ```
 
-The formula installs the standalone runtime without Python dependencies. Supported distribution
-targets are macOS 15 or newer on ARM64, and Linux on ARM64 and x86_64. It does not replace your
-local box.
+This updates KitFlow itself. It does not replace your box or update project files. Your own
+`INSTRUCTION.md` takes precedence when you run `kitflow -i`.

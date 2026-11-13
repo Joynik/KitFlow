@@ -96,11 +96,11 @@ place secrets in the catalog.
 1. Add a component and its dependency rules to `kitflow-box.toml`.
 2. Add templates and shell fragments in the catalog repository.
 3. Declare the output files and task conditions.
-4. Run `kitflow init --catalog ./box --project /tmp/example` in an empty test directory.
-5. Review `kitflow diff` after changing templates or the project selection.
+4. Run `kitflow init --box ./box --project /tmp/example` in an empty test directory.
+5. Run `kitflow diff --box ./box --project /tmp/example` after changing templates or the selection.
 
-KitFlow downloads the example once on first use. Afterward, it reads your local box only. Edit and
-back up that directory directly. No repository or synchronization is required. Project state stores
+KitFlow downloads the example on first use. Later bare `kitflow` runs offer to review box updates.
+Project commands read your local box. Edit and back up that directory directly. Project state stores
 installed artifact checksums to detect local edits and obsolete files. See
 [the user instructions](INSTRUCTION.md) for the setup and update workflow.
 
