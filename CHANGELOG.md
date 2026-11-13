@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.3.0 — 2026-11-13
+
+### Added
+
+- Validate the box and connected project with `kitflow check`, including schema fields,
+  dependencies, template availability, TOML/JSON syntax and managed mise blocks. Checks work offline
+  without writes.
+
+### Changed
+
+- Navigate the component selector with arrow keys: Right enters components, Left returns to
+  categories, and Tab focuses the action buttons. The selector starts with categories focused.
+
 ## 0.2.0 — 2026-11-13
 
 ### Fixed

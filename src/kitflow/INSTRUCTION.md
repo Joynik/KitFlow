@@ -44,8 +44,9 @@ kitflow init
 ```
 
 1. Choose components, such as Python, Ruff and agent instructions.
-2. Use arrows to move and Enter or Space to select. Tab changes the focused area; mouse clicks work
-   too.
+2. Use Up/Down within a list, Right to enter components, and Left to return to categories. Enter or
+   Space toggles a component. Tab focuses **Review plan**; further presses switch between the
+   buttons. Mouse clicks also work.
 3. Press Ctrl+S or click **Review plan**.
 4. Review the proposed changes and confirm. Escape cancels the menu.
 
@@ -84,6 +85,20 @@ block to take control of it. Install tools yourself, then run tasks with `mise r
 
 ## Commands and options
 
+Run `kitflow check` after editing your box or project configuration. It checks the box and, when
+present, the current project's `kitflow.toml`. It validates fields, dependencies, paths, template
+availability, TOML/JSON file syntax and managed mise blocks. It does not download files, change them
+or run tools. Tool-specific settings and shell commands are not checked against external tools.
+
+```bash
+kitflow check
+kitflow check -b /path/to/my-box -p /path/to/project
+```
+
+Errors include a file path and explanation. Exit code 0 means the configuration is valid; 2 means
+validation failed. A valid configuration may still have pending updates; use `status` or `diff` to
+see those changes. If the box is missing, run `kitflow` to prepare it first.
+
 | Command | Purpose |
 | --- | --- |
 | `kitflow` | Prepare the local box, or offer to review box updates |
@@ -92,6 +107,7 @@ block to take control of it. Install tools yourself, then run tasks with `mise r
 | `kitflow status` | List pending changes |
 | `kitflow diff` | Show proposed file differences |
 | `kitflow config` | Show configuration paths without creating the box |
+| `kitflow check` | Validate the box and connected project without changing files |
 | `kitflow -i` | Read this guide in the terminal, including offline |
 | `kitflow -h` | Show command help |
 | `kitflow -v` | Show the installed version |

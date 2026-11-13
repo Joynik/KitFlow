@@ -43,6 +43,9 @@ class Configurator(App[Selection | None]):
     Footer { background: #24384d; }
     """
     BINDINGS = [
+        Binding("left", "focus_categories", "Categories", priority=True),
+        Binding("right", "focus_components", "Components", priority=True),
+        Binding("tab", "focus_buttons", "Buttons", priority=True),
         Binding("ctrl+s", "continue", "Review plan"),
         Binding("escape", "cancel", "Cancel"),
     ]
@@ -60,7 +63,7 @@ class Configurator(App[Selection | None]):
     def compose(self) -> ComposeResult:
         yield Header()
         yield Static(
-            "Choose components. Enter or Space toggles; Tab changes the focused area.",
+            "Choose components. Left/Right switches lists; Enter toggles; Tab reaches buttons.",
             id="intro",
         )
         with Horizontal(id="body"):
@@ -78,7 +81,17 @@ class Configurator(App[Selection | None]):
 
     def on_mount(self):
         self.refresh_choices()
+        self.query_one("#categories").focus()
+
+    def action_focus_categories(self):
+        self.query_one("#categories").focus()
+
+    def action_focus_components(self):
         self.query_one("#components").focus()
+
+    def action_focus_buttons(self):
+        review = self.query_one("#continue")
+        self.query_one("#cancel" if self.focused is review else "#continue").focus()
 
     def refresh_choices(self, highlighted: int = 0):
         choices = self.query_one("#components", Components)

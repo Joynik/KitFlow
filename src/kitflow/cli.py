@@ -13,6 +13,7 @@ from rich.table import Table
 
 from kitflow.box_update import refresh_box
 from kitflow.catalog import KitFlowError
+from kitflow.check import configuration_issues
 from kitflow.engine import CONFIG, apply, load_config, plan
 from kitflow.settings import box_path, config_directory
 from kitflow.source import load_box, read_instructions
@@ -22,7 +23,7 @@ console = Console(highlight=False)
 
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(description="KitFlow — project standards over mise")
-    result.add_argument("--version", "-v", action="version", version="KitFlow 0.2.0")
+    result.add_argument("--version", "-v", action="version", version="KitFlow 0.3.0")
     result.add_argument(
         "--instruction",
         "-i",
@@ -32,7 +33,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument(
         "command",
         nargs="?",
-        choices=["init", "update", "status", "diff", "config"],
+        choices=["init", "update", "status", "diff", "config", "check"],
         help="Action to perform; omit to prepare your box or review box updates",
     )
     result.epilog = """Commands:
@@ -41,6 +42,7 @@ def parser() -> argparse.ArgumentParser:
   status  List pending changes without applying them
   diff    Show proposed file differences without applying them
   config  Show the local box location without creating it
+  check   Validate the box and connected project without changing files
 
 Without a command, prepare the local box or offer to refresh an existing box.
 """
@@ -112,6 +114,27 @@ def run(args: argparse.Namespace) -> int:
         if args.command or args.components is not None or args.manage or args.yes:
             raise KitFlowError("Use --instruction without a command or project actions")
         console.print(Markdown(read_instructions(args.box)))
+        return 0
+    if args.command == "check":
+        if args.components is not None or args.manage or args.yes:
+            raise KitFlowError("check accepts --box and --project, without project actions")
+        box = args.box.resolve() if args.box else box_path()
+        root = args.project.resolve()
+        console.print(f"Checking box: {box}", markup=False)
+        connected = (root / CONFIG).exists() or (root / CONFIG).is_symlink()
+        console.print(
+            f"Checking project: {root}"
+            if connected
+            else "Project has no kitflow.toml; project checks skipped.",
+            markup=False,
+        )
+        issues = configuration_issues(box, root)
+        for path, message in issues:
+            console.print(f"{path}: {message}", style="red", markup=False)
+        if issues:
+            console.print(f"Check failed: {len(issues)} issue(s).", style="red")
+            return 2
+        console.print("Configuration checks passed.", style="green")
         return 0
     if args.command == "config":
         if args.box or args.components is not None or args.manage or args.yes:
