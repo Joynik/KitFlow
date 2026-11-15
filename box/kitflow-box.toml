@@ -105,6 +105,46 @@ description = "Generic agent instructions; an empty PROJECT.md is created once."
 requires = []
 conflicts = []
 
+[[components]]
+id = "rust"
+label = "Rust"
+category = "Languages"
+description = "Cargo checks, Clippy, rustfmt and Rust tests; supports root and src-tauri manifests."
+requires = []
+conflicts = []
+
+[[components]]
+id = "tauri"
+label = "Tauri"
+category = "Frameworks"
+description = "Desktop application shell; use Bun for development and application builds."
+requires = ["rust"]
+conflicts = []
+
+[[components]]
+id = "react"
+label = "React"
+category = "Frameworks"
+description = "React frontend selection; application files are supplied by the project scaffold."
+requires = ["javascript"]
+conflicts = []
+
+[[components]]
+id = "vite"
+label = "Vite"
+category = "Infrastructure"
+description = "Frontend development server and production assets through Bun."
+requires = ["javascript"]
+conflicts = []
+
+[[components]]
+id = "bun"
+label = "Bun"
+category = "Checks"
+description = "Native Bun lint, fmt, check and test commands; requires Bun 1.4.4 or newer."
+requires = ["javascript"]
+conflicts = []
+
 [[files]]
 id = "readme"
 path = "README.md"
@@ -189,77 +229,183 @@ template = "templates/TOOLS.md"
 when = ["agents"]
 mode = "managed"
 
+[[files]]
+id = "bunfig"
+path = "bunfig.toml"
+template = "templates/bunfig.toml"
+when = ["bun"]
+mode = "managed"
+
 [[tasks]]
+id = "ruff-lint"
 name = "lint"
 template = "tasks/ruff-lint.sh"
 when = ["ruff"]
 
 [[tasks]]
+id = "django-lint"
 name = "lint"
 template = "tasks/django-lint.sh"
 when = ["django"]
 
 [[tasks]]
+id = "django-template-lint"
 name = "lint"
 template = "tasks/django-template-lint.sh"
 when = ["djlint"]
 
 [[tasks]]
+id = "rumdl"
 name = "lint"
 template = "tasks/rumdl.sh"
 when = ["rumdl"]
 
 [[tasks]]
+id = "ruff-format"
 name = "format"
 template = "tasks/ruff-format.sh"
 when = ["ruff"]
 
 [[tasks]]
+id = "ruff-format-check"
 name = "format-check"
 template = "tasks/ruff-format-check.sh"
 when = ["ruff"]
 
 [[tasks]]
+id = "ty"
 name = "typecheck"
 template = "tasks/ty.sh"
 when = ["ty"]
 
 [[tasks]]
+id = "django-makemigrations"
 name = "db:makemigrations"
 template = "tasks/django-makemigrations.sh"
 when = ["django"]
 
 [[tasks]]
+id = "django-migrate"
 name = "db:migrate"
 template = "tasks/django-migrate.sh"
 when = ["django"]
 
 [[tasks]]
+id = "django-superuser"
 name = "db:superuser"
 template = "tasks/django-superuser.sh"
 when = ["django"]
 
 [[tasks]]
+id = "django-start"
 name = "start"
 template = "tasks/django-start.sh"
 when = ["django"]
 
 [[tasks]]
+id = "docker-up"
 name = "docker:up"
 template = "tasks/docker-up.sh"
 when = ["docker"]
 
 [[tasks]]
+id = "docker-down"
 name = "docker:down"
 template = "tasks/docker-down.sh"
 when = ["docker"]
 
 [[tasks]]
+id = "docker-logs"
 name = "docker:logs"
 template = "tasks/docker-logs.sh"
 when = ["docker"]
 
+[[tasks]]
+id = "rust-lint"
+name = "lint"
+template = "tasks/rust-lint.sh"
+when = ["rust"]
+
+[[tasks]]
+id = "rust-format"
+name = "format"
+template = "tasks/rust-format.sh"
+when = ["rust"]
+
+[[tasks]]
+id = "rust-format-check"
+name = "format-check"
+template = "tasks/rust-format-check.sh"
+when = ["rust"]
+
+[[tasks]]
+id = "rust-check"
+name = "typecheck"
+template = "tasks/rust-check.sh"
+when = ["rust"]
+
+[[tasks]]
+id = "rust-test"
+name = "test"
+template = "tasks/rust-test.sh"
+when = ["rust"]
+
+[[tasks]]
+id = "bun-lint"
+name = "lint"
+template = "tasks/bun-lint.sh"
+when = ["bun"]
+
+[[tasks]]
+id = "bun-format"
+name = "format"
+template = "tasks/bun-format.sh"
+when = ["bun"]
+
+[[tasks]]
+id = "bun-format-check"
+name = "format-check"
+template = "tasks/bun-format-check.sh"
+when = ["bun"]
+
+[[tasks]]
+id = "bun-check"
+name = "typecheck"
+template = "tasks/bun-check.sh"
+when = ["typescript", "bun"]
+
+[[tasks]]
+id = "bun-test"
+name = "test"
+template = "tasks/bun-test.sh"
+when = ["bun"]
+
+[[tasks]]
+id = "tauri-start"
+name = "start"
+template = "tasks/tauri-start.sh"
+when = ["tauri", "bun"]
+
+[[tasks]]
+id = "tauri-build"
+name = "build"
+template = "tasks/tauri-build.sh"
+when = ["tauri", "bun"]
+
+[[tasks]]
+id = "vite-start"
+name = "frontend:dev"
+template = "tasks/vite-start.sh"
+when = ["vite", "bun"]
+
+[[tasks]]
+id = "vite-build"
+name = "frontend:build"
+template = "tasks/vite-build.sh"
+when = ["vite", "bun"]
+
 [[env]]
+id = "PYTHONUNBUFFERED"
 name = "PYTHONUNBUFFERED"
 value = "1"
 when = ["python"]

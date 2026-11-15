@@ -27,7 +27,7 @@ def parser() -> argparse.ArgumentParser:
         description="KitFlow — project standards over mise", add_help=False
     )
     result.add_argument("--help", "-h", action="help", help="show this help message and exit")
-    result.add_argument("--version", "-v", action="version", version="KitFlow 0.5.0")
+    result.add_argument("--version", "-v", action="version", version="KitFlow 0.6.0")
     result.add_argument(
         "--instruction",
         "-i",
@@ -37,9 +37,10 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument(
         "command",
         nargs="?",
-        choices=["init", "update", "status", "diff", "config", "check"],
-        help="Action to perform; omit to prepare your box or review box updates",
+        choices=["init", "update", "status", "diff", "config", "check", "box"],
+        help="Action to perform; omit to prepare your local box",
     )
+    result.add_argument("box_command", nargs="?", choices=["update"], help=argparse.SUPPRESS)
     result.epilog = """Commands:
   init    Choose or change project components and apply the plan
   update  Apply local templates to the project's saved selection
@@ -47,8 +48,9 @@ def parser() -> argparse.ArgumentParser:
   diff    Show proposed file differences without applying them
   config  Show the local box location without creating it
   check   Validate the box and connected project without changing files
+  box update  Download and replace only the standard box in default/
 
-Without a command, prepare the local box or offer to refresh an existing box.
+Without a command, prepare the local box. User overrides stay in its root directory.
 """
     result.formatter_class = argparse.RawDescriptionHelpFormatter
     result.add_argument(
@@ -129,6 +131,52 @@ def show_plan(result):
 
 
 def run(args: argparse.Namespace) -> int:
+    if args.box_command and args.command != "box":
+        raise KitFlowError("Only box accepts a subcommand: kitflow box update")
+    if args.command == "box":
+        if args.box_command != "update":
+            raise KitFlowError("Use kitflow box update to update the standard box")
+        if (
+            args.instruction
+            or args.profile is not None
+            or args.components is not None
+            or args.manage
+        ):
+            raise KitFlowError("box update does not accept project actions")
+        destination = args.box.resolve() if args.box else box_path()
+
+        def review(before, after):
+            for name in sorted(before.keys() | after.keys()):
+                if before.get(name) == after.get(name):
+                    continue
+
+                def lines(content):
+                    if isinstance(content, str):
+                        return [f"symlink -> {content}\n"]
+                    return (content or b"").decode(errors="replace").splitlines(keepends=True)
+
+                difference = "".join(
+                    difflib.unified_diff(
+                        lines(before.get(name)),
+                        lines(after.get(name)),
+                        fromfile=f"default/{name}",
+                        tofile=f"incoming/{name}",
+                    )
+                )
+                console.print(Syntax(difference, "diff", word_wrap=True))
+            if args.yes:
+                return True
+            if not sys.stdin.isatty():
+                raise KitFlowError("Use --yes to confirm a non-interactive standard box update")
+            return Confirm.ask(
+                "Replace the standard box? User overrides will be preserved", default=False
+            )
+
+        count = refresh_box(destination, review)
+        console.print(
+            f"Standard box files changed: {count}. User overrides and projects were preserved."
+        )
+        return 0
     if args.instruction:
         if (
             args.command
@@ -178,35 +226,11 @@ def run(args: argparse.Namespace) -> int:
     if args.command is None:
         if args.profile is not None or args.components is not None or args.manage or args.yes:
             raise KitFlowError("Use init to select project components or apply a plan")
-        existing = args.box is None and box_path().exists()
         catalog, _ = load_box(args.box)
-        if (
-            existing
-            and sys.stdin.isatty()
-            and Confirm.ask(
-                "Download updates for the standard box? Existing differences require approval",
-                default=False,
-            )
-        ):
-
-            def decide(name: str, before: bytes | None, after: bytes) -> bool:
-                difference = "".join(
-                    difflib.unified_diff(
-                        (before or b"").decode(errors="replace").splitlines(keepends=True),
-                        after.decode(errors="replace").splitlines(keepends=True),
-                        fromfile=f"local/{name}",
-                        tofile=f"incoming/{name}",
-                    )
-                )
-                console.print(Syntax(difference, "diff", word_wrap=True))
-                return Confirm.ask(f"Apply this box file: {name}?", default=False)
-
-            count = refresh_box(box_path(), decide)
-            console.print(f"Box files updated: {count}. Personal files were preserved.")
-        elif existing and not sys.stdin.isatty():
-            console.print("Existing box kept. Run kitflow in a terminal to review box updates.")
         console.print(f"Box ready: {catalog.root}", markup=False)
-        console.print("Edit this box to define your standards. Run kitflow init in a project.")
+        console.print(
+            "Edit user overrides in this box. Run kitflow box update to refresh default/. Run kitflow init in a project."
+        )
         return 0
     root = args.project.resolve()
     if not root.is_dir():

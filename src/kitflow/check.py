@@ -13,8 +13,8 @@ from kitflow.profiles import profile_paths, read_profile
 BOX_FIELDS = {
     "components": {"id", "label", "category", "description", "requires", "conflicts"},
     "files": {"id", "path", "template", "when", "mode", "empty"},
-    "tasks": {"name", "template", "when"},
-    "env": {"name", "value", "when"},
+    "tasks": {"id", "name", "template", "when"},
+    "env": {"id", "name", "value", "when"},
 }
 
 
@@ -26,23 +26,26 @@ def known_fields(value, allowed: set[str], location: str):
         raise KitFlowError(f"Unknown fields in {location}: {', '.join(sorted(unknown))}")
 
 
-def validate_box(root: Path) -> Catalog:
-    data = tomllib.loads((root / "kitflow-box.toml").read_text(encoding="utf-8"))
-    known_fields(data, {"schema", *BOX_FIELDS}, "box")
-    if type(data.get("schema")) is not int:
-        raise KitFlowError("schema must be an integer")
-    for section, allowed in BOX_FIELDS.items():
-        rows = data.get(section, [])
-        if not isinstance(rows, list):
-            raise KitFlowError(f"{section} must be an array of tables")
-        for index, row in enumerate(rows, 1):
-            location = f"{section}[{index}]"
-            known_fields(row, allowed, location)
-            if "description" in row and not isinstance(row["description"], str):
-                raise KitFlowError(f"{location}.description must be a string")
-            if "empty" in row and type(row["empty"]) is not bool:
-                raise KitFlowError(f"{location}.empty must be a boolean")
-    return Catalog(root)
+def validate_box(root: Path, *, standard: Path | None = None) -> Catalog:
+    from kitflow.layers import load_data
+
+    default = safe_path(root, "default")
+    standard = standard if standard is not None else (default if default.exists() else None)
+    _, sources = load_data(root, standard)
+    for source, data in sources:
+        known_fields(data, {"schema", "disabled", *BOX_FIELDS}, str(source / "kitflow-box.toml"))
+        for section, allowed in BOX_FIELDS.items():
+            rows = data.get(section, [])
+            if not isinstance(rows, list):
+                raise KitFlowError(f"{section} must be an array of tables")
+            for index, row in enumerate(rows, 1):
+                location = f"{source}: {section}[{index}]"
+                known_fields(row, allowed, location)
+                if "description" in row and not isinstance(row["description"], str):
+                    raise KitFlowError(f"{location}.description must be a string")
+                if "empty" in row and type(row["empty"]) is not bool:
+                    raise KitFlowError(f"{location}.empty must be a boolean")
+    return Catalog(root, standard=standard)
 
 
 def validate_project(root: Path) -> dict:
@@ -94,12 +97,17 @@ def validate_syntax(path: Path, suffix: str | None = None):
             json.loads(text)
 
 
-def configuration_issues(box: Path, project: Path) -> list[tuple[Path, str]]:
+def configuration_issues(
+    box: Path, project: Path, *, standard: Path | None = None
+) -> list[tuple[Path, str]]:
     issues = []
+    default = standard if standard is not None else box / "default"
+    if default.is_dir() and not default.is_symlink():
+        issues.extend(configuration_issues(default, default))
     catalog = None
     errors = (KitFlowError, OSError, ValueError, TypeError)
     try:
-        catalog = validate_box(box)
+        catalog = validate_box(box, standard=standard)
     except errors as error:
         issues.append((box / "kitflow-box.toml", str(error)))
     if catalog is not None:

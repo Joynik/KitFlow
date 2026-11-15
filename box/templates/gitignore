@@ -11,3 +11,8 @@ __pycache__/
 build/
 dist/
 *.egg-info/
+
+# Frontend dependencies and Rust / Tauri generated files
+node_modules/
+target/
+src-tauri/gen/

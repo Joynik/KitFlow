@@ -12,6 +12,44 @@ box/
 └── tasks/             Shell fragments, without mise table headers
 ```
 
+## Standard and user layers
+
+The configuration directory contains the standard box in `default/` and user definitions at its
+root. Both catalogs use `schema = 1`. The user catalog may contain only that line.
+
+KitFlow merges `components`, `files`, `tasks` and `env` by stable `id`. A user entry replaces the
+whole standard entry; omitted fields do not inherit values. New IDs append entries. Replacements
+keep their standard position. The effective catalog must have valid dependencies and conditions.
+
+Templates and profiles use relative paths as their identity. User files replace standard files at
+the same path. Directories merge file by file. An empty file is an explicit override. Removing an
+override restores the standard definition or file. Profiles use the filename stem as their ID.
+
+Use explicit IDs for task fragments and environment entries. Legacy tasks without `id` use the
+template filename stem; legacy environment entries use their `name`. Duplicate IDs within one
+section and layer are errors. The same ID may exist in different sections.
+
+Disable entries without supplying replacements:
+
+```toml
+schema = 1
+
+[disabled]
+components = []
+files = ["tools"]
+tasks = ["ruff-lint"]
+env = []
+profiles = []
+```
+
+Lists contain IDs from the corresponding merged section. Unknown or duplicate IDs are errors.
+Disabling a component also requires updating or disabling entries that reference it, including
+profiles. Disabling a file rule disables all its directory-template children.
+
+`kitflow box update` validates the incoming standard box and its combination with user definitions
+before replacing `default/`. `kitflow check` reads the local layers and checks their combined
+configuration without downloading, writing files or running tasks.
+
 ## Components
 
 ```toml
@@ -129,11 +167,13 @@ directories; KitFlow rejects paths that traverse a symbolic link.
 
 ```toml
 [[tasks]]
+id = "python-lint"
 name = "lint"
 template = "tasks/python-lint.sh"
 when = ["python"]
 
 [[tasks]]
+id = "django-lint"
 name = "lint"
 template = "tasks/django-lint.sh"
 when = ["django"]
@@ -150,6 +190,7 @@ delimiter.
 
 ```toml
 [[env]]
+id = "PYTHONUNBUFFERED"
 name = "PYTHONUNBUFFERED"
 value = "1"
 when = ["python"]
@@ -167,8 +208,9 @@ place secrets in the catalog.
 4. Run `kitflow init --box ./box --project /tmp/example` in an empty test directory.
 5. Run `kitflow diff --box ./box --project /tmp/example` after changing templates or the selection.
 
-KitFlow downloads the example on first use. Later bare `kitflow` runs offer to review box updates.
-Project commands read your local box. Edit and back up that directory directly. Project state stores
+KitFlow downloads the standard example into `default/` on first use. Run `kitflow box update` to
+replace that standard snapshot explicitly. User overrides remain outside `default/`. Project
+commands read your local box. Edit and back up that directory directly. Project state stores
 installed artifact checksums to detect local edits and obsolete files. See
 [the user instructions](INSTRUCTION.md) for the setup and update workflow.
 

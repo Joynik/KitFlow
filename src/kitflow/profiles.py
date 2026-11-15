@@ -17,17 +17,26 @@ class Profile:
 
 
 def profile_paths(catalog: Catalog) -> list[Path]:
-    directory = safe_path(catalog.root, "profiles")
-    if not directory.exists():
-        return []
-    if not directory.is_dir():
-        raise KitFlowError("profiles must be a directory")
-    return sorted(directory.glob("*.toml"))
+    entries = catalog.source_entries("profiles")
+    disabled = catalog.data.get("disabled", {}).get("profiles", [])
+    for identity in disabled:
+        if f"{identity}.toml" not in entries:
+            raise KitFlowError(f"Unknown disabled profiles ID: {identity}")
+    return [
+        path
+        for name, path in entries.items()
+        if name.endswith(".toml") and path.stem not in disabled
+    ]
 
 
 def read_profile(catalog: Catalog, path: Path) -> Profile:
     try:
-        safe_path(catalog.root, path.relative_to(catalog.root).as_posix())
+        root = (
+            catalog.standard
+            if catalog.standard and path.is_relative_to(catalog.standard)
+            else catalog.root
+        )
+        safe_path(root, path.relative_to(root).as_posix())
         if not re.fullmatch(r"[a-z][a-z0-9_-]*", path.stem):
             raise KitFlowError("Profile filename must be a lowercase component-style ID")
         data = tomllib.loads(path.read_text(encoding="utf-8"))

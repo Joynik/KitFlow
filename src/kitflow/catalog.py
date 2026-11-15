@@ -3,7 +3,6 @@
 import json
 import os
 import re
-import tomllib
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
@@ -57,13 +56,21 @@ class Artifact:
 
 
 class Catalog:
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, *, standard: Path | None = None):
         self.root = root.resolve()
+        default = safe_path(self.root, "default")
+        self.standard = (
+            standard if standard is not None else (default if default.exists() else None)
+        )
         try:
-            self.data = tomllib.loads((root / "kitflow-box.toml").read_text())
+            from kitflow.layers import load_data
+
+            self.data, self.sources = load_data(self.root, self.standard)
             if self.data.get("schema") != 1:
                 raise KitFlowError("Unsupported catalog schema; expected 1")
-            self.validate()
+            for _, data in self.sources:
+                self.validate(data)
+            self.validate(self.data)
             self.components = {}
             for row in self.data.get("components", []):
                 identity = row["id"]
@@ -91,7 +98,7 @@ class Catalog:
         except (KeyError, TypeError, ValueError, OSError) as error:
             raise KitFlowError(f"Invalid catalog: {error}") from error
 
-    def validate(self):
+    def validate(self, data: dict):
         required = {
             "components": ("id", "label", "category"),
             "files": ("id", "path"),
@@ -99,7 +106,7 @@ class Catalog:
             "env": ("name", "value"),
         }
         for section, fields in required.items():
-            rows = self.data.get(section, [])
+            rows = data.get(section, [])
             if not isinstance(rows, list):
                 raise KitFlowError(f"{section} must be an array of tables")
             for row in rows:
@@ -154,8 +161,35 @@ class Catalog:
             raise KitFlowError("Artifact conditions must reference known components")
         return set(required).issubset(selected)
 
+    def source_path(self, name: str, *, allow_link: bool = False) -> Path:
+        user = safe_path(self.root, name, allow_link=allow_link)
+        if user.exists() or user.is_symlink() or self.standard is None:
+            return user
+        # A user file shadows a standard directory and everything below it.
+        for parent in user.parents:
+            if parent == self.root:
+                break
+            if parent.exists() and not parent.is_dir():
+                return user
+        return safe_path(self.standard, name, allow_link=allow_link)
+
+    def source_entries(self, name: str) -> dict[str, Path]:
+        entries = {}
+        user = safe_path(self.root, name)
+        if user.exists() and not user.is_dir():
+            raise KitFlowError(f"Not a directory: {user}")
+        if self.standard is not None:
+            directory = safe_path(self.standard, name, allow_link=True)
+            if directory.is_dir() and not directory.is_symlink():
+                entries.update((entry.name, entry) for entry in directory.iterdir())
+            elif directory.exists() and not user.is_dir():
+                raise KitFlowError(f"Not a directory: {directory}")
+        if user.exists():
+            entries.update((entry.name, entry) for entry in user.iterdir())
+        return dict(sorted(entries.items()))
+
     def template(self, name: str) -> bytes:
-        return safe_path(self.root, name).read_bytes()
+        return self.source_path(name).read_bytes()
 
     @staticmethod
     def link_target(path: Path) -> str:
@@ -168,7 +202,7 @@ class Catalog:
         """Expand a directory into stable file IDs, including hidden entries."""
         if row.get("empty") is True:
             return [(row["id"], row["path"], None)]
-        source = safe_path(self.root, row["template"], allow_link=True)
+        source = self.source_path(row["template"], allow_link=True)
         if source.is_symlink():
             self.link_target(source)
             return [(row["id"], row["path"], source)]
@@ -178,22 +212,21 @@ class Catalog:
             return [(row["id"], row["path"], source)]
         result = []
 
-        def visit(directory: Path):
-            for entry in sorted(directory.iterdir()):
-                safe_path(self.root, entry.relative_to(self.root).as_posix(), allow_link=True)
+        def visit(name: str, relative: str = ""):
+            for entry_name in self.source_entries(name):
+                child_name = f"{name}/{entry_name}"
+                entry = self.source_path(child_name, allow_link=True)
+                child = f"{relative}/{entry_name}" if relative else entry_name
                 if entry.is_symlink():
                     self.link_target(entry)
-                    relative = entry.relative_to(source).as_posix()
-                    result.append((f"{row['id']}/{relative}", f"{row['path']}/{relative}", entry))
                 elif entry.is_dir():
-                    visit(entry)
-                elif entry.is_file():
-                    relative = entry.relative_to(source).as_posix()
-                    result.append((f"{row['id']}/{relative}", f"{row['path']}/{relative}", entry))
-                else:
+                    visit(child_name, child)
+                    continue
+                elif not entry.is_file():
                     raise KitFlowError(f"Template is not a regular file: {entry}")
+                result.append((f"{row['id']}/{child}", f"{row['path']}/{child}", entry))
 
-        visit(source)
+        visit(row["template"])
         return result
 
     def render(self, selected: list[str], *, check_conflicts: bool = True) -> dict[str, Artifact]:

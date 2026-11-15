@@ -1,83 +1,90 @@
-"""Download and review example box changes without removing personal files."""
+"""Replace the standard box snapshot while preserving user overrides."""
 
 import fcntl
 import os
-import shutil
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
 
-from kitflow.catalog import Catalog, KitFlowError, safe_path
-from kitflow.engine import atomic_write, read_file
-from kitflow.profiles import load_profiles
-from kitflow.source import seed_box
+from kitflow.catalog import KitFlowError, safe_path
+from kitflow.check import configuration_issues
+from kitflow.source import prepare_user_directories, seed_box
 
 
-def refresh_box(destination: Path, decide: Callable[[str, bytes | None, bytes], bool]) -> int:
-    if destination.is_symlink():
-        raise KitFlowError("Refresh the real box directory instead of a symbolic link")
-    descriptor = os.open(destination.parent, os.O_RDONLY)
+def snapshot(root: Path) -> dict[str, bytes | str]:
+    if not root.exists():
+        return {}
+    result = {}
+    for path in sorted(root.rglob("*")):
+        name = path.relative_to(root).as_posix()
+        if path.is_symlink():
+            result[name] = os.readlink(path)
+        elif path.is_file():
+            result[name] = path.read_bytes()
+        elif not path.is_dir():
+            raise KitFlowError(f"Not a regular box entry: {path}")
+    return result
+
+
+def refresh_box(
+    destination: Path,
+    review: Callable[[dict[str, bytes | str], dict[str, bytes | str]], bool],
+) -> int:
+    if destination.is_symlink() or not destination.is_dir():
+        raise KitFlowError("Initialize a real box directory with kitflow before updating it")
+    standard = safe_path(destination, "default")
+    descriptor = os.open(destination, os.O_RDONLY)
     try:
         try:
             fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as error:
-            raise KitFlowError("Another KitFlow command is preparing the user box") from error
+            raise KitFlowError("Another KitFlow command is updating the standard box") from error
         with tempfile.TemporaryDirectory(prefix=".box-refresh-", dir=destination.parent) as folder:
             staging = Path(folder)
             incoming = staging / "incoming"
             seed_box(incoming)
-            merged = staging / "merged"
-            shutil.copytree(destination, merged, symlinks=True)
-            writes = {}
-            snapshots = {}
-            for candidate in sorted(incoming.rglob("*")):
-                if not candidate.is_file():
-                    continue
-                name = candidate.relative_to(incoming).as_posix()
-                target = safe_path(destination, name)
-                before = read_file(target)
-                after = candidate.read_bytes()
-                snapshots[name] = before
-                if before == after or not decide(name, before, after):
-                    continue
-                writes[name] = after
-                preview = safe_path(merged, name)
-                preview.parent.mkdir(parents=True, exist_ok=True)
-                preview.write_bytes(after)
-            if not writes:
+            # Validate user overrides against the new standard before changing anything.
+            validate_update(destination, incoming)
+            before = snapshot(standard)
+            after = snapshot(incoming)
+            count = sum(
+                before.get(name) != after.get(name) for name in before.keys() | after.keys()
+            )
+            user_before = snapshot_user(destination)
+            if not count or not review(before, after):
                 return 0
-            load_profiles(Catalog(merged))
-            for name, before in snapshots.items():
-                if read_file(safe_path(destination, name)) != before:
-                    raise KitFlowError(f"{name} changed during review; run kitflow again")
-            applied = []
-            directories = []
-            modes = {}
+            if snapshot(standard) != before:
+                raise KitFlowError("Standard box changed during review; retry")
+            validate_update(destination, incoming)
+            prepare_user_directories(destination)
+            if snapshot_user(destination) != user_before:
+                # Directory scaffolding is allowed; existing user files must stay untouched.
+                raise KitFlowError("User box changed during update; retry")
+            backup = staging / "previous"
+            had_standard = standard.exists()
+            if had_standard:
+                standard.rename(backup)
             try:
-                for name, content in writes.items():
-                    target = safe_path(destination, name)
-                    missing = []
-                    parent = target.parent
-                    while not parent.exists():
-                        missing.append(parent)
-                        parent = parent.parent
-                    for parent in reversed(missing):
-                        parent.mkdir()
-                        directories.append(parent)
-                    modes[name] = target.stat().st_mode & 0o777 if target.exists() else None
-                    applied.append(name)
-                    atomic_write(target, content, modes[name])
+                incoming.rename(standard)
             except BaseException:
-                for name in reversed(applied):
-                    target = safe_path(destination, name)
-                    before = snapshots[name]
-                    if before is None:
-                        target.unlink(missing_ok=True)
-                    else:
-                        atomic_write(target, before, modes[name])
-                for parent in reversed(directories):
-                    parent.rmdir()
+                if had_standard:
+                    backup.rename(standard)
                 raise
-            return len(writes)
+            return count
     finally:
         os.close(descriptor)
+
+
+def snapshot_user(root: Path) -> dict[str, bytes | str]:
+    return {
+        name: value for name, value in snapshot(root).items() if not name.startswith("default/")
+    }
+
+
+def validate_update(destination: Path, incoming: Path):
+    issues = configuration_issues(destination, destination, standard=incoming)
+    if issues:
+        raise KitFlowError(
+            "Invalid standard box update:\n"
+            + "\n".join(f"{path}: {message}" for path, message in issues)
+        )

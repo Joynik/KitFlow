@@ -15,27 +15,48 @@ Run this once:
 kitflow
 ```
 
-KitFlow downloads the example box into `~/.config/kitflow`. It does not change your project. If you
-use `XDG_CONFIG_HOME`, the location is `$XDG_CONFIG_HOME/kitflow` instead.
-
-On later runs, KitFlow asks whether to download updates for the standard box. Answer **No** to keep
-your box without contacting GitHub. Answer **Yes** to download a preview. KitFlow shows each
-differing file and asks before applying it. Decline a file to keep your version. Personal files are
-not deleted. KitFlow checks the combined configuration before writing. A failed download leaves your
-box unchanged.
+KitFlow downloads the standard box into `~/.config/kitflow/default/`. It does not change your
+project. With `XDG_CONFIG_HOME`, use `$XDG_CONFIG_HOME/kitflow` instead.
 
 ```text
 ~/.config/kitflow/
-├── INSTRUCTION.md       This guide
-├── kitflow-box.toml     Available components and rules for applying files
-├── profiles/            Optional ready-made component selections
-├── templates/           Configuration files and agent instructions
-└── tasks/               Shell commands used to build mise tasks
+├── default/             Standard box; updated by KitFlow
+│   ├── kitflow-box.toml
+│   ├── profiles/
+│   ├── tasks/
+│   └── templates/
+├── kitflow-box.toml     Your additional or replacement definitions
+├── profiles/            Your profiles
+├── tasks/               Your shell fragments
+└── templates/           Your templates
 ```
 
-Edit this directory yourself and keep a backup. For example, change `templates/ruff.toml` to define
-your Ruff settings. The next project update will offer those settings. See `docs/CATALOG.md` in the
-KitFlow repository for the box format.
+Edit the files outside `default/` and keep a backup. Your files override standard files with the
+same relative path. For example, copy `default/templates/ruff.toml` to `templates/ruff.toml`, then
+edit the copy. The next project update uses your version. Other standard templates remain available.
+Directories merge file by file, including hidden files. Delete your override to use the standard
+file again. An empty override supplies an empty file.
+
+The root `kitflow-box.toml` starts with `schema = 1`. Add definitions there. Entries with new IDs
+extend the standard catalog. An existing ID replaces its entire standard entry. Task fragment IDs
+are separate from mise task names: two fragments may contribute to `lint` without replacing each
+other. See `docs/CATALOG.md` for the format and the optional `[disabled]` lists.
+
+### Update the standard box
+
+```bash
+kitflow box update
+```
+
+KitFlow downloads a preview, validates it with your overrides, shows differences and asks for one
+confirmation. It replaces only `default/`, including removing obsolete standard files. User files
+and projects stay unchanged. Use `kitflow box update -y` for automation. A failed download or
+invalid configuration leaves the existing standard box unchanged. Keep personal changes outside
+`default/`.
+
+Later bare `kitflow` runs keep the box without downloading updates. Existing flat boxes continue to
+work offline. Their first `kitflow box update` adds `default/` and preserves every existing file as
+a user override. These overrides keep priority; remove only those you want to inherit again.
 
 A template can also be a folder. Add a rule to `kitflow-box.toml`:
 
@@ -50,8 +71,9 @@ when = ["python"]
 KitFlow copies every file inside `templates/vscode` into the project's `.vscode`, including hidden
 files and nested folders. Updates manage each file separately and preserve personal files. Empty
 folders are ignored. Relative symbolic links are preserved without copying or checking their target
-contents. Missing targets are allowed. Absolute links are rejected. See [CATALOG.md](CATALOG.md) for
-the full format.
+contents. Missing targets are allowed. Absolute links are rejected. See
+[the catalog reference](https://github.com/Joynik/KitFlow/blob/main/docs/CATALOG.md) for the full
+format.
 
 ## Set up a project
 
@@ -147,7 +169,8 @@ see those changes. If the box is missing, run `kitflow` to prepare it first.
 
 | Command | Purpose |
 | --- | --- |
-| `kitflow` | Prepare the local box, or offer to review box updates |
+| `kitflow` | Prepare the local box without changing projects |
+| `kitflow box update` | Update only the standard box in `default/` |
 | `kitflow init` | Choose or change project components |
 | `kitflow update` | Apply the current box to the saved selection |
 | `kitflow status` | List pending changes |

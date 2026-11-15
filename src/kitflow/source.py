@@ -1,5 +1,6 @@
 """Download the example box; project operations read local files."""
 
+import base64
 import fcntl
 import json
 import os
@@ -28,9 +29,10 @@ DEFAULT_REPOSITORY = "Joynik/KitFlow"
 
 def read_instructions(local: Path | None = None) -> str:
     """Prefer user instructions; fall back to the bundled usage guide offline."""
-    instruction = (local if local is not None else box_path()) / "INSTRUCTION.md"
-    if instruction.is_file():
-        return instruction.read_text(encoding="utf-8")
+    root = local if local is not None else box_path()
+    for instruction in (root / "INSTRUCTION.md", root / "default/INSTRUCTION.md"):
+        if instruction.is_file():
+            return instruction.read_text(encoding="utf-8")
     compiled = globals().get("__compiled__")
     if compiled is not None:
         # A package data directory named kitflow would collide with the executable.
@@ -108,22 +110,6 @@ def seed_box(destination: Path):
             raise KitFlowError("GitHub returned an invalid commit")
         manifest = fetch(content_url(DEFAULT_REPOSITORY, commit, "box/kitflow-box.toml"))
         (staging / "kitflow-box.toml").write_bytes(manifest)
-        import tomllib
-
-        data = tomllib.loads(manifest.decode())
-        downloaded = {"kitflow-box.toml"}
-        for section in ("files", "tasks"):
-            for row in data.get(section, []):
-                if section == "files" and row.get("empty") is True:
-                    continue
-                name = row["template"]
-                target = safe_path(staging, name)
-                if name in downloaded:
-                    continue
-                content = fetch(content_url(DEFAULT_REPOSITORY, commit, "box/" + name))
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(content)
-                downloaded.add(name)
         tree = json.loads(
             fetch(
                 f"https://api.github.com/repos/{DEFAULT_REPOSITORY}/git/trees/{commit}?recursive=1"
@@ -133,16 +119,38 @@ def seed_box(destination: Path):
             raise KitFlowError("GitHub returned an incomplete box file list")
         for entry in tree["tree"]:
             name = entry["path"]
-            if not name.startswith("box/profiles/") or not name.endswith(".toml"):
+            if not name.startswith("box/") or entry.get("type") == "tree":
                 continue
             relative = name.removeprefix("box/")
-            if len(Path(relative).parts) != 2:
-                continue
-            if entry.get("type") != "blob" or entry.get("mode") not in {"100644", "100755"}:
+            mode = entry.get("mode")
+            if entry.get("type") != "blob" or mode not in {"100644", "100755", "120000"}:
+                raise KitFlowError(f"Unsupported standard box entry: {name}")
+            if relative.startswith("profiles/") and mode == "120000":
                 raise KitFlowError(f"Profile must be a regular TOML file: {name}")
             target = safe_path(staging, relative)
+            if relative == "kitflow-box.toml":
+                if mode == "120000":
+                    raise KitFlowError("The box manifest must be a regular file")
+                continue
+            content = (
+                fetch(content_url(DEFAULT_REPOSITORY, commit, name)) if mode != "120000" else b""
+            )
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(fetch(content_url(DEFAULT_REPOSITORY, commit, name)))
+            if mode == "120000":
+                sha = entry.get("sha", "")
+                if not re.fullmatch(r"[a-f0-9]{40}", sha):
+                    raise KitFlowError(f"Invalid symbolic link blob: {name}")
+                blob = json.loads(
+                    fetch(f"https://api.github.com/repos/{DEFAULT_REPOSITORY}/git/blobs/{sha}")
+                )
+                if blob.get("encoding") != "base64":
+                    raise KitFlowError(f"Invalid symbolic link encoding: {name}")
+                link = base64.b64decode(blob["content"]).decode("utf-8")
+                if Path(link).is_absolute():
+                    raise KitFlowError(f"Only relative symbolic links are supported: {name}")
+                target.symlink_to(link)
+            else:
+                target.write_bytes(content)
         (staging / "INSTRUCTION.md").write_text(read_instructions(staging), encoding="utf-8")
         load_profiles(Catalog(staging))
         staging.rename(destination)
@@ -159,10 +167,34 @@ def seed_box(destination: Path):
         os.close(descriptor)
 
 
+def prepare_user_directories(destination: Path):
+    for name in ("profiles", "tasks", "templates"):
+        directory = safe_path(destination, name)
+        directory.mkdir(exist_ok=True)
+    manifest = safe_path(destination, "kitflow-box.toml")
+    if not manifest.exists():
+        with manifest.open("x", encoding="utf-8") as stream:
+            stream.write("# User overrides for the standard box in default/.\nschema = 1\n")
+
+
+def initialize_box(destination: Path):
+    """Publish the complete initial layout only after the standard download succeeds."""
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".box-initialize-", dir=destination.parent) as folder:
+        staging = Path(folder) / "box"
+        staging.mkdir()
+        seed_box(staging / "default")
+        prepare_user_directories(staging)
+        load_profiles(Catalog(staging))
+        if destination.exists() or destination.is_symlink():
+            raise KitFlowError("The box appeared during initialization; retry")
+        staging.rename(destination)
+
+
 def load_box(local: Path | None = None) -> tuple[Catalog, dict]:
     if local is not None:
         return Catalog(local.resolve()), {"local": str(local.resolve())}
     destination = box_path()
     if not destination.exists() and not destination.is_symlink():
-        seed_box(destination)
+        initialize_box(destination)
     return Catalog(destination), {"kind": "user-box"}

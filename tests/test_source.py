@@ -1,5 +1,8 @@
+import base64
+import hashlib
 import io
 import json
+import os
 import urllib.error
 from pathlib import Path
 from types import SimpleNamespace
@@ -14,6 +17,11 @@ def downloads(monkeypatch, fixture: Path | None = None):
     calls = []
     fixture_root = fixture or Path(__file__).parent / "fixtures/catalog"
     commit = "a" * 40
+    links = {
+        hashlib.sha1(path.relative_to(fixture_root).as_posix().encode()).hexdigest(): path
+        for path in fixture_root.rglob("*")
+        if path.is_symlink()
+    }
 
     def fetch(url):
         calls.append(url)
@@ -28,10 +36,22 @@ def downloads(monkeypatch, fixture: Path | None = None):
                         {
                             "path": "box/" + path.relative_to(fixture_root).as_posix(),
                             "type": "blob",
-                            "mode": "100644",
+                            "mode": "120000" if path.is_symlink() else "100644",
+                            "sha": hashlib.sha1(
+                                path.relative_to(fixture_root).as_posix().encode()
+                            ).hexdigest(),
                         }
-                        for path in (fixture_root / "profiles").glob("*.toml")
+                        for path in fixture_root.rglob("*")
+                        if path.is_file() or path.is_symlink()
                     ],
+                }
+            ).encode()
+        if "/git/blobs/" in url:
+            path = links[url.rsplit("/", 1)[1]]
+            return json.dumps(
+                {
+                    "encoding": "base64",
+                    "content": base64.b64encode(os.readlink(path).encode()).decode(),
                 }
             ).encode()
         prefix = f"https://api.github.com/repos/{source.DEFAULT_REPOSITORY}/contents/box/"
@@ -49,9 +69,13 @@ def test_first_use_downloads_once_and_keeps_user_edits(monkeypatch):
     assert catalog.root == settings.box_path().resolve()
     assert metadata == {"kind": "user-box"}
     assert calls
+    assert (catalog.root / "kitflow-box.toml").read_text().endswith("schema = 1\n")
+    assert all((catalog.root / name).is_dir() for name in ("profiles", "tasks", "templates"))
     assert not any("empty.md" in url for url in calls)
     assert not (catalog.root / "snapshot.json").exists()
-    assert (catalog.root / "INSTRUCTION.md").read_text() == source.read_instructions(Path("box"))
+    assert (catalog.root / "default/INSTRUCTION.md").read_text() == source.read_instructions(
+        Path("box")
+    )
     (catalog.root / "INSTRUCTION.md").write_text("My box instructions\n")
     (catalog.root / "templates/ruff.toml").write_text("line-length = 120\n")
     calls.clear()
@@ -68,7 +92,7 @@ def test_bare_command_prepares_the_box_without_touching_the_project(tmp_path, mo
     monkeypatch.chdir(project)
     assert cli.run(cli.parser().parse_args([])) == 0
     assert (settings.box_path() / "kitflow-box.toml").exists()
-    assert (settings.box_path() / "INSTRUCTION.md").exists()
+    assert (settings.box_path() / "default/INSTRUCTION.md").exists()
     assert not list(project.iterdir())
     calls.clear()
     assert cli.run(cli.parser().parse_args([])) == 0
@@ -177,3 +201,25 @@ def test_invalid_profile_download_keeps_initial_box_absent(monkeypatch, truncate
         source.load_box()
     assert not settings.box_path().exists()
     assert not list(settings.config_directory().glob(".box-download-*"))
+
+
+def test_initial_download_includes_hidden_binary_directory_templates_and_link_text(
+    tmp_path, monkeypatch
+):
+    import shutil
+
+    fixture = tmp_path / "fixture"
+    shutil.copytree(Path(__file__).parent / "fixtures/catalog", fixture)
+    (fixture / "templates/editor/.nested").mkdir(parents=True)
+    (fixture / "templates/editor/.nested/file.pdf").write_bytes(b"%PDF\x00\xff")
+    (fixture / "templates/editor/skill").symlink_to("../../personal-skill")
+    with (fixture / "kitflow-box.toml").open("a") as stream:
+        stream.write('[[files]]\nid="editor"\npath=".vscode"\ntemplate="templates/editor"\n')
+    calls = downloads(monkeypatch, fixture)
+    catalog, _ = source.load_box()
+    artifacts = catalog.render([])
+    assert artifacts["editor/.nested/file.pdf"].content == b"%PDF\x00\xff"
+    assert artifacts["editor/skill"].content == "../../personal-skill"
+    assert artifacts["editor/skill"].kind == "symlink"
+    assert any("/git/blobs/" in url for url in calls)
+    assert not any("/contents/box/templates/editor/skill" in url for url in calls)

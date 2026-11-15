@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.6.0 — 2026-11-15
+
+### Added
+
+- Standard box updates through `kitflow box update`, with a separate `default/` layer, user
+  overrides, stable fragment IDs and explicit disabled entries. Existing flat boxes remain usable.
+- Add a Tauri + React desktop profile with Rust, JavaScript, TypeScript, Vite, SQLite and Bun.
+- Compose Rust and native Bun linting, type checks, formatting and tests, with Tauri development and
+  build tasks. Rust tasks support root workspaces and the standard `src-tauri` layout.
+
 ## 0.5.0 — 2026-11-13
 
 ### Added
