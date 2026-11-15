@@ -8,6 +8,7 @@ import re
 import shutil
 import ssl
 import subprocess
+import sys
 import tempfile
 import urllib.error
 import urllib.parse
@@ -103,6 +104,7 @@ def seed_box(destination: Path):
         if destination.exists() or destination.is_symlink():
             return
         staging = Path(tempfile.mkdtemp(prefix=".box-download-", dir=destination.parent))
+        print("Downloading standard box…", file=sys.stderr, flush=True)
         commit = json.loads(
             fetch(f"https://api.github.com/repos/{DEFAULT_REPOSITORY}/commits/main")
         )["sha"]

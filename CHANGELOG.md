@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Show an immediate download notice during initial box setup and `kitflow box update`.
+
 ## 0.6.0 — 2026-11-15
 
 ### Added
