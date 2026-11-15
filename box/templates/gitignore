@@ -28,6 +28,11 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
 # production
 build/
 
