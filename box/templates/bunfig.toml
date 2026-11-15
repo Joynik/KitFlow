@@ -1,6 +1,12 @@
 [lint]
-ignorePatterns = ["dist/", "target/", "src-tauri/target/", "src-tauri/gen/"]
+ignorePatterns = [
+  "dist/",
+  "target/",
+]
 
 [fmt]
 printWidth = 100
-ignorePatterns = ["dist/", "target/", "src-tauri/target/", "src-tauri/gen/"]
+ignorePatterns = [
+  "dist/",
+  "target/",
+]
