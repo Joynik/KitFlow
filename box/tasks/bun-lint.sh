@@ -1,1 +1,1 @@
-bun lint --no-script --max-warnings 0 .
+bun lint --no-script --format unix --max-warnings 0 .

@@ -1,0 +1,5 @@
+[vars]
+python_directory = "."
+
+[env]
+PROJECT_PYTHON_DIRECTORY = "{{ env.PROJECT_PYTHON_DIRECTORY | default(value=config_root ~ '/' ~ vars.python_directory) }}"

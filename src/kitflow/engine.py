@@ -59,9 +59,9 @@ def load_config(root: Path) -> dict:
             if not isinstance(record, dict) or not isinstance(record.get("path"), str):
                 raise KitFlowError(f"Invalid state record: {identity}")
             kind = record.get("kind", "file")
-            if kind not in {"file", "symlink", "task", "env"}:
+            if kind not in {"file", "symlink", "task", "env", "defaults"}:
                 raise KitFlowError(f"Invalid artifact kind: {identity}")
-            if kind in {"task", "env"} and record["path"] != "mise.toml":
+            if kind in {"task", "env", "defaults"} and record["path"] != "mise.toml":
                 raise KitFlowError("Task and environment state must target mise.toml")
             if kind in {"file", "symlink"} and record["path"] == "mise.toml":
                 raise KitFlowError("mise.toml cannot be managed as a whole file")
@@ -126,6 +126,21 @@ def plan(root: Path, catalog: Catalog, selected: list[str], document: dict) -> P
         current = current_file
         record = records.get(identity)
         target = desired.get(identity)
+        if artifact.kind == "defaults":
+            if target and not record:
+                assert not isinstance(current_file, str)
+                assert isinstance(target.content, bytes)
+                content = mise.missing_defaults((current_file or b"").decode(), target.content)
+                result.changes.append(
+                    Change(
+                        artifact,
+                        None,
+                        content,
+                        "create" if content else "adopt",
+                        reason="Seed missing user settings",
+                    )
+                )
+            continue
         if artifact.kind in {"task", "env"}:
             assert not isinstance(current_file, str)
             text = (current_file or b"").decode()
@@ -243,7 +258,11 @@ def _apply(result: Plan, source: dict):
                 writes[artifact.path] = change.after
         else:
             assert not isinstance(change.after, str)
-            mise_text = mise.replace(mise_text, artifact, change.after)
+            if artifact.kind == "defaults":
+                assert change.after is not None
+                mise_text = mise.add_defaults(mise_text, change.after)
+            else:
+                mise_text = mise.replace(mise_text, artifact, change.after)
             writes["mise.toml"] = mise_text.encode()
         if change.after is None:
             records.pop(artifact.id, None)

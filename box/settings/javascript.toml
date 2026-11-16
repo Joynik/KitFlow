@@ -1,0 +1,5 @@
+[vars]
+javascript_directory = "."
+
+[env]
+PROJECT_JAVASCRIPT_DIRECTORY = "{{ env.PROJECT_JAVASCRIPT_DIRECTORY | default(value=config_root ~ '/' ~ vars.javascript_directory) }}"

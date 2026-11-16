@@ -38,6 +38,9 @@ def read_instructions(local: Path | None = None) -> str:
     if compiled is not None:
         # A package data directory named kitflow would collide with the executable.
         return (Path(compiled.python_runtime_dir) / "INSTRUCTION.md").read_text(encoding="utf-8")
+    source_guide = Path(__file__).resolve().parents[2] / "docs/INSTRUCTION.md"
+    if source_guide.is_file():
+        return source_guide.read_text(encoding="utf-8")
     return files("kitflow").joinpath("INSTRUCTION.md").read_text(encoding="utf-8")
 
 

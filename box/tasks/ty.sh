@@ -1,1 +1,1 @@
-ty check .
+ty check . --output-format concise

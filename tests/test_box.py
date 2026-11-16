@@ -23,3 +23,82 @@ def test_example_box_has_no_removed_tool_templates():
             text = path.read_text().lower()
             assert "beads" not in text, path
             assert "graphify" not in text, path
+
+
+def test_standard_check_runs_only_checks_and_preserves_failure_status(tmp_path):
+    import os
+    import subprocess
+
+    catalog = Catalog(Path(__file__).parents[1] / "box")
+    artifacts = catalog.render(list(catalog.components), check_conflicts=False)
+    artifact = artifacts["task.check"]
+    import tomllib
+
+    assert isinstance(artifact.content, bytes)
+    script = tomllib.loads(artifact.content.decode())["tasks"]["check"]["run"]
+    task_scripts = tmp_path / "task-scripts"
+    task_scripts.mkdir()
+    for value in artifacts.values():
+        if value.kind == "task":
+            assert isinstance(value.content, bytes)
+            run = tomllib.loads(value.content.decode())["tasks"][value.key]["run"]
+            (task_scripts / f"{value.key}.sh").write_text(run)
+    binaries = tmp_path / "bin"
+    binaries.mkdir()
+    log = tmp_path / "commands"
+    for command in (
+        "ruff",
+        "rumdl",
+        "ty",
+        "bun",
+        "cargo",
+        "uv",
+        "djlint",
+        "swift",
+        "swiftlint",
+        "xcodebuild",
+    ):
+        path = binaries / command
+        path.write_text(
+            "#!/bin/sh\n"
+            'printf "%s\\n" "$0 $*" >> "$COMMAND_LOG"\n'
+            'if [ "$(basename "$0")" = "$FAIL_TOOL" ]; then exit 7; fi\n'
+        )
+        path.chmod(0o755)
+    mise = binaries / "mise"
+    mise.write_text(
+        '#!/bin/sh\nprintf "mise %s\\n" "$3" >> "$COMMAND_LOG"\nif [ "$3" = _swift ]; then export usage_action="$4" usage_configuration="$5"; fi\nexec /bin/sh "$TASK_SCRIPTS/$3.sh"\n'
+    )
+    mise.chmod(0o755)
+    env = {
+        **os.environ,
+        "PATH": f"{binaries}:{os.environ['PATH']}",
+        "COMMAND_LOG": str(log),
+        "FAIL_TOOL": "",
+        "TASK_SCRIPTS": str(task_scripts),
+        "PROJECT_PYTHON_DIRECTORY": str(tmp_path),
+        "PROJECT_JAVASCRIPT_DIRECTORY": str(tmp_path),
+        "PROJECT_RUST_DIRECTORY": str(tmp_path),
+        "PROJECT_SWIFT_DIRECTORY": str(tmp_path),
+        "SWIFT_BACKEND": "swiftpm",
+    }
+    result = subprocess.run(["/bin/sh", "-c", script], cwd=tmp_path, env=env)
+    assert result.returncode == 0
+    commands = log.read_text()
+    assert "--fix" not in commands
+    assert "--reformat" not in commands
+    assert "--dry-run" in commands
+    assert "--no-pretty" in commands
+    assert all(tool in commands for tool in ("ruff", "rumdl", "ty", "bun", "cargo", "djlint"))
+    log.unlink()
+    result = subprocess.run(
+        ["/bin/sh", "-c", script], cwd=tmp_path, env={**env, "FAIL_TOOL": "ruff"}
+    )
+    assert result.returncode == 7
+    assert len(log.read_text().splitlines()) == 2
+    log.unlink()
+    (task_scripts / "lint.sh").write_text('echo custom-lint >> "$COMMAND_LOG"\n')
+    result = subprocess.run(["/bin/sh", "-c", script], cwd=tmp_path, env=env)
+    assert result.returncode == 0
+    assert log.read_text().count("custom-lint") == 1
+    assert "ruff check" not in log.read_text()

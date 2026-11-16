@@ -1,1 +1,1 @@
-bun fmt --no-script --check .
+bun fmt --no-script --list-different .

@@ -12,9 +12,22 @@ from kitflow.profiles import profile_paths, read_profile
 
 BOX_FIELDS = {
     "components": {"id", "label", "category", "description", "requires", "conflicts"},
-    "files": {"id", "path", "template", "when", "mode", "empty"},
-    "tasks": {"id", "name", "template", "when"},
-    "env": {"id", "name", "value", "when"},
+    "files": {"id", "path", "template", "when", "when_any", "mode", "empty"},
+    "tasks": {
+        "id",
+        "name",
+        "template",
+        "when",
+        "when_any",
+        "directory_env",
+        "description",
+        "alias",
+        "usage",
+        "hide",
+        "quiet",
+    },
+    "env": {"id", "name", "value", "when", "when_any"},
+    "defaults": {"id", "template", "when", "when_any"},
 }
 
 

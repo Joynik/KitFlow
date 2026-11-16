@@ -1,1 +1,1 @@
-python manage.py check
+uv run python manage.py check --verbosity 0

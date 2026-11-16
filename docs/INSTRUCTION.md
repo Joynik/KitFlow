@@ -44,6 +44,8 @@ other. See `docs/CATALOG.md` for the format and the optional `[disabled]` lists.
 
 ### Update the standard box
 
+Upgrade KitFlow before updating to a newer box schema. Older binaries reject schema 2 safely.
+
 ```bash
 kitflow box update
 ```
@@ -120,6 +122,112 @@ Required dependencies are added automatically. `-y` confirms a plan, but never o
 The project saves the final selection. Editing a profile does not change existing projects during
 `update`. To apply its new selection, run `init -r PROFILE` again and review the plan. Existing
 user-owned exclusions remain in effect.
+
+## Run project tasks
+
+KitFlow composes mise tasks from the selected components. The standard box provides these roles when
+the corresponding tools are selected:
+
+| Task | Purpose |
+| --- | --- |
+| `mise run check` | Run lint, formatting checks and type checks without applying fixes; include configured migration checks |
+| `mise run lint` | Report lint problems |
+| `mise run lint-fix` | Apply supported lint fixes; remaining problems still fail |
+| `mise run format` | Apply formatting |
+| `mise run format-check` | Report files that need formatting without rewriting them |
+| `mise run typecheck` | Check types |
+| `mise run test` | Run independently selected test tools |
+| `mise run verify` | Run configured code checks, application checks and tests in order |
+| `mise run build` | Build every selected language component |
+| `mise run build-release` | Build selected native components with release optimization |
+| `mise run help` | List project tasks and descriptions; also available as the default task |
+
+`kitflow check` validates KitFlow configuration. `mise run check` checks application code and may
+create ordinary tool caches or build outputs. Tests run separately. Checks stop at the first failed
+command. The aggregate calls the existing mise tasks once, so their user overrides also apply.
+Native tool rules still apply: for example, Clippy fixes require a clean version-controlled working
+tree. KitFlow does not install tools. Django commands and djLint use the project environment through
+uv; uv may synchronize the project environment before running them.
+
+Diagnostics use short formats where supported. Warnings, errors and failing filenames remain
+visible. Django HTML tasks scan only `templates/`; edit their fragments if your layout differs.
+Development servers retain their address; Vite does not clear earlier terminal output.
+
+## Configure the generated environment
+
+KitFlow selects components. You configure the project in `mise.toml`. Initial settings are added
+once and then belong to you. KitFlow preserves their values during updates and component removal.
+The standard box loads optional overrides from `.env`; keep secrets there. `mise run env:local`
+creates `.env` from `.env.example` without replacing an existing file.
+
+```text
+kitflow init → Edit mise vars/env → Set local .env values → Run mise tasks
+```
+
+Set `python_directory`, `javascript_directory`, `rust_directory` and `swift_directory` under
+`[vars]` for the selected languages. Paths are relative to the project root; spaces are supported.
+For example, set `rust_directory = "src-tauri"` for that layout. Each task fragment runs in its
+configured directory. Shared `build`, `check` and `test` tasks combine selected components.
+
+Choose test runners separately: Django, pytest, unittest, Bun, Cargo or Swift. Language selection
+alone does not automatically enable a test runner. Configure unittest discovery with
+`unittest_directory`; pytest and Bun use their native project settings. Swift build/type checks use
+compilation.
+
+### Python servers and migrations
+
+Select Granian, Gunicorn or Uvicorn. Set `vars.python_app` to the application's `module:object`. Use
+a compatible interface or worker: Django WSGI uses a WSGI server; FastAPI uses ASGI. The initial
+FastAPI + Gunicorn settings select its native `asgi` worker, which requires a compatible Gunicorn
+release. Adjust `gunicorn_worker` for other workers or older releases. Granian reload requires its
+`reload` extra. Tool dependencies are installed separately in your application environment.
+
+`mise run dev` enables reload; `mise run run` does not. Neither builds first by default. Set
+`build_before_run = "true"` to run the configured build before starting. Set address and port
+through `server_host_default` and `server_port_default`, or override them with `SERVER_HOST` and
+`SERVER_PORT` in `.env`. Server settings are shared across the three backends. The simple Django
+server remains available as `django:runserver`.
+
+Django supplies its migration commands. Select Alembic for FastAPI or another SQLAlchemy
+application; configure its migration environment and `alembic_config` in the application first.
+`db:makemigrations NAME` creates a named migration; `db:migrate` applies it; `db:check` checks for
+missing migrations. These are mise task names, used with `mise run`. FastAPI's `app-check` imports
+the application and generates OpenAPI; it does not test application startup.
+
+### Swift and frontend builds
+
+Set `swift_backend` to `swiftpm` or `xcode`. Xcode also needs `xcode_project`, `xcode_scheme` and
+`xcode_destination`. SwiftLint is optional and selected separately. Debug and release builds use the
+configured backend; Swift tests use the same backend.
+
+JavaScript builds run the package.json script named by `javascript_build_script` (default: `build`).
+Set it to an existing script such as `css:build` when needed. Vite also supplies `frontend:dev`,
+`frontend:build` and `frontend:preview`. Tauri supplies `start` and `app:build`; configure its own
+frontend hooks in the application's Tauri configuration.
+
+### Translations, databases and Docker
+
+Select Django, Babel or package.json translations. Configure target locales in `i18n_languages`,
+excluding `i18n_source_language`. `mise run translations` runs the selected tools. Babel requires
+your extraction mapping file; the package.json backend uses `i18n_script`.
+
+SQLite and PostgreSQL provide `db:backup FILE` and `db:restore FILE`. Defaults use
+`database_backup_file` and `database_restore_file`. PostgreSQL uses `PGHOST`, `PGPORT`, `PGDATABASE`
+and `PGUSER`; keep its password in `.pgpass` or local environment settings. SQLite uses
+`database_sqlite_path`. `db:prepare` creates a new SQLite database, optionally from
+`database_init_sql`, without replacing an existing database.
+
+Backups never replace existing files. **Stop application writes before restoring.** Restore replaces
+data. SQLite stages SQL in a temporary database and refuses restoration with pending WAL files.
+PostgreSQL restores in a transaction and stops on SQL errors. Restore only trusted SQL files.
+
+Docker provides `docker:build`, `docker:check`, `docker:up`, `docker:status`, `docker:logs` and
+`docker:down`. Configure `compose_file` and `compose_env_file`. Container database operations use
+`docker:db:backup FILE` and `docker:db:restore FILE`, or pass `--docker` to the ordinary database
+task. Configure `database_docker_service` and the container's SQLite path when needed. The selected
+container must be running and contain the native database client. PostgreSQL connection variables
+must also be configured inside that container. SQLite restore requires a POSIX shell there.
+`docker:down` keeps volumes.
 
 ## Update project files
 

@@ -1,0 +1,3 @@
+[vars]
+# Gunicorn native ASGI worker; use a compatible installed Gunicorn release.
+gunicorn_worker = "asgi"

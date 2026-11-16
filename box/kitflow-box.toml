@@ -1,5 +1,5 @@
 # KitFlow catalog: all paths are relative to this directory.
-schema = 1
+schema = 2
 
 [[components]]
 id = "python"
@@ -29,7 +29,7 @@ conflicts = []
 id = "django"
 label = "Django"
 category = "Frameworks"
-description = "Project checks, migrations, user creation and development server."
+description = "Django checks and migrations with separately selected server and tests."
 requires = ["python"]
 conflicts = ["fastapi"]
 
@@ -37,7 +37,7 @@ conflicts = ["fastapi"]
 id = "fastapi"
 label = "FastAPI"
 category = "Frameworks"
-description = "Stack selection only; start commands depend on the application layout."
+description = "FastAPI application with separately selected server, migrations and tests."
 requires = ["python"]
 conflicts = ["django"]
 
@@ -85,7 +85,7 @@ conflicts = []
 id = "rumdl"
 label = "rumdl"
 category = "Checks"
-description = "Markdown checks."
+description = "Markdown linting and formatting."
 requires = []
 conflicts = []
 
@@ -93,7 +93,7 @@ conflicts = []
 id = "djlint"
 label = "djLint"
 category = "Checks"
-description = "Django template checks."
+description = "Django template linting and formatting."
 requires = ["django"]
 conflicts = []
 
@@ -109,7 +109,7 @@ conflicts = []
 id = "rust"
 label = "Rust"
 category = "Languages"
-description = "Cargo checks, Clippy, rustfmt and Rust tests; supports root and src-tauri manifests."
+description = "Cargo checks, builds and formatting in the configured Rust directory."
 requires = []
 conflicts = []
 
@@ -118,7 +118,7 @@ id = "tauri"
 label = "Tauri"
 category = "Frameworks"
 description = "Desktop application shell; use Bun for development and application builds."
-requires = ["rust"]
+requires = ["rust", "bun"]
 conflicts = []
 
 [[components]]
@@ -134,7 +134,7 @@ id = "vite"
 label = "Vite"
 category = "Infrastructure"
 description = "Frontend development server and production assets through Bun."
-requires = ["javascript"]
+requires = ["javascript", "bun"]
 conflicts = []
 
 [[components]]
@@ -145,6 +145,111 @@ description = "Native Bun lint, fmt, check and test commands; requires Bun 1.4.4
 requires = ["javascript"]
 conflicts = []
 
+[[components]]
+id = "swift"
+label = "Swift"
+category = "Languages"
+description = "Swift sources, formatting, and a separately selected SwiftPM or Xcode backend."
+requires = []
+conflicts = []
+[[components]]
+id = "swiftlint"
+label = "SwiftLint"
+category = "Checks"
+description = ""
+requires = ["swift"]
+conflicts = []
+[[components]]
+id = "granian"
+label = "Granian"
+category = "Python servers"
+description = ""
+requires = ["python"]
+conflicts = ["gunicorn", "uvicorn"]
+[[components]]
+id = "gunicorn"
+label = "Gunicorn"
+category = "Python servers"
+description = ""
+requires = ["python"]
+conflicts = ["granian", "uvicorn"]
+[[components]]
+id = "uvicorn"
+label = "Uvicorn"
+category = "Python servers"
+description = ""
+requires = ["python"]
+conflicts = ["granian", "gunicorn"]
+[[components]]
+id = "pytest"
+label = "pytest"
+category = "Tests"
+description = ""
+requires = ["python"]
+conflicts = []
+[[components]]
+id = "unittest"
+label = "unittest"
+category = "Tests"
+description = ""
+requires = ["python"]
+conflicts = []
+[[components]]
+id = "django-tests"
+label = "Django test runner"
+category = "Tests"
+description = ""
+requires = ["django"]
+conflicts = []
+[[components]]
+id = "bun-tests"
+label = "Bun test runner"
+category = "Tests"
+description = ""
+requires = ["bun"]
+conflicts = []
+[[components]]
+id = "rust-tests"
+label = "Cargo test runner"
+category = "Tests"
+description = ""
+requires = ["rust"]
+conflicts = []
+[[components]]
+id = "swift-tests"
+label = "Swift test runner"
+category = "Tests"
+description = ""
+requires = ["swift"]
+conflicts = []
+[[components]]
+id = "alembic"
+label = "Alembic"
+category = "Migrations"
+description = ""
+requires = ["python"]
+conflicts = ["django"]
+[[components]]
+id = "django-i18n"
+label = "Django translations"
+category = "Translations"
+description = ""
+requires = ["django"]
+conflicts = []
+[[components]]
+id = "babel-i18n"
+label = "Babel translations"
+category = "Translations"
+description = ""
+requires = ["python"]
+conflicts = []
+[[components]]
+id = "script-i18n"
+label = "package.json translations"
+category = "Translations"
+description = ""
+requires = ["bun"]
+conflicts = []
 [[files]]
 id = "readme"
 path = "README.md"
@@ -236,176 +341,733 @@ template = "templates/bunfig.toml"
 when = ["bun"]
 mode = "managed"
 
+[[files]]
+id = "env-example"
+path = ".env.example"
+template = "templates/env.example"
+when = []
+mode = "once"
 [[tasks]]
 id = "ruff-lint"
 name = "lint"
 template = "tasks/ruff-lint.sh"
 when = ["ruff"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Lint selected project components"
 
 [[tasks]]
 id = "django-lint"
 name = "lint"
 template = "tasks/django-lint.sh"
 when = ["django"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Lint selected project components"
 
 [[tasks]]
-id = "django-template-lint"
+id = "djlint-lint"
 name = "lint"
-template = "tasks/django-template-lint.sh"
+template = "tasks/djlint-lint.sh"
 when = ["djlint"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Lint selected project components"
 
 [[tasks]]
 id = "rumdl"
 name = "lint"
-template = "tasks/rumdl.sh"
+template = "tasks/rumdl-check.sh"
 when = ["rumdl"]
+description = "Lint selected project components"
 
 [[tasks]]
 id = "ruff-format"
 name = "format"
 template = "tasks/ruff-format.sh"
 when = ["ruff"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Format selected project components"
 
 [[tasks]]
 id = "ruff-format-check"
 name = "format-check"
 template = "tasks/ruff-format-check.sh"
 when = ["ruff"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Check formatting without applying fixes"
 
 [[tasks]]
 id = "ty"
 name = "typecheck"
 template = "tasks/ty.sh"
 when = ["ty"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Check selected project types and native builds"
 
 [[tasks]]
 id = "django-makemigrations"
 name = "db:makemigrations"
 template = "tasks/django-makemigrations.sh"
 when = ["django"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Create a database migration"
+usage = "arg \"[name]\" help=\"Migration name\""
 
 [[tasks]]
 id = "django-migrate"
 name = "db:migrate"
 template = "tasks/django-migrate.sh"
 when = ["django"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Apply database migrations"
 
 [[tasks]]
 id = "django-superuser"
 name = "db:superuser"
 template = "tasks/django-superuser.sh"
 when = ["django"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Db superuser"
 
 [[tasks]]
 id = "django-start"
-name = "start"
+name = "django:runserver"
 template = "tasks/django-start.sh"
 when = ["django"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Django runserver"
 
 [[tasks]]
 id = "docker-up"
 name = "docker:up"
 template = "tasks/docker-up.sh"
 when = ["docker"]
+description = "Docker up"
 
 [[tasks]]
 id = "docker-down"
 name = "docker:down"
 template = "tasks/docker-down.sh"
 when = ["docker"]
+description = "Docker down"
 
 [[tasks]]
 id = "docker-logs"
 name = "docker:logs"
 template = "tasks/docker-logs.sh"
 when = ["docker"]
+description = "Docker logs"
 
 [[tasks]]
 id = "rust-lint"
 name = "lint"
 template = "tasks/rust-lint.sh"
 when = ["rust"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Lint selected project components"
 
 [[tasks]]
 id = "rust-format"
 name = "format"
 template = "tasks/rust-format.sh"
 when = ["rust"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Format selected project components"
 
 [[tasks]]
 id = "rust-format-check"
 name = "format-check"
 template = "tasks/rust-format-check.sh"
 when = ["rust"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Check formatting without applying fixes"
 
 [[tasks]]
 id = "rust-check"
 name = "typecheck"
 template = "tasks/rust-check.sh"
 when = ["rust"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Check selected project types and native builds"
 
 [[tasks]]
 id = "rust-test"
 name = "test"
 template = "tasks/rust-test.sh"
-when = ["rust"]
+when = ["rust-tests"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Run selected test runners"
 
 [[tasks]]
 id = "bun-lint"
 name = "lint"
 template = "tasks/bun-lint.sh"
 when = ["bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Lint selected project components"
 
 [[tasks]]
 id = "bun-format"
 name = "format"
 template = "tasks/bun-format.sh"
 when = ["bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Format selected project components"
 
 [[tasks]]
 id = "bun-format-check"
 name = "format-check"
 template = "tasks/bun-format-check.sh"
 when = ["bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Check formatting without applying fixes"
 
 [[tasks]]
 id = "bun-check"
 name = "typecheck"
 template = "tasks/bun-check.sh"
 when = ["typescript", "bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Check selected project types and native builds"
 
 [[tasks]]
 id = "bun-test"
 name = "test"
 template = "tasks/bun-test.sh"
-when = ["bun"]
+when = ["bun-tests"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Run selected test runners"
 
 [[tasks]]
 id = "tauri-start"
 name = "start"
 template = "tasks/tauri-start.sh"
 when = ["tauri", "bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Start"
 
 [[tasks]]
 id = "tauri-build"
-name = "build"
+name = "app:build"
 template = "tasks/tauri-build.sh"
 when = ["tauri", "bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Build the Tauri application"
 
 [[tasks]]
 id = "vite-start"
 name = "frontend:dev"
 template = "tasks/vite-start.sh"
 when = ["vite", "bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Frontend dev"
 
 [[tasks]]
 id = "vite-build"
 name = "frontend:build"
 template = "tasks/vite-build.sh"
 when = ["vite", "bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Frontend build"
 
+[[tasks]]
+id = "ruff-lint-fix"
+name = "lint-fix"
+template = "tasks/ruff-lint-fix.sh"
+when = ["ruff"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Apply supported lint fixes"
+
+[[tasks]]
+id = "bun-lint-fix"
+name = "lint-fix"
+template = "tasks/bun-lint-fix.sh"
+when = ["bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Apply supported lint fixes"
+
+[[tasks]]
+id = "rust-lint-fix"
+name = "lint-fix"
+template = "tasks/rust-lint-fix.sh"
+when = ["rust"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Apply supported lint fixes"
+
+[[tasks]]
+id = "rumdl-lint-fix"
+name = "lint-fix"
+template = "tasks/rumdl-lint-fix.sh"
+when = ["rumdl"]
+description = "Apply supported lint fixes"
+
+[[tasks]]
+id = "rumdl-format"
+name = "format"
+template = "tasks/rumdl-format.sh"
+when = ["rumdl"]
+description = "Format selected project components"
+
+[[tasks]]
+id = "rumdl-format-check"
+name = "format-check"
+template = "tasks/rumdl-format-check.sh"
+when = ["rumdl"]
+description = "Check formatting without applying fixes"
+
+[[tasks]]
+id = "djlint-format"
+name = "format"
+template = "tasks/djlint-format.sh"
+when = ["djlint"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Format selected project components"
+
+[[tasks]]
+id = "djlint-format-check"
+name = "format-check"
+template = "tasks/djlint-format-check.sh"
+when = ["djlint"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Check formatting without applying fixes"
+
+[[tasks]]
+id = "django-migrations-check"
+name = "db:check"
+template = "tasks/django-migrations-check.sh"
+when = ["django"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Check for missing database migrations"
+
+[[tasks]]
+id = "django-test"
+name = "test"
+template = "tasks/django-test.sh"
+when = ["django-tests"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Run selected test runners"
+
+[[tasks]]
+id = "rust-test-doc"
+name = "test:doc"
+template = "tasks/rust-test-doc.sh"
+when = ["rust-tests"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Test doc"
+
+[[tasks]]
+id = "vite-preview"
+name = "frontend:preview"
+template = "tasks/vite-preview.sh"
+when = ["vite", "bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Frontend preview"
+
+[[tasks]]
+id = "help"
+name = "help"
+template = "tasks/help.sh"
+when = []
+alias = "default"
+quiet = true
+description = "List project tasks and descriptions"
+[[tasks]]
+id = "granian-dev"
+name = "dev"
+template = "tasks/granian-dev.sh"
+when = ["granian"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Run the selected Python server with reload"
+[[tasks]]
+id = "granian-run"
+name = "run"
+template = "tasks/granian-run.sh"
+when = ["granian"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Run the selected Python server without reload"
+[[tasks]]
+id = "gunicorn-dev"
+name = "dev"
+template = "tasks/gunicorn-dev.sh"
+when = ["gunicorn"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Run the selected Python server with reload"
+[[tasks]]
+id = "gunicorn-run"
+name = "run"
+template = "tasks/gunicorn-run.sh"
+when = ["gunicorn"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Run the selected Python server without reload"
+[[tasks]]
+id = "uvicorn-dev"
+name = "dev"
+template = "tasks/uvicorn-dev.sh"
+when = ["uvicorn"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Run the selected Python server with reload"
+[[tasks]]
+id = "uvicorn-run"
+name = "run"
+template = "tasks/uvicorn-run.sh"
+when = ["uvicorn"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Run the selected Python server without reload"
+[[tasks]]
+id = "pytest"
+name = "test"
+template = "tasks/pytest.sh"
+when = ["pytest"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Run selected test runners"
+[[tasks]]
+id = "unittest"
+name = "test"
+template = "tasks/unittest.sh"
+when = ["unittest"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Run selected test runners"
+[[tasks]]
+id = "rust-build"
+name = "build"
+template = "tasks/rust-build.sh"
+when = ["rust"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Build selected project components"
+[[tasks]]
+id = "rust-build-release"
+name = "build-release"
+template = "tasks/rust-build-release.sh"
+when = ["rust"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Build selected native components for release"
+[[tasks]]
+id = "javascript-build"
+name = "build"
+template = "tasks/javascript-build.sh"
+when = ["javascript", "bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Build selected project components"
+[[tasks]]
+id = "alembic-create"
+name = "db:makemigrations"
+template = "tasks/alembic-create.sh"
+when = ["alembic"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Create a database migration"
+usage = "arg \"[name]\" help=\"Migration name\""
+[[tasks]]
+id = "alembic-migrate"
+name = "db:migrate"
+template = "tasks/alembic-migrate.sh"
+when = ["alembic"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Apply database migrations"
+[[tasks]]
+id = "alembic-check"
+name = "db:check"
+template = "tasks/alembic-check.sh"
+when = ["alembic"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Check for missing database migrations"
+[[tasks]]
+id = "swift-format"
+name = "format"
+template = "tasks/swift-format.sh"
+when = ["swift"]
+directory_env = "PROJECT_SWIFT_DIRECTORY"
+description = "Format selected project components"
+[[tasks]]
+id = "swift-format-check"
+name = "format-check"
+template = "tasks/swift-format-check.sh"
+when = ["swift"]
+directory_env = "PROJECT_SWIFT_DIRECTORY"
+description = "Check formatting without applying fixes"
+[[tasks]]
+id = "swiftlint"
+name = "lint"
+template = "tasks/swiftlint.sh"
+when = ["swiftlint"]
+directory_env = "PROJECT_SWIFT_DIRECTORY"
+description = "Lint selected project components"
+[[tasks]]
+id = "swiftlint-fix"
+name = "lint-fix"
+template = "tasks/swiftlint-fix.sh"
+when = ["swiftlint"]
+directory_env = "PROJECT_SWIFT_DIRECTORY"
+description = "Apply supported lint fixes"
+[[tasks]]
+id = "django-i18n"
+name = "translations"
+template = "tasks/django-i18n.sh"
+when = ["django-i18n"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Update and compile selected translations"
+[[tasks]]
+id = "babel-i18n"
+name = "translations"
+template = "tasks/babel-i18n.sh"
+when = ["babel-i18n"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Update and compile selected translations"
+[[tasks]]
+id = "script-i18n"
+name = "translations"
+template = "tasks/script-i18n.sh"
+when = ["script-i18n"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Update and compile selected translations"
+[[tasks]]
+id = "sqlite-backup"
+name = "db:backup"
+template = "tasks/sqlite-backup.sh"
+when = ["sqlite"]
+usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
+description = "Back up the database to a new SQL file"
+[[tasks]]
+id = "sqlite-restore"
+name = "db:restore"
+template = "tasks/sqlite-restore.sh"
+when = ["sqlite"]
+usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
+description = "Restore the database from SQL; stop application writes first"
+[[tasks]]
+id = "postgresql-backup"
+name = "db:backup"
+template = "tasks/postgresql-backup.sh"
+when = ["postgresql"]
+usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
+description = "Back up the database to a new SQL file"
+[[tasks]]
+id = "postgresql-restore"
+name = "db:restore"
+template = "tasks/postgresql-restore.sh"
+when = ["postgresql"]
+usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
+description = "Restore the database from SQL; stop application writes first"
+[[tasks]]
+id = "sqlite-prepare"
+name = "db:prepare"
+template = "tasks/sqlite-prepare.sh"
+when = ["sqlite"]
+description = "Db prepare"
+[[tasks]]
+id = "docker-build"
+name = "docker:build"
+template = "tasks/docker-build.sh"
+when = ["docker"]
+description = "Docker build"
+[[tasks]]
+id = "docker-check"
+name = "docker:check"
+template = "tasks/docker-check.sh"
+when = ["docker"]
+description = "Docker check"
+[[tasks]]
+id = "docker-status"
+name = "docker:status"
+template = "tasks/docker-status.sh"
+when = ["docker"]
+description = "Docker status"
+[[tasks]]
+id = "swift-build"
+name = "build"
+template = "tasks/swift-build.sh"
+when = ["swift"]
+description = "Build selected project components"
+[[tasks]]
+id = "swift-release"
+name = "build-release"
+template = "tasks/swift-release.sh"
+when = ["swift"]
+description = "Build selected native components for release"
+[[tasks]]
+id = "swift-check"
+name = "typecheck"
+template = "tasks/swift-build.sh"
+when = ["swift"]
+description = "Check selected project types and native builds"
+[[tasks]]
+id = "swift-test"
+name = "test"
+template = "tasks/swift-test.sh"
+when = ["swift-tests"]
+description = "Run selected test runners"
+[[tasks]]
+id = "swift-backend"
+name = "_swift"
+template = "tasks/_swift.sh"
+when = ["swift"]
+directory_env = "PROJECT_SWIFT_DIRECTORY"
+hide = true
+quiet = true
+usage = "arg \"<action>\"; arg \"<configuration>\""
+description = "Run the configured SwiftPM or Xcode backend"
+[[tasks]]
+id = "fastapi-app-check"
+name = "app-check"
+template = "tasks/fastapi-app-check.sh"
+when = ["fastapi"]
+description = "Check selected applications"
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+[[tasks]]
+id = "django-app-check"
+name = "app-check"
+template = "tasks/django-app-check.sh"
+when = ["django"]
+description = "Check selected applications"
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+[[tasks]]
+id = "env-local"
+name = "env:local"
+template = "tasks/env-local.sh"
+when = []
+description = "Create .env from the example without replacing an existing file"
+[[tasks]]
+id = "check-lint"
+name = "check"
+template = "tasks/check-lint.sh"
+when = []
+description = "Check code, formatting, types and migrations"
+when_any = ["ruff", "django", "djlint", "rumdl", "rust", "bun", "swiftlint"]
+[[tasks]]
+id = "check-format"
+name = "check"
+template = "tasks/check-format-check.sh"
+when = []
+description = "Check code, formatting, types and migrations"
+when_any = ["ruff", "rust", "bun", "rumdl", "djlint", "swift"]
+[[tasks]]
+id = "check-types"
+name = "check"
+template = "tasks/check-typecheck.sh"
+when = []
+description = "Check code, formatting, types and migrations"
+when_any = ["ty", "rust", "swift"]
+[[tasks]]
+id = "check-typescript"
+name = "check"
+template = "tasks/check-typecheck.sh"
+when = ["typescript", "bun"]
+description = "Check code, formatting, types and migrations"
+[[tasks]]
+id = "check-migrations"
+name = "check"
+template = "tasks/check-migrations.sh"
+when = []
+description = "Check code, formatting, types and migrations"
+when_any = ["django", "alembic"]
+[[tasks]]
+id = "verify-code"
+name = "verify"
+template = "tasks/verify-check.sh"
+when = []
+description = "Run checks, application checks and tests sequentially"
+when_any = ["alembic", "bun", "django", "djlint", "ruff", "rumdl", "rust", "swift", "swiftlint", "ty"]
+[[tasks]]
+id = "verify-app"
+name = "verify"
+template = "tasks/check-app.sh"
+when = []
+description = "Run checks, application checks and tests sequentially"
+when_any = ["django", "fastapi"]
+[[tasks]]
+id = "verify-tests"
+name = "verify"
+template = "tasks/verify-test.sh"
+when = []
+description = "Run checks, application checks and tests sequentially"
+when_any = ["pytest", "unittest", "django-tests", "bun-tests", "rust-tests", "swift-tests"]
+[[tasks]]
+id = "docker-db-backup"
+name = "docker:db:backup"
+template = "tasks/docker-db-backup.sh"
+when = ["docker"]
+usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\""
+description = "Backup SQL data in the configured container"
+when_any = ["sqlite", "postgresql"]
+[[tasks]]
+id = "docker-db-restore"
+name = "docker:db:restore"
+template = "tasks/docker-db-restore.sh"
+when = ["docker"]
+usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\""
+description = "Restore SQL data in the configured container"
+when_any = ["sqlite", "postgresql"]
 [[env]]
 id = "PYTHONUNBUFFERED"
 name = "PYTHONUNBUFFERED"
 value = "1"
 when = ["python"]
+[[defaults]]
+id = "base"
+template = "settings/base.toml"
+when = []
+
+[[defaults]]
+id = "python"
+template = "settings/python.toml"
+when = ["python"]
+
+[[defaults]]
+id = "javascript"
+template = "settings/javascript.toml"
+when = ["javascript"]
+
+[[defaults]]
+id = "rust"
+template = "settings/rust.toml"
+when = ["rust"]
+
+[[defaults]]
+id = "swift"
+template = "settings/swift.toml"
+when = ["swift"]
+
+[[defaults]]
+id = "javascript-build"
+template = "settings/javascript-build.toml"
+when = ["javascript"]
+
+[[defaults]]
+id = "migration"
+template = "settings/migration.toml"
+when = ["alembic"]
+
+[[defaults]]
+id = "docker"
+template = "settings/docker.toml"
+when = ["docker"]
+
+[[defaults]]
+id = "gunicorn-fastapi"
+template = "settings/gunicorn-fastapi.toml"
+when = ["gunicorn", "fastapi"]
+[[defaults]]
+id = "granian-django"
+template = "settings/granian-django.toml"
+when = ["django", "granian"]
+[[defaults]]
+id = "server"
+template = "settings/server.toml"
+when_any = ["granian", "gunicorn", "uvicorn"]
+[[defaults]]
+id = "translations"
+template = "settings/translations.toml"
+when_any = ["django-i18n", "babel-i18n", "script-i18n"]
+[[defaults]]
+id = "database"
+template = "settings/database.toml"
+when_any = ["sqlite", "postgresql"]
+[[defaults]]
+id = "postgresql"
+template = "settings/postgresql.toml"
+when = ["postgresql"]
+[[defaults]]
+id = "python-application"
+template = "settings/python-application.toml"
+when_any = ["django", "fastapi"]
+[[defaults]]
+id = "unittest"
+template = "settings/unittest.toml"
+when = ["unittest"]

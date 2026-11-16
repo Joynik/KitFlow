@@ -1,1 +1,1 @@
-docker compose up -d
+docker compose --env-file "$COMPOSE_ENV_FILE" -f "$COMPOSE_FILE" up --detach

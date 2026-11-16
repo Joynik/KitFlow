@@ -1,1 +1,1 @@
-bun check --no-script --build
+bun check --no-script --build --no-pretty

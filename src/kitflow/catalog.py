@@ -66,8 +66,8 @@ class Catalog:
             from kitflow.layers import load_data
 
             self.data, self.sources = load_data(self.root, self.standard)
-            if self.data.get("schema") != 1:
-                raise KitFlowError("Unsupported catalog schema; expected 1")
+            if self.data.get("schema") not in {1, 2}:
+                raise KitFlowError("Unsupported catalog schema; expected 1 or 2")
             for _, data in self.sources:
                 self.validate(data)
             self.validate(self.data)
@@ -104,6 +104,7 @@ class Catalog:
             "files": ("id", "path"),
             "tasks": ("name", "template"),
             "env": ("name", "value"),
+            "defaults": ("id", "template"),
         }
         for section, fields in required.items():
             rows = data.get(section, [])
@@ -116,7 +117,7 @@ class Catalog:
                     raise KitFlowError(
                         f"{section} entries require string fields: {', '.join(fields)}"
                     )
-                for name in ("requires", "conflicts", "when"):
+                for name in ("requires", "conflicts", "when", "when_any"):
                     value = row.get(name, [])
                     if not isinstance(value, list) or any(not isinstance(x, str) for x in value):
                         raise KitFlowError(f"{section}.{name} must be an array of component IDs")
@@ -159,7 +160,14 @@ class Catalog:
         required = row.get("when", [])
         if not isinstance(required, list) or any(x not in self.components for x in required):
             raise KitFlowError("Artifact conditions must reference known components")
-        return set(required).issubset(selected)
+        alternatives = row.get("when_any", [])
+        if not isinstance(alternatives, list) or any(
+            x not in self.components for x in alternatives
+        ):
+            raise KitFlowError("Artifact alternatives must reference known components")
+        return set(required).issubset(selected) and (
+            not alternatives or bool(set(alternatives) & selected)
+        )
 
     def source_path(self, name: str, *, allow_link: bool = False) -> Path:
         user = safe_path(self.root, name, allow_link=allow_link)
@@ -265,19 +273,50 @@ class Catalog:
                     row.get("mode") == "once",
                     kind="symlink" if is_link else "file",
                 )
+        for row in self.data.get("defaults", []):
+            if self.enabled(row, chosen):
+                from kitflow.mise import missing_defaults
+
+                content = self.template(row["template"])
+                missing_defaults("", content)
+                identity = f"defaults.{row['id']}"
+                result[identity] = Artifact(identity, "mise.toml", content, True, "defaults")
         tasks: dict[str, list[str]] = {}
+        metadata: dict[str, dict] = {}
         for row in self.data.get("tasks", []):
             if self.enabled(row, chosen):
-                tasks.setdefault(row["name"], []).append(
-                    self.template(row["template"]).decode().strip()
-                )
+                fragment = self.template(row["template"]).decode().strip()
+                directory = row.get("directory_env")
+                if directory is not None:
+                    if not isinstance(directory, str) or not re.fullmatch(
+                        r"[A-Za-z_][A-Za-z0-9_]*", directory
+                    ):
+                        raise KitFlowError("directory_env must be an environment variable name")
+                    fragment = (
+                        f'(\ncd "${{{directory}:?Set {directory} in mise.toml}}"\n{fragment}\n)'
+                    )
+                tasks.setdefault(row["name"], []).append(fragment)
+                options = metadata.setdefault(row["name"], {})
+                for key in ("description", "alias", "usage", "hide", "quiet"):
+                    if key not in row:
+                        continue
+                    value = row[key]
+                    expected = bool if key in {"hide", "quiet"} else str
+                    if type(value) is not expected:
+                        raise KitFlowError(f"tasks.{key} must be {expected.__name__}")
+                    if key in options and options[key] != value:
+                        raise KitFlowError(f"Conflicting task metadata: {row['name']}.{key}")
+                    options[key] = value
         for name, fragments in tasks.items():
             if not re.fullmatch(r"[a-zA-Z0-9_:-]+", name):
                 raise KitFlowError(f"Invalid task name: {name}")
             script = "set -eu\n" + "\n".join(fragments) + "\n"
             if "'''" in script:
                 raise KitFlowError(f"Triple single quote in task: {name}")
-            content = f"[tasks.\"{name}\"]\nrun = '''\n{script}'''\n"
+            options = "".join(
+                f"{key} = {json.dumps(value)}\n" for key, value in metadata[name].items()
+            )
+            content = f"[tasks.\"{name}\"]\n{options}run = '''\n{script}'''\n"
             identity = f"task.{name}"
             result[identity] = Artifact(
                 identity, "mise.toml", content.encode(), kind="task", key=name

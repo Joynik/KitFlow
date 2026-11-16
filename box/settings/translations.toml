@@ -1,0 +1,13 @@
+[vars]
+i18n_source_language = "en"
+i18n_languages = ""
+i18n_directory = "locale"
+i18n_babel_config = "babel.cfg"
+i18n_script = "translations"
+
+[env]
+I18N_SOURCE_LANGUAGE = "{{ env.I18N_SOURCE_LANGUAGE | default(value=vars.i18n_source_language) }}"
+I18N_LANGUAGES = "{{ env.I18N_LANGUAGES | default(value=vars.i18n_languages) }}"
+I18N_DIRECTORY = "{{ env.I18N_DIRECTORY | default(value=vars.i18n_directory) }}"
+I18N_BABEL_CONFIG = "{{ env.I18N_BABEL_CONFIG | default(value=vars.i18n_babel_config) }}"
+I18N_SCRIPT = "{{ env.I18N_SCRIPT | default(value=vars.i18n_script) }}"

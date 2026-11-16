@@ -1,0 +1,1 @@
+cargo clippy --fix --manifest-path Cargo.toml --workspace --all-targets --quiet --message-format short -- -D warnings

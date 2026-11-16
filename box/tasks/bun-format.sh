@@ -1,1 +1,1 @@
-bun fmt --no-script .
+bun fmt --no-script --log-level warn .

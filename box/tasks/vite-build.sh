@@ -1,1 +1,1 @@
-bunx --no-install vite build
+bunx --no-install vite build --logLevel warn

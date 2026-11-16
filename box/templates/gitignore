@@ -79,3 +79,13 @@ db.sqlite3
 
 # Environment variables
 .env
+
+# Swift and Xcode
+.build/
+.swiftpm/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+
+# Default database backup
+/backup.sql

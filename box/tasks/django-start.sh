@@ -1,1 +1,1 @@
-python manage.py runserver
+uv run python manage.py runserver

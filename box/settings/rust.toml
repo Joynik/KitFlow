@@ -1,0 +1,5 @@
+[vars]
+rust_directory = "."
+
+[env]
+PROJECT_RUST_DIRECTORY = "{{ env.PROJECT_RUST_DIRECTORY | default(value=config_root ~ '/' ~ vars.rust_directory) }}"

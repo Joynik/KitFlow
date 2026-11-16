@@ -1,1 +1,1 @@
-bunx --no-install vite
+bunx --no-install vite --logLevel info --clearScreen false

@@ -8,6 +8,7 @@ component IDs. An empty condition applies to every project.
 box/
 ├── kitflow-box.toml       Components, conditions and output paths
 ├── profiles/          Optional named component selections
+├── settings/          Creation-only mise defaults
 ├── templates/         Whole-file templates
 └── tasks/             Shell fragments, without mise table headers
 ```
@@ -15,11 +16,14 @@ box/
 ## Standard and user layers
 
 The configuration directory contains the standard box in `default/` and user definitions at its
-root. Both catalogs use `schema = 1`. The user catalog may contain only that line.
+root. The standard box uses `schema = 2` for settings defaults and task metadata. KitFlow still
+reads legacy schema 1 boxes; a user overlay may contain only `schema = 1`. Older KitFlow versions
+reject the new standard schema instead of silently generating incomplete tasks.
 
-KitFlow merges `components`, `files`, `tasks` and `env` by stable `id`. A user entry replaces the
-whole standard entry; omitted fields do not inherit values. New IDs append entries. Replacements
-keep their standard position. The effective catalog must have valid dependencies and conditions.
+KitFlow merges `components`, `files`, `tasks`, `env` and `defaults` by stable `id`. A user entry
+replaces the whole standard entry; omitted fields do not inherit values. New IDs append entries.
+Replacements keep their standard position. The effective catalog must have valid dependencies and
+conditions.
 
 Templates and profiles use relative paths as their identity. User files replace standard files at
 the same path. Directories merge file by file. An empty file is an explicit override. Removing an
@@ -39,6 +43,7 @@ components = []
 files = ["tools"]
 tasks = ["ruff-lint"]
 env = []
+defaults = []
 profiles = []
 ```
 
@@ -185,6 +190,53 @@ The first fragment could contain `ruff check .`. The second fragment could conta
 and colons. Fragments run in catalog order and stop on a failed command. Each command must work from
 the project root with tools already available. Fragments must not contain a triple single quote
 delimiter.
+
+## Task metadata and working directories
+
+Task fragments may define `description`, `alias`, `usage`, `hide` and `quiet`. String fields use
+mise's native meanings; `hide` and `quiet` are booleans. Metadata declared by multiple fragments of
+one task must agree. Shell fragments still compose in catalog order.
+
+```toml
+[[tasks]]
+id = "application-test"
+name = "test"
+template = "tasks/application-test.sh"
+when = ["python"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Run selected test runners"
+```
+
+`directory_env` names an exported variable containing the fragment's working directory. KitFlow
+wraps that fragment in a subshell, so other fragments keep their own directories. Missing values and
+invalid directories fail explicitly. Paths with spaces are supported. The core contains no
+language-specific path guessing.
+
+`usage` declares native mise arguments, available as `usage_name`, `usage_file` and other variables
+inside the fragment. For example: `usage = 'arg "[name]" help="Migration name"'`.
+
+All artifact sections support `when` and `when_any`. Every ID in `when` must be selected. At least
+one ID in a nonempty `when_any` must be selected. Both conditions apply when both are present.
+
+## Initial user settings
+
+```toml
+[[defaults]]
+id = "python"
+template = "settings/python.toml"
+when = ["python"]
+```
+
+A defaults template is TOML containing only `[vars]`, `[env]` and `[settings]`. KitFlow adds missing
+keys to `mise.toml` without replacing existing values or comments. It records the seed once. Later
+updates and component removal do not alter or remove these settings, even if a user deletes a key.
+Newly selected defaults entries may supply additional missing keys. Defaults have no management
+markers; they become user-owned immediately. Do not put secrets in defaults templates.
+
+The standard box loads `.env` and uses `env.NAME | default(value=vars.name)` for fallbacks. Values
+from `.env` therefore take priority over initial variable values. Runtime configuration belongs in
+mise, not in the project's `kitflow.toml`. After changing project paths, update the corresponding
+mise variables; no KitFlow reconfiguration is needed.
 
 ## Environment entries
 

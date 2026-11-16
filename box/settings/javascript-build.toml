@@ -1,0 +1,5 @@
+[vars]
+javascript_build_script = "build"
+
+[env]
+JAVASCRIPT_BUILD_SCRIPT = "{{ env.JAVASCRIPT_BUILD_SCRIPT | default(value=vars.javascript_build_script) }}"

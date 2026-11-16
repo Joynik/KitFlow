@@ -37,7 +37,7 @@ def main() -> int:
         f"--output-dir={output}",
         f"--jobs={args.jobs}",
         "--include-package=kitflow",
-        f"--include-data-files={root / 'src/kitflow/INSTRUCTION.md'}=INSTRUCTION.md",
+        f"--include-data-files={root / 'docs/INSTRUCTION.md'}=INSTRUCTION.md",
         "--include-package=textual",
         "--include-package-data=textual",
         "--include-package-data=rich",

@@ -1,0 +1,18 @@
+[vars]
+# Set the module:object for the selected server; use a compatible Gunicorn worker.
+python_app = ""
+server_host_default = "127.0.0.1"
+server_port_default = 8000
+server_workers = 1
+server_interface = "asgi"
+gunicorn_worker = "sync"
+build_before_run = "false"
+
+[env]
+PYTHON_APP = "{{ env.PYTHON_APP | default(value=vars.python_app) }}"
+SERVER_HOST = "{{ env.SERVER_HOST | default(value=vars.server_host_default) }}"
+SERVER_PORT = "{{ env.SERVER_PORT | default(value=vars.server_port_default) }}"
+SERVER_WORKERS = "{{ env.SERVER_WORKERS | default(value=vars.server_workers) }}"
+SERVER_INTERFACE = "{{ env.SERVER_INTERFACE | default(value=vars.server_interface) }}"
+GUNICORN_WORKER = "{{ env.GUNICORN_WORKER | default(value=vars.gunicorn_worker) }}"
+BUILD_BEFORE_RUN = "{{ env.BUILD_BEFORE_RUN | default(value=vars.build_before_run) }}"

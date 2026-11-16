@@ -1,0 +1,7 @@
+[vars]
+migration_name = "update_schema"
+alembic_config = "alembic.ini"
+
+[env]
+MIGRATION_NAME = "{{ env.MIGRATION_NAME | default(value=vars.migration_name) }}"
+ALEMBIC_CONFIG = "{{ env.ALEMBIC_CONFIG | default(value=vars.alembic_config) }}"

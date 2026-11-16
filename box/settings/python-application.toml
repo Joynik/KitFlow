@@ -1,0 +1,5 @@
+[vars]
+python_app = ""
+
+[env]
+PYTHON_APP = "{{ env.PYTHON_APP | default(value=vars.python_app) }}"

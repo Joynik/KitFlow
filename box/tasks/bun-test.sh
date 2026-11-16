@@ -1,1 +1,1 @@
-bun test --pass-with-no-tests
+bun test --pass-with-no-tests --reporter dots

@@ -1,0 +1,14 @@
+[vars]
+swift_directory = "."
+# Choose swiftpm or xcode; Xcode also requires project, scheme and destination.
+swift_backend = "swiftpm"
+xcode_project = ""
+xcode_scheme = ""
+xcode_destination = "platform=macOS"
+
+[env]
+SWIFT_BACKEND = "{{ env.SWIFT_BACKEND | default(value=vars.swift_backend) }}"
+PROJECT_SWIFT_DIRECTORY = "{{ env.PROJECT_SWIFT_DIRECTORY | default(value=config_root ~ '/' ~ vars.swift_directory) }}"
+XCODE_PROJECT = "{{ env.XCODE_PROJECT | default(value=vars.xcode_project) }}"
+XCODE_SCHEME = "{{ env.XCODE_SCHEME | default(value=vars.xcode_scheme) }}"
+XCODE_DESTINATION = "{{ env.XCODE_DESTINATION | default(value=vars.xcode_destination) }}"

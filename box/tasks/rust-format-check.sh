@@ -1,5 +1,1 @@
-manifest=Cargo.toml
-if [ ! -f "$manifest" ]; then
-    manifest=src-tauri/Cargo.toml
-fi
-cargo fmt --manifest-path "$manifest" --all -- --check
+cargo fmt --manifest-path Cargo.toml --all --message-format short -- --check

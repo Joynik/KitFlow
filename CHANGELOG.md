@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+## 0.7.0 — 2026-11-16
+
+### Added
+
+- Generate user-owned mise settings once, with configurable project directories, server defaults and
+  `.env` overrides. Add task descriptions, arguments, aliases and alternative component conditions.
+- Add default task help, selectable Granian/Gunicorn/Uvicorn dev and run modes, independent test
+  runners, SwiftPM/Xcode, Alembic, translations and composed debug/release builds.
+- Add SQL backups and restores for SQLite and PostgreSQL, locally or through Compose, with overwrite
+  protection, SQLite staging and PostgreSQL transaction rollback.
+- Compose `mise check` from selected lint, format and type checks, including Django migration
+  checks.
+- Add lint fixes, Markdown and Django HTML formatting checks, Django tests, Rust documentation tests
+  and Vite preview tasks to the standard box.
+
+### Changed
+
+- Use concise diagnostics for standard quality tasks while preserving warnings and failures.
+- Run Django management commands through `uv run python manage.py`.
+- Upgrade the standard box to schema 2. Upgrade KitFlow before refreshing the standard box; schema 1
+  user boxes remain supported.
+
 ### Fixed
 
 - Show an immediate download notice during initial box setup and `kitflow box update`.

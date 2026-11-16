@@ -85,3 +85,48 @@ def collision(text: str, artifact: Artifact) -> bool:
     data = parse(text)
     section = "tasks" if artifact.kind == "task" else "env"
     return artifact.key in data.get(section, {})
+
+
+def missing_defaults(text: str, content: bytes) -> bytes:
+    """Return only absent user settings, preserving every existing value."""
+    import tomlkit
+
+    incoming = tomlkit.parse(content.decode())
+    if set(incoming) - {"vars", "env", "settings"}:
+        raise KitFlowError("Mise defaults may contain only vars, env and settings")
+    current = parse(text)
+    for section, value in incoming.items():
+        if not isinstance(value, dict) or (
+            section in current and not isinstance(current[section], dict)
+        ):
+            raise KitFlowError(f"Mise defaults require a {section} table")
+
+    def missing(source, existing):
+        result = tomlkit.table()
+        for name, value in source.items():
+            if name not in existing:
+                result[name] = value
+            elif isinstance(value, dict) and isinstance(existing[name], dict):
+                nested = missing(value, existing[name])
+                if nested:
+                    result[name] = nested
+        return result
+
+    return tomlkit.dumps(missing(incoming, current)).encode()
+
+
+def add_defaults(text: str, content: bytes) -> str:
+    import tomlkit
+
+    document = tomlkit.parse(text)
+    incoming = tomlkit.parse(missing_defaults(text, content).decode())
+
+    def merge(target, source):
+        for name, value in source.items():
+            if name not in target:
+                target[name] = value
+            else:
+                merge(target[name], value)
+
+    merge(document, incoming)
+    return tomlkit.dumps(document)

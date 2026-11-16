@@ -1,1 +1,1 @@
-ruff check .
+ruff check . --output-format concise

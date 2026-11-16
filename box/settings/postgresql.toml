@@ -1,0 +1,11 @@
+[vars]
+postgres_host = "127.0.0.1"
+postgres_port = 5432
+postgres_database = ""
+postgres_user = ""
+
+[env]
+PGHOST = "{{ env.PGHOST | default(value=vars.postgres_host) }}"
+PGPORT = "{{ env.PGPORT | default(value=vars.postgres_port) }}"
+PGDATABASE = "{{ env.PGDATABASE | default(value=vars.postgres_database) }}"
+PGUSER = "{{ env.PGUSER | default(value=vars.postgres_user) }}"
