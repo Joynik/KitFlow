@@ -38,6 +38,7 @@ def main() -> int:
         f"--jobs={args.jobs}",
         "--include-package=kitflow",
         f"--include-data-files={root / 'docs/INSTRUCTION.md'}=INSTRUCTION.md",
+        f"--include-data-files={root / 'LICENSE'}=LICENSE",
         "--include-package=textual",
         "--include-package-data=textual",
         "--include-package-data=rich",

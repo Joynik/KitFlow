@@ -2,6 +2,8 @@
 name = "kitflow"
 version = "0.7.1"
 description = "Declarative project standards and composed mise tasks"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 requires-python = ">=3.14"
 authors = [{ name = "Joynik", email = "joynik@gmail.com" }]
 dependencies = [
@@ -35,7 +37,7 @@ packages = ["src/kitflow"]
 "docs/INSTRUCTION.md" = "kitflow/INSTRUCTION.md"
 
 [tool.hatch.build.targets.sdist]
-include = ["/src/kitflow", "/docs/INSTRUCTION.md", "/pyproject.toml", "/README.md"]
+include = ["/src/kitflow", "/docs/INSTRUCTION.md", "/pyproject.toml", "/README.md", "/LICENSE"]
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
