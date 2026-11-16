@@ -4,6 +4,7 @@ line-length = 100
 exclude = [
   ".beads/*.md",
   ".agents/*.md",
+  "LICENSE",
 ]
 
 [MD013]
