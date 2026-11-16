@@ -1,6 +1,15 @@
 name: Update Homebrew tap
 
 on:
+  workflow_call:
+    inputs:
+      version:
+        description: Published release tag
+        required: true
+        type: string
+    secrets:
+      HOMEBREW_TAP_SSH_KEY:
+        required: true
   release:
     types: [published]
   workflow_dispatch:
@@ -19,13 +28,13 @@ concurrency:
 
 jobs:
   update:
-    if: github.event_name == 'workflow_dispatch' || (!github.event.release.prerelease && !github.event.release.draft)
+    if: inputs.version != '' || (!github.event.release.prerelease && !github.event.release.draft)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: main
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: actions/checkout@v6
         with:

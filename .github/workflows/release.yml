@@ -13,11 +13,43 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Validate release metadata
+        id: version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PYTHON'
+          import os
+          import re
+          import tomllib
+          from pathlib import Path
+          version = tomllib.loads(Path('pyproject.toml').read_text())['project']['version']
+          if not re.fullmatch(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)', version):
+              raise SystemExit('Version must use MAJOR.MINOR.PATCH without a prefix')
+          if os.environ['REF_TYPE'] == 'tag' and os.environ['REF_NAME'] != version:
+              raise SystemExit('Tag does not match the package version')
+          changelog = Path('CHANGELOG.md').read_text()
+          if not re.search(r'^## ' + re.escape(version) + r' — \d{4}-\d{2}-\d{2}$', changelog, re.M):
+              raise SystemExit('Prepare a dated changelog section before releasing')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'version={version}\n')
+          PYTHON
+
   checks:
     uses: ./.github/workflows/checks.yml
 
   build:
-    needs: checks
+    needs: [prepare, checks]
     strategy:
       fail-fast: false
       matrix:
@@ -38,26 +70,6 @@ jobs:
         with:
           enable-cache: true
           python-version: '3.14'
-      - name: Validate release version
-        if: github.ref_type == 'tag'
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          uv run --no-project python - <<'PY'
-          import os
-          import re
-          import tomllib
-          from pathlib import Path
-          tag = os.environ['RELEASE_TAG']
-          version = tomllib.loads(Path('pyproject.toml').read_text())['project']['version']
-          if not re.fullmatch(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)', tag):
-              raise SystemExit('Release tag must use MAJOR.MINOR.PATCH without a prefix')
-          if tag != version:
-              raise SystemExit(f'Tag {tag} does not match package version {version}')
-          changelog = Path('CHANGELOG.md').read_text()
-          if not re.search(r'^## ' + re.escape(tag) + r' — \d{4}-\d{2}-\d{2}$', changelog, re.M):
-              raise SystemExit('Prepare a dated changelog section before releasing')
-          PY
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y patchelf ccache
@@ -87,24 +99,57 @@ jobs:
           retention-days: 14
 
   release:
-    if: github.event_name == 'push' && github.ref_type == 'tag'
-    needs: build
+    needs: [prepare, build]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
       - uses: actions/download-artifact@v8
         with:
           pattern: standalone-*
           path: release-assets
           merge-multiple: true
-      - name: Create checksums and draft release
+      - name: Create tag and publish release
         working-directory: release-assets
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.version }}
         run: |
+          set -euo pipefail
+          python3 - <<'PYTHON'
+          import os
+          import tarfile
+          from pathlib import Path
+          version = os.environ['RELEASE_TAG']
+          expected = {f'kitflow-{version}-{platform}.tar.gz' for platform in ('macos-arm64', 'linux-arm64', 'linux-x86_64')}
+          archives = list(Path('.').glob('*.tar.gz'))
+          if {path.name for path in archives} != expected:
+              raise SystemExit('Expected exactly three release archives for this version')
+          for path in archives:
+              with tarfile.open(path) as archive:
+                  if 'kitflow/kitflow' not in archive.getnames():
+                      raise SystemExit(f'Missing executable in {path}')
+          changelog = Path('../CHANGELOG.md').read_text()
+          section = changelog.split(f'## {version} — ', 1)[1].split('\n', 1)[1].split('\n## ', 1)[0]
+          Path('../release-notes.md').write_text(section.strip() + '\n')
+          PYTHON
+          if git rev-parse --verify "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            test "$(git rev-parse "$RELEASE_TAG^{commit}")" = "$GITHUB_SHA"
+          else
+            gh api "repos/$GH_REPO/git/refs" --method POST -f "ref=refs/tags/$RELEASE_TAG" -f "sha=$GITHUB_SHA"
+          fi
           sha256sum ./*.tar.gz > SHA256SUMS
-          gh release create "$RELEASE_TAG" ./*.tar.gz SHA256SUMS --verify-tag --draft --title "$RELEASE_TAG" --generate-notes
+          gh release create "$RELEASE_TAG" ./*.tar.gz SHA256SUMS --verify-tag --title "$RELEASE_TAG" --notes-file ../release-notes.md --latest
+
+  homebrew:
+    needs: [prepare, release]
+    uses: ./.github/workflows/homebrew.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+    secrets: inherit
