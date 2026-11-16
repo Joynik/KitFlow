@@ -78,7 +78,7 @@ jobs:
           "$smoke_dir/kitflow/kitflow" init -b "$GITHUB_WORKSPACE/box" -p "$smoke_dir/project" -c python,ruff -y
           "$smoke_dir/kitflow/kitflow" status --box "$GITHUB_WORKSPACE/box" --project "$smoke_dir/project"
           "$smoke_dir/kitflow/kitflow" check -b "$GITHUB_WORKSPACE/box" -p "$smoke_dir/project"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: standalone-${{ matrix.platform }}
           path: dist/kitflow-*-${{ matrix.platform }}.tar.gz
@@ -94,7 +94,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: standalone-*
           path: release-assets
