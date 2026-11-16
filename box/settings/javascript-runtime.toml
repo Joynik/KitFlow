@@ -1,0 +1,7 @@
+[vars]
+javascript_dev_script = "dev"
+javascript_run_script = "start"
+
+[env]
+JAVASCRIPT_DEV_SCRIPT = "{{ env.JAVASCRIPT_DEV_SCRIPT | default(value=vars.javascript_dev_script) }}"
+JAVASCRIPT_RUN_SCRIPT = "{{ env.JAVASCRIPT_RUN_SCRIPT | default(value=vars.javascript_run_script) }}"

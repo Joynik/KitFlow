@@ -1,0 +1,3 @@
+[vars]
+# Preview is a local production-build check, not a deployment server.
+javascript_run_script = "preview"

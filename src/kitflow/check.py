@@ -8,10 +8,20 @@ from pathlib import Path
 from kitflow import mise
 from kitflow.catalog import Artifact, Catalog, KitFlowError, safe_path
 from kitflow.engine import CONFIG, load_config, plan, read_file
-from kitflow.profiles import profile_paths, read_profile
 
 BOX_FIELDS = {
-    "components": {"id", "label", "category", "description", "requires", "conflicts"},
+    "steps": {"id", "label", "categories", "description", "order", "when", "when_any"},
+    "components": {
+        "id",
+        "label",
+        "category",
+        "description",
+        "requires",
+        "conflicts",
+        "recommended",
+        "when",
+        "when_any",
+    },
     "files": {"id", "path", "template", "when", "when_any", "mode", "empty"},
     "tasks": {
         "id",
@@ -124,16 +134,6 @@ def configuration_issues(
     except errors as error:
         issues.append((box / "kitflow-box.toml", str(error)))
     if catalog is not None:
-        try:
-            paths = profile_paths(catalog)
-        except errors as error:
-            paths = []
-            issues.append((box / "profiles", str(error)))
-        for path in paths:
-            try:
-                read_profile(catalog, path)
-            except errors as error:
-                issues.append((path, str(error)))
         checked = set()
         for row in catalog.data.get("files", []):
             if row.get("empty") is True:

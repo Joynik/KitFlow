@@ -1,5 +1,5 @@
 # KitFlow catalog: all paths are relative to this directory.
-schema = 2
+schema = 3
 
 [[components]]
 id = "python"
@@ -22,8 +22,9 @@ id = "typescript"
 label = "TypeScript"
 category = "Languages"
 description = "Project language; select checks separately."
-requires = []
+requires = ["javascript"]
 conflicts = []
+when = []
 
 [[components]]
 id = "django"
@@ -31,7 +32,7 @@ label = "Django"
 category = "Frameworks"
 description = "Django checks and migrations with separately selected server and tests."
 requires = ["python"]
-conflicts = ["fastapi"]
+conflicts = ["fastapi", "flask"]
 
 [[components]]
 id = "fastapi"
@@ -39,7 +40,7 @@ label = "FastAPI"
 category = "Frameworks"
 description = "FastAPI application with separately selected server, migrations and tests."
 requires = ["python"]
-conflicts = ["django"]
+conflicts = ["django", "flask"]
 
 [[components]]
 id = "postgresql"
@@ -72,6 +73,7 @@ category = "Checks"
 description = "Python linting and formatting."
 requires = ["python"]
 conflicts = []
+recommended = true
 
 [[components]]
 id = "ty"
@@ -80,6 +82,7 @@ category = "Checks"
 description = "Python type checking."
 requires = ["python"]
 conflicts = []
+recommended = true
 
 [[components]]
 id = "rumdl"
@@ -88,6 +91,7 @@ category = "Checks"
 description = "Markdown linting and formatting."
 requires = []
 conflicts = []
+recommended = true
 
 [[components]]
 id = "djlint"
@@ -96,6 +100,7 @@ category = "Checks"
 description = "Django template linting and formatting."
 requires = ["django"]
 conflicts = []
+recommended = true
 
 [[components]]
 id = "agents"
@@ -104,6 +109,7 @@ category = "Instructions"
 description = "Generic agent instructions; an empty PROJECT.md is created once."
 requires = []
 conflicts = []
+recommended = true
 
 [[components]]
 id = "rust"
@@ -116,10 +122,11 @@ conflicts = []
 [[components]]
 id = "tauri"
 label = "Tauri"
-category = "Frameworks"
+category = "Desktop frameworks"
 description = "Desktop application shell; use Bun for development and application builds."
 requires = ["rust", "bun"]
 conflicts = []
+when = ["rust"]
 
 [[components]]
 id = "react"
@@ -132,10 +139,11 @@ conflicts = []
 [[components]]
 id = "vite"
 label = "Vite"
-category = "Infrastructure"
+category = "Build tools"
 description = "Frontend development server and production assets through Bun."
 requires = ["javascript", "bun"]
-conflicts = []
+conflicts = ["nextjs", "nuxt", "sveltekit", "astro"]
+when_any = ["javascript", "typescript"]
 
 [[components]]
 id = "bun"
@@ -144,6 +152,7 @@ category = "Checks"
 description = "Native Bun lint, fmt, check and test commands; requires Bun 1.4.4 or newer."
 requires = ["javascript"]
 conflicts = []
+recommended = true
 
 [[components]]
 id = "swift"
@@ -160,30 +169,34 @@ category = "Checks"
 description = ""
 requires = ["swift"]
 conflicts = []
+recommended = true
 
 [[components]]
 id = "granian"
 label = "Granian"
 category = "Python servers"
-description = ""
+description = "Python server with development reload and normal run modes."
 requires = ["python"]
 conflicts = ["gunicorn", "uvicorn"]
+when_any = ["django", "fastapi", "flask"]
 
 [[components]]
 id = "gunicorn"
 label = "Gunicorn"
 category = "Python servers"
-description = ""
+description = "Python server with configurable workers and reload."
 requires = ["python"]
 conflicts = ["granian", "uvicorn"]
+when_any = ["django", "fastapi", "flask"]
 
 [[components]]
 id = "uvicorn"
 label = "Uvicorn"
 category = "Python servers"
-description = ""
+description = "ASGI server for Django or FastAPI."
 requires = ["python"]
-conflicts = ["granian", "gunicorn"]
+conflicts = ["granian", "gunicorn", "flask"]
+when_any = ["django", "fastapi"]
 
 [[components]]
 id = "pytest"
@@ -216,6 +229,7 @@ category = "Tests"
 description = ""
 requires = ["bun"]
 conflicts = []
+recommended = true
 
 [[components]]
 id = "rust-tests"
@@ -224,6 +238,7 @@ category = "Tests"
 description = ""
 requires = ["rust"]
 conflicts = []
+recommended = true
 
 [[components]]
 id = "swift-tests"
@@ -232,6 +247,7 @@ category = "Tests"
 description = ""
 requires = ["swift"]
 conflicts = []
+recommended = true
 
 [[components]]
 id = "alembic"
@@ -265,6 +281,71 @@ description = ""
 requires = ["bun"]
 conflicts = []
 
+[[components]]
+id = "flask"
+label = "Flask"
+category = "Frameworks"
+requires = ["python"]
+description = "Lightweight WSGI application; choose a server separately."
+conflicts = ["django", "fastapi", "uvicorn"]
+[[components]]
+id = "vue"
+label = "Vue"
+category = "Frameworks"
+requires = ["javascript"]
+description = "Vue user interface; select Vite or Nuxt separately."
+when_any = ["javascript", "typescript"]
+[[components]]
+id = "svelte"
+label = "Svelte"
+category = "Frameworks"
+requires = ["javascript"]
+description = "Svelte user interface; select Vite or SvelteKit separately."
+when_any = ["javascript", "typescript"]
+[[components]]
+id = "nextjs"
+label = "Next.js (React)"
+category = "Frameworks"
+requires = ["react", "bun"]
+description = "React web application. Uses the project dev, build and start scripts."
+when_any = ["javascript", "typescript"]
+conflicts = ["nuxt", "sveltekit", "astro", "vite"]
+[[components]]
+id = "nuxt"
+label = "Nuxt (Vue)"
+category = "Frameworks"
+requires = ["vue", "bun"]
+description = "Vue web application. Uses the project dev, build and preview scripts."
+when_any = ["javascript", "typescript"]
+conflicts = ["nextjs", "sveltekit", "astro", "vite"]
+[[components]]
+id = "sveltekit"
+label = "SvelteKit (Svelte)"
+category = "Frameworks"
+requires = ["svelte", "bun"]
+description = "Svelte web application. Uses the project dev, build and preview scripts."
+when_any = ["javascript", "typescript"]
+conflicts = ["nextjs", "nuxt", "astro", "vite"]
+[[components]]
+id = "astro"
+label = "Astro"
+category = "Frameworks"
+requires = ["javascript", "bun"]
+description = "Content-oriented website. Uses the project dev, build and preview scripts."
+when_any = ["javascript", "typescript"]
+conflicts = ["nextjs", "nuxt", "sveltekit", "vite"]
+[[components]]
+id = "axum"
+label = "Axum"
+category = "Frameworks"
+requires = ["rust"]
+description = "Rust HTTP application; Cargo build, checks, tests and backend run tasks."
+[[components]]
+id = "actix-web"
+label = "Actix Web"
+category = "Frameworks"
+requires = ["rust"]
+description = "Rust HTTP application; Cargo build, checks, tests and backend run tasks."
 [[files]]
 id = "readme"
 path = "README.md"
@@ -574,7 +655,7 @@ name = "frontend:dev"
 template = "tasks/vite-start.sh"
 when = ["vite", "bun"]
 directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
-description = "Frontend dev"
+description = "Run the frontend development server"
 
 [[tasks]]
 id = "vite-build"
@@ -959,7 +1040,7 @@ id = "fastapi-app-check"
 name = "app-check"
 template = "tasks/fastapi-app-check.sh"
 when = ["fastapi"]
-description = "Check selected applications"
+description = "Check the application configuration"
 directory_env = "PROJECT_PYTHON_DIRECTORY"
 
 [[tasks]]
@@ -967,7 +1048,7 @@ id = "django-app-check"
 name = "app-check"
 template = "tasks/django-app-check.sh"
 when = ["django"]
-description = "Check selected applications"
+description = "Check the application configuration"
 directory_env = "PROJECT_PYTHON_DIRECTORY"
 
 [[tasks]]
@@ -1030,7 +1111,7 @@ name = "verify"
 template = "tasks/check-app.sh"
 when = []
 description = "Run checks, application checks and tests sequentially"
-when_any = ["django", "fastapi"]
+when_any = ["django", "fastapi", "flask"]
 
 [[tasks]]
 id = "verify-tests"
@@ -1058,12 +1139,55 @@ usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\""
 description = "Restore SQL data in the configured container"
 when_any = ["sqlite", "postgresql"]
 
+[[tasks]]
+id = "frontend-dev"
+name = "frontend:dev"
+template = "tasks/javascript-dev.sh"
+when_any = ["nextjs", "nuxt", "sveltekit", "astro"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Run the frontend development server"
+[[tasks]]
+id = "frontend-run"
+name = "frontend:run"
+template = "tasks/javascript-run.sh"
+when_any = ["nextjs", "nuxt", "sveltekit", "astro"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Run the frontend start or preview script"
+[[tasks]]
+id = "rust-server-run"
+name = "backend:run"
+template = "tasks/rust-run.sh"
+when_any = ["axum", "actix-web"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Run the Rust application"
+[[tasks]]
+id = "rust-server-release"
+name = "backend:run-release"
+template = "tasks/rust-run-release.sh"
+when_any = ["axum", "actix-web"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Run the optimized Rust application"
+[[tasks]]
+id = "flask-app-check"
+name = "app-check"
+template = "tasks/flask-app-check.sh"
+when = ["flask"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Check the application configuration"
 [[env]]
 id = "PYTHONUNBUFFERED"
 name = "PYTHONUNBUFFERED"
 value = "1"
 when = ["python"]
 
+[[defaults]]
+id = "flask-wsgi"
+template = "settings/flask-wsgi.toml"
+when = ["flask", "granian"]
+[[defaults]]
+id = "frontend-preview"
+template = "settings/javascript-preview.toml"
+when_any = ["nuxt", "sveltekit", "astro"]
 [[defaults]]
 id = "base"
 template = "settings/base.toml"
@@ -1137,9 +1261,94 @@ when = ["postgresql"]
 [[defaults]]
 id = "python-application"
 template = "settings/python-application.toml"
-when_any = ["django", "fastapi"]
+when_any = ["django", "fastapi", "flask"]
 
 [[defaults]]
 id = "unittest"
 template = "settings/unittest.toml"
 when = ["unittest"]
+[[defaults]]
+id = "frontend-runtime"
+template = "settings/javascript-runtime.toml"
+when_any = ["nextjs", "nuxt", "sveltekit", "astro"]
+[[defaults]]
+id = "rust-runtime"
+template = "settings/rust-runtime.toml"
+when_any = ["axum", "actix-web"]
+
+[[steps]]
+id = "languages"
+label = "Languages"
+categories = ["Languages"]
+description = "Choose one or more languages. A framework is optional."
+order = 10
+
+[[steps]]
+id = "frameworks"
+label = "Frameworks"
+categories = ["Frameworks", "Desktop frameworks"]
+description = "Choose frameworks. Dependencies are added automatically; conflicting alternatives are replaced."
+order = 20
+
+[[steps]]
+id = "servers"
+label = "Application server"
+categories = ["Python servers"]
+description = "Choose a compatible Python server, or continue without one."
+order = 30
+
+[[steps]]
+id = "databases"
+label = "Databases"
+categories = ["Databases"]
+description = "Choose a database, or continue without one."
+order = 40
+
+[[steps]]
+id = "infrastructure"
+label = "Infrastructure"
+categories = ["Infrastructure"]
+description = "Choose container and infrastructure tools."
+order = 50
+
+[[steps]]
+id = "build-tools"
+label = "Build tools"
+categories = ["Build tools"]
+description = "Choose build tools separately from frameworks."
+order = 60
+
+[[steps]]
+id = "checks"
+label = "Checks and formatting"
+categories = ["Checks"]
+description = "Recommendations are selected for new choices. You can disable any recommendation."
+order = 70
+
+[[steps]]
+id = "tests"
+label = "Testing"
+categories = ["Tests"]
+description = "Choose independent test runners. They can be combined."
+order = 80
+
+[[steps]]
+id = "migrations"
+label = "Migrations"
+categories = ["Migrations"]
+description = "Django has built-in migrations; Alembic is optional for other Python applications."
+order = 90
+
+[[steps]]
+id = "translations"
+label = "Translations"
+categories = ["Translations"]
+description = "Choose translation tasks only when needed."
+order = 100
+
+[[steps]]
+id = "instructions"
+label = "Instructions"
+categories = ["Instructions"]
+description = "Choose shared agent instructions and project documents."
+order = 110

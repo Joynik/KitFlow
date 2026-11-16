@@ -97,7 +97,7 @@ def test_help_describes_commands_and_box_options():
     help_text = cli.parser().format_help()
     for description in [
         "Choose or change project components",
-        "Apply local templates",
+        "Update project files",
         "List pending changes",
         "Show proposed file differences",
         "Show the local box location",
@@ -117,3 +117,72 @@ def test_bundled_guide_matches_published_instructions():
     from kitflow.source import read_instructions
 
     assert read_instructions() == (Path(__file__).parents[1] / "docs/INSTRUCTION.md").read_text()
+
+
+def test_update_can_reconfigure_and_remove_components(tmp_path, monkeypatch):
+    from kitflow.tui import Configurator, Selection
+
+    assert (
+        cli.run(
+            cli.parser().parse_args(
+                ["init", "-c", "ruff,agents", "-b", str(CATALOG), "-p", str(tmp_path), "-y"]
+            )
+        )
+        == 0
+    )
+    monkeypatch.setattr(cli.sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(cli.Prompt, "ask", lambda *_args, **_kwargs: "setup")
+    monkeypatch.setattr(cli.Confirm, "ask", lambda *_args, **_kwargs: True)
+    starts = []
+
+    def configure(self):
+        starts.append(self.model.chosen.copy())
+        assert self.model.seen
+        return Selection(["python", "agents"], [])
+
+    monkeypatch.setattr(Configurator, "run", configure)
+    assert (
+        cli.run(cli.parser().parse_args(["update", "-b", str(CATALOG), "-p", str(tmp_path)])) == 0
+    )
+    assert starts == [{"python", "ruff", "agents"}]
+    assert not (tmp_path / "ruff.toml").exists()
+    assert tomllib.loads((tmp_path / "kitflow.toml").read_text())["selection"]["components"] == [
+        "python",
+        "agents",
+    ]
+
+
+def test_update_yes_skips_menu_and_wizard(tmp_path, monkeypatch):
+    from kitflow.tui import Configurator
+
+    assert invoke(tmp_path, "init", "-c", "ruff", "-y").returncode == 0
+    monkeypatch.setattr(cli.sys.stdin, "isatty", lambda: True)
+
+    def unexpected(*_args, **_kwargs):
+        raise AssertionError("Unexpected interactive setup")
+
+    monkeypatch.setattr(cli.Prompt, "ask", unexpected)
+    monkeypatch.setattr(Configurator, "run", unexpected)
+    assert (
+        cli.run(cli.parser().parse_args(["update", "-y", "-b", str(CATALOG), "-p", str(tmp_path)]))
+        == 0
+    )
+
+
+def test_update_wizard_cancel_does_not_write_files(tmp_path, monkeypatch):
+    from kitflow.tui import Configurator
+
+    assert invoke(tmp_path, "init", "-c", "ruff", "-y").returncode == 0
+    before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
+    monkeypatch.setattr(cli.sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr(cli.Prompt, "ask", lambda *_args, **_kwargs: "setup")
+    monkeypatch.setattr(Configurator, "run", lambda self: None)
+    assert (
+        cli.run(cli.parser().parse_args(["update", "-b", str(CATALOG), "-p", str(tmp_path)])) == 0
+    )
+    assert {p: p.read_bytes() for p in before} == before
+
+
+def test_removed_profile_option_is_rejected(tmp_path):
+    assert invoke(tmp_path, "init", "--profile", "example", "-y").returncode == 2
+    assert not list(tmp_path.iterdir())

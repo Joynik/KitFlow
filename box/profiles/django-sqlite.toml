@@ -1,3 +1,0 @@
-name = "Django"
-description = "Django with SQLite, code checks and agent instructions."
-components = ["django", "sqlite", "ruff", "ty", "rumdl", "agents", "django-tests"]

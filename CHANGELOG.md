@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+## 0.8.0 — 2026-11-16
+
+### Added
+
+- Configure projects with a conditional Navigator wizard. Separate languages, frameworks, servers,
+  databases, infrastructure and tools; preselect optional recommendations while preserving existing
+  project choices. Define steps and visibility in the box.
+- Add Flask, Next.js, Vue, Nuxt, Svelte, SvelteKit, Astro, Axum and Actix Web to the standard box,
+  with framework dependencies, frontend script tasks and Rust backend run tasks.
+
+### Changed
+
+- Interactive `update` offers file updates or reconfiguration through the wizard. `update -y`
+  continues to apply the saved selection without opening a menu.
+- Use standard box schema 3 for wizard definitions. Legacy schema 1 and 2 catalogs remain readable.
+
+### Removed
+
+- Remove setup profiles and `--profile/-r`. Existing projects retain their resolved components; old
+  local profile files are left untouched and ignored.
+
 ## 0.7.1 — 2026-11-16
 
 ### Fixed

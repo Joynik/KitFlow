@@ -66,8 +66,8 @@ class Catalog:
             from kitflow.layers import load_data
 
             self.data, self.sources = load_data(self.root, self.standard)
-            if self.data.get("schema") not in {1, 2}:
-                raise KitFlowError("Unsupported catalog schema; expected 1 or 2")
+            if self.data.get("schema") not in {1, 2, 3}:
+                raise KitFlowError("Unsupported catalog schema; expected 1, 2 or 3")
             for _, data in self.sources:
                 self.validate(data)
             self.validate(self.data)
@@ -94,6 +94,9 @@ class Catalog:
                         raise KitFlowError(f"Unknown dependency or conflict: {other}")
             for identity in self.components:
                 self.resolve([identity])
+            from kitflow.wizard import validate_wizard
+
+            validate_wizard(self)
             self.render(list(self.components), check_conflicts=False)
         except (KeyError, TypeError, ValueError, OSError) as error:
             raise KitFlowError(f"Invalid catalog: {error}") from error

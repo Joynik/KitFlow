@@ -83,7 +83,7 @@ def test_first_use_downloads_once_and_keeps_user_edits(monkeypatch):
     assert metadata == {"kind": "user-box"}
     assert calls
     assert (catalog.root / "kitflow-box.toml").read_text().endswith("schema = 1\n")
-    assert all((catalog.root / name).is_dir() for name in ("profiles", "tasks", "templates"))
+    assert all((catalog.root / name).is_dir() for name in ("tasks", "templates"))
     assert not any("empty.md" in url for url in calls)
     assert not (catalog.root / "snapshot.json").exists()
     assert (catalog.root / "default/INSTRUCTION.md").read_text() == source.read_instructions(
@@ -179,23 +179,26 @@ def test_private_content_request_uses_token_and_raw_media_type(monkeypatch):
         source.fetch("https://example.com/kitflow-box.toml")
 
 
-def test_first_use_downloads_profiles_from_the_same_commit(tmp_path, monkeypatch):
+def test_first_use_downloads_wizard_definition_from_the_same_commit(tmp_path, monkeypatch):
     import shutil
 
-    from kitflow.profiles import load_profiles
+    from kitflow.wizard import Wizard
 
     fixture = tmp_path / "fixture"
     shutil.copytree(Path(__file__).parent / "fixtures/catalog", fixture)
-    (fixture / "profiles").mkdir()
-    (fixture / "profiles/django.toml").write_text('name = "Django"\ncomponents = ["django"]')
+    manifest = fixture / "kitflow-box.toml"
+    manifest.write_text(
+        manifest.read_text().replace("schema = 1", "schema = 3")
+        + '\n[[steps]]\nid="languages"\nlabel="Choose a language"\ncategories=["Languages"]\n'
+    )
     calls = downloads(monkeypatch, fixture)
     catalog, _ = source.load_box()
-    assert load_profiles(catalog)["django"].components == ["python", "django"]
-    assert any("/contents/box/profiles/django.toml?ref=" + "a" * 40 in url for url in calls)
+    assert Wizard(catalog, [], []).steps()[0].label == "Choose a language"
+    assert all("?ref=" + "a" * 40 in url for url in calls if "/contents/" in url)
 
 
-@pytest.mark.parametrize(("truncated", "mode"), [(True, "100644"), (False, "120000")])
-def test_invalid_profile_download_keeps_initial_box_absent(monkeypatch, truncated, mode):
+@pytest.mark.parametrize("truncated", [True, False])
+def test_invalid_download_keeps_initial_box_absent(monkeypatch, truncated):
     downloads(monkeypatch)
     original = source.fetch
 
@@ -204,13 +207,13 @@ def test_invalid_profile_download_keeps_initial_box_absent(monkeypatch, truncate
             return json.dumps(
                 {
                     "truncated": truncated,
-                    "tree": [{"path": "box/profiles/example.toml", "type": "blob", "mode": mode}],
+                    "tree": [{"path": "box/tasks/example.sh", "type": "commit", "mode": "160000"}],
                 }
             ).encode()
         return original(url)
 
     monkeypatch.setattr(source, "fetch", invalid_tree)
-    with pytest.raises(KitFlowError, match="incomplete|regular TOML"):
+    with pytest.raises(KitFlowError, match="incomplete|Unsupported"):
         source.load_box()
     assert not settings.box_path().exists()
     assert not list(settings.config_directory().glob(".box-download-*"))

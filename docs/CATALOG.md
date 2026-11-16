@@ -7,7 +7,6 @@ component IDs. An empty condition applies to every project.
 ```text
 box/
 ├── kitflow-box.toml       Components, conditions and output paths
-├── profiles/          Optional named component selections
 ├── settings/          Creation-only mise defaults
 ├── templates/         Whole-file templates
 └── tasks/             Shell fragments, without mise table headers
@@ -16,18 +15,18 @@ box/
 ## Standard and user layers
 
 The configuration directory contains the standard box in `default/` and user definitions at its
-root. The standard box uses `schema = 2` for settings defaults and task metadata. KitFlow still
-reads legacy schema 1 boxes; a user overlay may contain only `schema = 1`. Older KitFlow versions
-reject the new standard schema instead of silently generating incomplete tasks.
+root. The standard box uses `schema = 3` for the declarative wizard. KitFlow still reads legacy
+schema 1 and 2 boxes; a user overlay may contain only `schema = 1`. Older KitFlow versions reject
+the new standard schema instead of silently generating incomplete tasks.
 
-KitFlow merges `components`, `files`, `tasks`, `env` and `defaults` by stable `id`. A user entry
-replaces the whole standard entry; omitted fields do not inherit values. New IDs append entries.
-Replacements keep their standard position. The effective catalog must have valid dependencies and
-conditions.
+KitFlow merges `components`, `files`, `tasks`, `env`, `defaults` and `steps` by stable `id`. A user
+entry replaces the whole standard entry; omitted fields do not inherit values. New IDs append
+entries. Replacements keep their standard position. The effective catalog must have valid
+dependencies and conditions.
 
-Templates and profiles use relative paths as their identity. User files replace standard files at
-the same path. Directories merge file by file. An empty file is an explicit override. Removing an
-override restores the standard definition or file. Profiles use the filename stem as their ID.
+Templates use relative paths as their identity. User files replace standard files at the same path.
+Directories merge file by file. An empty file is an explicit override. Removing an override restores
+the standard definition or file.
 
 Use explicit IDs for task fragments and environment entries. Legacy tasks without `id` use the
 template filename stem; legacy environment entries use their `name`. Duplicate IDs within one
@@ -44,12 +43,12 @@ files = ["tools"]
 tasks = ["ruff-lint"]
 env = []
 defaults = []
-profiles = []
+steps = []
 ```
 
 Lists contain IDs from the corresponding merged section. Unknown or duplicate IDs are errors.
-Disabling a component also requires updating or disabling entries that reference it, including
-profiles. Disabling a file rule disables all its directory-template children.
+Disabling a component also requires updating or disabling entries that reference it. Disabling a
+file rule disables all its directory-template children.
 
 `kitflow box update` validates the incoming standard box and its combination with user definitions
 before replacing `default/`. `kitflow check` reads the local layers and checks their combined
@@ -80,36 +79,49 @@ Dependencies are recursive. Unknown dependencies and dependency cycles are rejec
 checked against the resolved selection. Category labels and component descriptions come from the
 catalog.
 
-## Profiles
+## Navigator wizard
 
-Create one TOML file per profile in `profiles/`, directly under the box directory:
+Define ordered steps in the same catalog. Each category belongs to at most one step:
 
 ```toml
-# profiles/django-docker.toml
-name = "Django + Docker"
-description = "Django with PostgreSQL, Docker and checks."
-components = ["django", "postgresql", "docker", "ruff", "ty", "agents"]
+schema = 3
+
+[[steps]]
+id = "checks"
+label = "Checks and formatting"
+categories = ["Checks"]
+order = 60
+description = "Disable any recommendation you do not need."
+
+[[components]]
+id = "quality"
+label = "Quality checks"
+category = "Checks"
+recommended = true
+requires = ["python"]
 ```
 
-The filename without `.toml` is the profile ID. Use lowercase letters, digits, underscores or
-hyphens, starting with a letter. `name` and `components` are required; `description` is optional.
-Component IDs must exist in `kitflow-box.toml`. Dependencies are added automatically. Duplicate
-component IDs, conflicts and unknown fields are rejected. Profile definitions must be regular TOML
-files, not symbolic links. Profiles are optional; KitFlow uses the existing component menu when none
-exist.
+Steps merge by ID, just like components. `order` sorts them; declaration order breaks ties.
+Unassigned categories receive automatic steps, including in legacy boxes. Empty steps are hidden.
+The final review and user-owned-file steps are supplied by KitFlow. Their IDs `review` and
+`ownership` are reserved.
 
-Select one profile with `kitflow init --profile django-docker`, or choose it in the setup menu. The
-menu offers **Review plan** and **Customize selection**. Custom setup preserves an existing
-project's component selection. `--profile/-r` and `--components/-c` cannot be combined.
+A component is available when its required components are selected. To show an option before all its
+dependencies are selected, supply `when` and/or `when_any`. They control wizard visibility;
+selecting the option still adds every mandatory `requires` dependency. For example, a web framework
+can use `when_any = ["javascript", "typescript"]` and require its UI library. The wizard adds that
+library automatically. `when` requires every listed ID; `when_any` requires at least one. Both
+conditions apply when both are present. These conditions may also hide whole steps.
 
-Profiles supply a starting selection. The project saves only the final component list, not a live
-profile reference. Editing a profile does not change projects during `update`. Run `init --profile`
-again to apply a profile's new selection after reviewing the plan. Existing user-owned exclusions
-remain in effect; use `--manage` or the component menu to restore management.
+`recommended = true` selects a newly available option when its step opens. Recommendations never
+replace conflicting choices. Users can deselect them; returning to a step does not select them
+again. Existing projects keep their saved selection. Selecting a conflicting alternative removes the
+previous alternative and dependent components, with a notification.
 
-Inheritance and combining multiple profiles are not supported. Run `kitflow check` after editing
-profiles; it validates every profile and reports errors with file paths. Initial box setup and
-explicit standard-box refresh include example profiles from the same GitHub commit as the templates.
+The wizard supports multiple languages and a project without a framework. It does not create
+application source code or install dependencies. Profiles and `--profile/-r` have been removed.
+Existing projects already store resolved components, so they need no selection migration. Old local
+profile files remain on disk but are no longer read.
 
 ## Whole files
 

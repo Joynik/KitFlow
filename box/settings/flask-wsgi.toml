@@ -1,0 +1,2 @@
+[vars]
+server_interface = "wsgi"

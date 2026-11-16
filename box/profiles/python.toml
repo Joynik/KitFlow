@@ -1,3 +1,0 @@
-name = "Python"
-description = "Python with code checks and agent instructions."
-components = ["python", "ruff", "ty", "rumdl", "agents"]

@@ -15,7 +15,6 @@ from kitflow.box_update import refresh_box
 from kitflow.catalog import KitFlowError
 from kitflow.check import configuration_issues
 from kitflow.engine import CONFIG, apply, load_config, plan
-from kitflow.profiles import load_profiles
 from kitflow.settings import box_path, config_directory
 from kitflow.source import load_box, read_instructions
 
@@ -27,7 +26,7 @@ def parser() -> argparse.ArgumentParser:
         description="KitFlow — project standards over mise", add_help=False
     )
     result.add_argument("--help", "-h", action="help", help="show this help message and exit")
-    result.add_argument("--version", "-v", action="version", version="KitFlow 0.7.1")
+    result.add_argument("--version", "-v", action="version", version="KitFlow 0.8.0")
     result.add_argument(
         "--instruction",
         "-i",
@@ -43,7 +42,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("box_command", nargs="?", choices=["update"], help=argparse.SUPPRESS)
     result.epilog = """Commands:
   init    Choose or change project components and apply the plan
-  update  Apply local templates to the project's saved selection
+  update  Update project files or change components through the wizard
   status  List pending changes without applying them
   diff    Show proposed file differences without applying them
   config  Show the local box location without creating it
@@ -64,18 +63,11 @@ Without a command, prepare the local box. User overrides stay in its root direct
         "--box", "-b", type=Path, help="Use another box directory for this command only"
     )
     result.add_argument("--catalog", dest="box", type=Path, help=argparse.SUPPRESS)
-    setup = result.add_mutually_exclusive_group()
-    setup.add_argument(
-        "--profile",
-        "-r",
-        metavar="ID",
-        help="Use one local box profile as the complete starting selection (init only)",
-    )
-    setup.add_argument(
+    result.add_argument(
         "--components",
         "-c",
         metavar="IDS",
-        help="Complete component selection without the menu, e.g. python,ruff (init only)",
+        help="Complete component selection without the wizard, e.g. python,ruff (init only)",
     )
     result.add_argument(
         "--manage",
@@ -136,12 +128,7 @@ def run(args: argparse.Namespace) -> int:
     if args.command == "box":
         if args.box_command != "update":
             raise KitFlowError("Use kitflow box update to update the standard box")
-        if (
-            args.instruction
-            or args.profile is not None
-            or args.components is not None
-            or args.manage
-        ):
+        if args.instruction or args.components is not None or args.manage:
             raise KitFlowError("box update does not accept project actions")
         destination = args.box.resolve() if args.box else box_path()
 
@@ -151,18 +138,12 @@ def run(args: argparse.Namespace) -> int:
         )
         return 0
     if args.instruction:
-        if (
-            args.command
-            or args.profile is not None
-            or args.components is not None
-            or args.manage
-            or args.yes
-        ):
+        if args.command or args.components is not None or args.manage or args.yes:
             raise KitFlowError("Use --instruction without a command or project actions")
         console.print(Markdown(read_instructions(args.box)))
         return 0
     if args.command == "check":
-        if args.profile is not None or args.components is not None or args.manage or args.yes:
+        if args.components is not None or args.manage or args.yes:
             raise KitFlowError("check accepts --box and --project, without project actions")
         box = args.box.resolve() if args.box else box_path()
         root = args.project.resolve()
@@ -183,13 +164,7 @@ def run(args: argparse.Namespace) -> int:
         console.print("Configuration checks passed.", style="green")
         return 0
     if args.command == "config":
-        if (
-            args.box
-            or args.profile is not None
-            or args.components is not None
-            or args.manage
-            or args.yes
-        ):
+        if args.box or args.components is not None or args.manage or args.yes:
             raise KitFlowError(
                 "config displays the user configuration location; it accepts no options"
             )
@@ -197,7 +172,7 @@ def run(args: argparse.Namespace) -> int:
         console.print(f"Local box: {box_path()}", markup=False)
         return 0
     if args.command is None:
-        if args.profile is not None or args.components is not None or args.manage or args.yes:
+        if args.components is not None or args.manage or args.yes:
             raise KitFlowError("Use init to select project components or apply a plan")
         catalog, _ = load_box(args.box)
         console.print(f"Box ready: {catalog.root}", markup=False)
@@ -212,8 +187,6 @@ def run(args: argparse.Namespace) -> int:
     command = args.command
     if command != "init" and not exists:
         raise KitFlowError("Run kitflow init first")
-    if args.profile is not None and command != "init":
-        raise KitFlowError("--profile is available only for init")
     if args.components is not None and command != "init":
         raise KitFlowError("--components is available only for init")
     if args.manage and command != "init":
@@ -221,11 +194,10 @@ def run(args: argparse.Namespace) -> int:
     if (
         command == "init"
         and args.components is None
-        and args.profile is None
         and not args.manage
         and (not sys.stdin.isatty() or args.yes)
     ):
-        raise KitFlowError("Use --profile or --components for non-interactive init")
+        raise KitFlowError("Use --components for non-interactive init")
     document = load_config(root)
     catalog, source = load_box(args.box)
     selection = document["selection"]
@@ -236,36 +208,27 @@ def run(args: argparse.Namespace) -> int:
         if unknown:
             raise KitFlowError(f"Not excluded: {', '.join(sorted(unknown))}")
         excluded = [x for x in excluded if x not in args.manage]
-    if command == "init":
-        if args.components is not None:
-            selected = [x.strip() for x in args.components.split(",") if x.strip()]
-        elif args.profile is not None:
-            profiles = load_profiles(catalog)
-            if args.profile not in profiles:
-                available = ", ".join(profiles) or "none"
-                raise KitFlowError(
-                    f"Unknown profile: {args.profile}. Available profiles: {available}"
-                )
-            selected = profiles[args.profile].components
-        elif not args.manage:
-            from kitflow.tui import Configurator, ProfilePicker
+    configure = command == "init" and args.components is None and not args.manage
+    if command == "update" and not args.yes and sys.stdin.isatty():
+        action = Prompt.ask(
+            "Update files or change components?",
+            choices=["files", "setup", "cancel"],
+            default="files",
+        )
+        if action == "cancel":
+            console.print("Cancelled. No files were changed.")
+            return 0
+        configure = action == "setup"
+    if command == "init" and args.components is not None:
+        selected = [x.strip() for x in args.components.split(",") if x.strip()]
+    if configure:
+        from kitflow.tui import Configurator
 
-            profiles = load_profiles(catalog)
-            customize = True
-            if profiles:
-                setup = ProfilePicker(profiles).run()
-                if setup is None:
-                    console.print("Cancelled. No files were changed.")
-                    return 0
-                if setup.profile is not None:
-                    selected = profiles[setup.profile].components
-                customize = setup.customize
-            if customize:
-                chosen = Configurator(catalog, selected, excluded).run()
-                if chosen is None:
-                    console.print("Cancelled. No files were changed.")
-                    return 0
-                selected, excluded = chosen.components, chosen.excluded
+        chosen = Configurator(catalog, selected, excluded, existing=exists).run()
+        if chosen is None:
+            console.print("Cancelled. No files were changed.")
+            return 0
+        selected, excluded = chosen.components, chosen.excluded
     selection["excluded"] = excluded
     result = plan(root, catalog, selected, document)
     console.print(f"Project: {root}", markup=False)

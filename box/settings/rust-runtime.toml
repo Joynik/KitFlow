@@ -1,0 +1,6 @@
+[vars]
+# Leave empty when Cargo can choose the application binary automatically.
+rust_binary = ""
+
+[env]
+RUST_BINARY = "{{ env.RUST_BINARY | default(value=vars.rust_binary) }}"

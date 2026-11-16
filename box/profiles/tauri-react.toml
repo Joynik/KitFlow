@@ -1,3 +1,0 @@
-name = "Tauri + React"
-description = "Rust desktop app with React, JavaScript, TypeScript, Vite, SQLite and native Bun checks."
-components = ["rust", "javascript", "typescript", "tauri", "react", "vite", "sqlite", "bun", "agents", "rust-tests", "bun-tests"]

@@ -5,7 +5,6 @@ import pytest
 
 from kitflow.catalog import Catalog, KitFlowError
 from kitflow.check import configuration_issues
-from kitflow.profiles import load_profiles
 
 
 @pytest.fixture
@@ -80,19 +79,19 @@ when = ["ruff"]
     assert b"ruff check" not in content
 
 
-def test_profiles_override_and_disable(layered):
-    for base in (layered, layered / "default"):
-        (base / "profiles").mkdir()
-    (layered / "default/profiles/sample.toml").write_text('name="Standard"\ncomponents=["python"]')
-    (layered / "profiles/sample.toml").write_text('name="User"\ncomponents=["ruff"]')
-    assert load_profiles(Catalog(layered))["sample"].name == "User"
+def test_steps_override_and_disable(layered):
+    for base, label in [(layered / "default", "Standard"), (layered, "User")]:
+        path = base / "kitflow-box.toml"
+        path.write_text(
+            path.read_text()
+            + f'\n[[steps]]\nid="setup"\nlabel="{label}"\ncategories=["Languages"]\n'
+        )
+    assert Catalog(layered).data["steps"][0]["label"] == "User"
     with (layered / "kitflow-box.toml").open("a") as stream:
-        stream.write('[disabled]\nprofiles=["sample"]\nfiles=["ruff"]\ntasks=["ruff"]\n')
+        stream.write('[disabled]\nsteps=["setup"]\nfiles=["ruff"]\ntasks=["ruff"]\n')
     catalog = Catalog(layered)
-    assert load_profiles(catalog) == {}
-    artifacts = catalog.render(["ruff"])
-    assert "ruff" not in artifacts
-    assert "task.lint" not in artifacts
+    assert catalog.data["steps"] == []
+    assert "ruff" not in catalog.render(["ruff"])
 
 
 @pytest.mark.parametrize(

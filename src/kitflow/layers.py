@@ -6,14 +6,17 @@ from pathlib import Path
 
 from kitflow.catalog import KitFlowError, safe_path
 
-SECTIONS = ("components", "files", "tasks", "env", "defaults")
+SECTIONS = ("components", "files", "tasks", "env", "defaults", "steps")
 
 
 def read_data(root: Path) -> dict:
     path = safe_path(root, "kitflow-box.toml")
     data = tomllib.loads(path.read_text(encoding="utf-8"))
-    if type(data.get("schema")) is not int or data["schema"] not in {1, 2}:
-        raise KitFlowError(f"{path}: unsupported catalog schema; expected 1 or 2")
+    if type(data.get("schema")) is not int or data["schema"] not in {1, 2, 3}:
+        raise KitFlowError(f"{path}: unsupported catalog schema; expected 1, 2 or 3")
+    # Old profile exclusions no longer affect component-based project selections.
+    if data["schema"] < 3 and isinstance(data.get("disabled"), dict):
+        data["disabled"].pop("profiles", None)
     return data
 
 
@@ -41,8 +44,8 @@ def rows_by_id(data: dict, section: str) -> dict[str, dict]:
 
 def disabled_ids(data: dict) -> dict[str, list[str]]:
     disabled = data.get("disabled", {})
-    if not isinstance(disabled, dict) or set(disabled) - {*SECTIONS, "profiles"}:
-        raise KitFlowError("disabled accepts components, files, tasks, env, defaults and profiles")
+    if not isinstance(disabled, dict) or set(disabled) - set(SECTIONS):
+        raise KitFlowError("disabled accepts components, files, tasks, env, defaults and steps")
     for section, values in disabled.items():
         if not isinstance(values, list) or any(not isinstance(x, str) for x in values):
             raise KitFlowError(f"disabled.{section} must be an array of IDs")

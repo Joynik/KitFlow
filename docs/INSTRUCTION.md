@@ -22,11 +22,9 @@ project. With `XDG_CONFIG_HOME`, use `$XDG_CONFIG_HOME/kitflow` instead.
 ~/.config/kitflow/
 ├── default/             Standard box; updated by KitFlow
 │   ├── kitflow-box.toml
-│   ├── profiles/
 │   ├── tasks/
 │   └── templates/
 ├── kitflow-box.toml     Your additional or replacement definitions
-├── profiles/            Your profiles
 ├── tasks/               Your shell fragments
 └── templates/           Your templates
 ```
@@ -44,7 +42,7 @@ other. See `docs/CATALOG.md` for the format and the optional `[disabled]` lists.
 
 ### Update the standard box
 
-Upgrade KitFlow before updating to a newer box schema. Older binaries reject schema 2 safely.
+Upgrade KitFlow before updating to a newer box schema. Older binaries reject schema 3 safely.
 
 ```bash
 kitflow box update
@@ -83,44 +81,37 @@ cd /path/to/project
 kitflow init
 ```
 
-1. Choose a profile, or select **Custom setup** to choose components yourself. With a profile,
-   select **Review plan** to continue or **Customize selection** to adjust its components. If your
-   box has no profiles, the component menu opens directly.
-2. Use Up/Down within a list, Right to enter components, and Left to return to categories. Enter or
-   Space toggles a component. Tab focuses **Review plan**; further presses switch between the
-   buttons. Mouse clicks also work.
-3. Press Ctrl+S or click **Review plan**.
-4. Review the proposed changes and confirm. Escape cancels the menu.
+1. Choose languages. The Navigator shows steps on the left and the current choices on the right.
+2. Follow the available steps: frameworks, application server, databases, infrastructure, build
+   tools, checks, testing, migrations, translations and instructions. Inapplicable steps are hidden.
+3. Use Up/Down to move and Enter or Space to toggle. Right opens the next step; Left returns. Mouse
+   clicks work too. Tab reaches actions. Ctrl+S opens the selection review.
+4. Select **Review files**, inspect the proposed changes and confirm. Escape cancels without writes.
 
-Required dependencies are selected automatically. KitFlow saves the selection and managed file state
-in the project's `kitflow.toml`. Keep this file, including its state tables. Run `kitflow init`
-again to add or remove components.
-
-## Use a profile
-
-A profile is a ready-made component selection. Choose one in `kitflow init`, or use its filename
-without `.toml`:
-
-```bash
-kitflow init -r django-docker
-kitflow init --profile django-docker -y
+```text
+Languages → Frameworks → Server → Databases → Infrastructure → Tools → Review
 ```
 
-To create your own, save this as `profiles/my-python.toml` in your local box:
+Recommended tools are selected when their step opens. You can disable any recommendation.
+Dependencies are added automatically. Choosing a conflicting alternative removes the previous choice
+and its dependents. The project saves the resolved selection in `kitflow.toml`; keep its state
+tables. A framework is optional. KitFlow creates configuration and tasks, not application source
+code.
 
-```toml
-name = "My Python"
-description = "Python with Ruff and agent instructions."
-components = ["python", "ruff", "agents"]
-```
+Run `kitflow init` again to edit the current selection. Ordinary interactive `kitflow update`
+offers:
 
-Use component IDs from your `kitflow-box.toml`. Run `kitflow check`, then
-`kitflow init -r my-python`. Choose one profile at a time. `-r` cannot be combined with `-c`.
-Required dependencies are added automatically. `-y` confirms a plan, but never overwrites conflicts.
+- `files`: update templates for the saved selection.
+- `setup`: open the same wizard with the current selection to add or remove components.
+- `cancel`: leave the project unchanged.
 
-The project saves the final selection. Editing a profile does not change existing projects during
-`update`. To apply its new selection, run `init -r PROFILE` again and review the plan. Existing
-user-owned exclusions remain in effect.
+`kitflow update -y` skips the menu and wizard. It applies templates for the saved selection and
+refuses unresolved conflicts. Existing project choices are preserved, including disabled
+recommendations. New languages or frameworks can introduce new recommended tools.
+
+Profiles have been replaced by wizard definitions in `kitflow-box.toml`. Existing project selections
+continue working. Old local profile files are no longer read. See the catalog reference for
+`[[steps]]`, visibility conditions and `recommended`.
 
 ## Run project tasks
 
@@ -138,6 +129,9 @@ the corresponding tools are selected:
 | `mise run test` | Run independently selected test tools |
 | `mise run verify` | Run configured code checks, application checks and tests in order |
 | `mise run build` | Build every selected language component |
+| `mise run frontend:dev` | Start the selected frontend development script |
+| `mise run frontend:run` | Start or preview the built frontend |
+| `mise run backend:run` | Run a selected Rust web application |
 | `mise run build-release` | Build selected native components with release optimization |
 | `mise run help` | List project tasks and descriptions; also available as the default task |
 
@@ -261,9 +255,9 @@ block to take control of it. Install tools yourself, then run tasks with `mise r
 
 Run `kitflow check` after editing your box or project configuration. It checks the box and, when
 present, the current project's `kitflow.toml`. It validates fields, dependencies, paths, template
-availability, profiles, TOML/JSON file syntax and managed mise blocks. It does not download files,
-change them or run tools. Tool-specific settings and shell commands are not checked against external
-tools.
+availability, wizard definitions, TOML/JSON file syntax and managed mise blocks. It does not
+download files, change them or run tools. Tool-specific settings and shell commands are not checked
+against external tools.
 
 ```bash
 kitflow check
@@ -279,7 +273,7 @@ see those changes. If the box is missing, run `kitflow` to prepare it first.
 | `kitflow` | Prepare the local box without changing projects |
 | `kitflow box update` | Update only the standard box in `default/` |
 | `kitflow init` | Choose or change project components |
-| `kitflow update` | Apply the current box to the saved selection |
+| `kitflow update` | Update files or open the setup wizard |
 | `kitflow status` | List pending changes |
 | `kitflow diff` | Show proposed file differences |
 | `kitflow config` | Show configuration paths without creating the box |

@@ -19,7 +19,6 @@ from pathlib import Path
 import certifi
 
 from kitflow.catalog import Catalog, KitFlowError, safe_path
-from kitflow.profiles import load_profiles
 from kitflow.settings import box_path
 
 MAX_FILE_BYTES = 2 * 1024 * 1024
@@ -132,8 +131,6 @@ def seed_box(destination: Path):
             mode = entry.get("mode")
             if entry.get("type") != "blob" or mode not in {"100644", "100755", "120000"}:
                 raise KitFlowError(f"Unsupported standard box entry: {name}")
-            if relative.startswith("profiles/") and mode == "120000":
-                raise KitFlowError(f"Profile must be a regular TOML file: {name}")
             target = safe_path(staging, relative)
             if relative == "kitflow-box.toml":
                 if mode == "120000":
@@ -159,7 +156,7 @@ def seed_box(destination: Path):
             else:
                 target.write_bytes(content)
         (staging / "INSTRUCTION.md").write_text(read_instructions(staging), encoding="utf-8")
-        load_profiles(Catalog(staging))
+        Catalog(staging)
         staging.rename(destination)
         staging = None
     except (urllib.error.URLError, TimeoutError, OSError) as error:
@@ -175,7 +172,7 @@ def seed_box(destination: Path):
 
 
 def prepare_user_directories(destination: Path):
-    for name in ("profiles", "tasks", "templates"):
+    for name in ("tasks", "templates"):
         directory = safe_path(destination, name)
         directory.mkdir(exist_ok=True)
     manifest = safe_path(destination, "kitflow-box.toml")
@@ -192,7 +189,7 @@ def initialize_box(destination: Path):
         staging.mkdir()
         seed_box(staging / "default")
         prepare_user_directories(staging)
-        load_profiles(Catalog(staging))
+        Catalog(staging)
         if destination.exists() or destination.is_symlink():
             raise KitFlowError("The box appeared during initialization; retry")
         staging.rename(destination)

@@ -1,4 +1,4 @@
-"""Generic task contracts, independent of named setup profiles."""
+"""Generic task contracts, independent of named project stacks."""
 
 import json
 import os

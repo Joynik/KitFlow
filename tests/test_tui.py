@@ -1,83 +1,85 @@
 from pathlib import Path
 
 import pytest
-from textual.widgets import ListView
+from textual.widgets import Button
 
 from kitflow.catalog import Catalog
-from kitflow.tui import Components, Configurator
+from kitflow.tui import Configurator
 
 
 @pytest.mark.asyncio
-async def test_arrow_navigation_and_tab_to_review():
-    catalog = Catalog(Path(__file__).parents[1] / "box")
-    app = Configurator(catalog, [], [])
-    async with app.run_test(size=(100, 32)) as pilot:
-        categories = app.query_one("#categories", ListView)
-        components = app.query_one("#components", Components)
-        assert app.focused is categories
-        await pilot.press("right", "down", "enter")
-        assert app.focused is components
-        assert app.chosen == {"javascript"}
-        await pilot.press("up", "enter")
-        assert app.chosen == {"python", "javascript"}
-        await pilot.press("left", "down")
-        assert app.focused is categories
-        assert app.category == "Frameworks"
-        await pilot.press("right", "enter")
-        assert app.chosen == {"python", "javascript", "django"}
-        await pilot.press("enter")
-        assert app.chosen == {"python", "javascript"}
-        await pilot.press("left", "up", "right")
-        assert app.category == "Languages"
-        assert set(components.selected) == {"python", "javascript"}
-        await pilot.press("tab")
-        assert app.focused is app.query_one("#continue")
-        await pilot.press("tab")
-        assert app.focused is app.query_one("#cancel")
-        await pilot.press("tab", "enter")
-    assert app.return_value is not None
-    assert set(app.return_value.components) == {"python", "javascript"}
-
-
-@pytest.mark.asyncio
-async def test_keyboard_mouse_dependencies_and_cancel():
+async def test_navigator_selects_dependencies_reviews_and_returns_selection():
     catalog = Catalog(Path(__file__).parent / "fixtures/catalog")
     app = Configurator(catalog, [], [])
     async with app.run_test(size=(100, 32)) as pilot:
+        assert app.focused is app.query_one("#components")
+        await pilot.press("enter")
+        assert app.model.chosen == {"python"}
         await pilot.press("right")
+        assert app.step.label == "Frameworks"
         await pilot.press("enter")
-        assert "python" in app.chosen
-        await pilot.press("enter")
-        assert "python" not in app.chosen
-        categories = app.query_one("#categories", ListView)
-        categories.index = app.categories.index("Frameworks")
-        await pilot.pause()
-        app.query_one("#components").focus()
-        await pilot.press("enter")
-        assert {"django", "python"}.issubset(app.chosen)
-        await pilot.click("#continue")
+        assert app.model.chosen == {"python", "django"}
+        await pilot.press("left")
+        assert app.step.label == "Languages"
+        await pilot.press("ctrl+s")
+        assert app.step.id == "review"
+        assert not app.query_one("#components").display
+        await pilot.click("#next")
     assert app.return_value is not None
     assert app.return_value.components == ["python", "django"]
-    app = Configurator(catalog, [], [])
-    async with app.run_test() as pilot:
+
+
+@pytest.mark.asyncio
+async def test_navigator_mouse_and_dependency_removal_preserve_exclusions():
+    catalog = Catalog(Path(__file__).parent / "fixtures/catalog")
+    app = Configurator(catalog, ["django", "ruff"], ["ruff"], existing=True)
+    async with app.run_test(size=(100, 32)) as pilot:
+        await pilot.press("enter")
+        assert not app.model.chosen
+        await pilot.click("#next")
+        assert app.step.label == "Instructions"
+        await pilot.click("#next")
+        assert app.step.id == "ownership"
+        await pilot.press("enter")
+        assert not app.model.excluded
+        await pilot.press("ctrl+s", "right")
+    assert app.return_value is not None
+    assert app.return_value.components == []
+    assert app.return_value.excluded == []
+
+
+@pytest.mark.asyncio
+async def test_navigator_cancel_and_button_navigation():
+    app = Configurator(Catalog(Path(__file__).parent / "fixtures/catalog"), [], [])
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.press("tab")
+        assert app.focused is app.query_one("#next", Button)
         await pilot.press("escape")
     assert app.return_value is None
 
 
 @pytest.mark.asyncio
-async def test_removing_dependency_removes_dependents_and_restore_exclusion():
-    catalog = Catalog(Path(__file__).parent / "fixtures/catalog")
-    app = Configurator(catalog, ["django", "ruff"], ["ruff"])
-    async with app.run_test(size=(100, 32)) as pilot:
-        await pilot.press("right")
-        app.query_one("#components", Components).highlighted = 0
-        await pilot.press("enter")
-        assert not app.chosen
-        app.query_one("#categories", ListView).index = app.categories.index("User-owned files")
-        await pilot.pause()
-        app.query_one("#components").focus()
-        await pilot.press("enter")
-        assert "ruff" not in app.excluded
-        await pilot.press("ctrl+s")
-    assert app.return_value is not None
-    assert app.return_value.excluded == []
+async def test_optional_recommendation_stays_off_after_back_navigation(tmp_path):
+    import shutil
+
+    shutil.copytree(Path(__file__).parent / "fixtures/catalog", tmp_path / "box")
+    manifest = tmp_path / "box/kitflow-box.toml"
+    manifest.write_text(
+        manifest.read_text().replace(
+            'id = "ruff"\nlabel', 'id = "ruff"\nrecommended = true\nlabel', 1
+        )
+    )
+    catalog = Catalog(tmp_path / "box")
+    app = Configurator(catalog, [], [])
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.press("enter", "right", "right")
+        assert app.step.label == "Checks"
+        assert "ruff" in app.model.chosen
+        await pilot.press("enter", "left", "right")
+        assert "ruff" not in app.model.chosen
+        await pilot.press("escape")
+    app = Configurator(catalog, ["python"], [], existing=True)
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.press("right", "right")
+        assert "ruff" not in app.model.chosen
+        await pilot.press("escape")

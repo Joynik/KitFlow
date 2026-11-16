@@ -25,9 +25,6 @@ path = ".settings"
 template = "templates"
 when = ["example"]
 """)
-    (box / "profiles").mkdir()
-    profile = box / "profiles/example.toml"
-    profile.write_text('name = "Example"\ncomponents = ["example"]\n')
     project.mkdir()
 
     def run(command: str, *arguments: str, expected: int = 0) -> str:
@@ -41,13 +38,12 @@ when = ["example"]
         assert result.returncode == expected, result.stdout + result.stderr
         return result.stdout
 
-    run("init", "-r", "example", "-y")
+    run("init", "-c", "example", "-y")
     output = project / ".settings"
     assert (output / ".nested/example.pdf").read_bytes() == b"%PDF-1.7\n\x00\xff"
     assert os.readlink(output / ".skill") == "../skills/example"
     run("check")
     (output / "personal.txt").write_text("Keep me")
-    profile.write_text('name = "Example"\ncomponents = []\n')
     (templates / ".skill").unlink()
     (templates / ".skill").symlink_to("../skills/updated")
     assert "symlink -> ../skills/updated" in run("diff", expected=1)
