@@ -48,7 +48,4 @@ uv run --group build python scripts/build_standalone.py
 a platform-specific directory and installation archive in `dist/`. It requires a C compiler; Linux
 standalone builds also require `patchelf`. Build separately on each target operating system and
 architecture. The standalone application includes its runtime and dependencies, but no box
-templates. GitHub Actions checks changes and builds release archives; see the
-[release workflow](.github/workflows/release.yml). After committing the version and changelog, run
-**Actions → Release → Run workflow** on `main`. It creates the version tag, publishes the verified
-archives and updates Homebrew automatically. No separate tag or publication step is required.
+templates.
