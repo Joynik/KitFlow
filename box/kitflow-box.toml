@@ -152,6 +152,7 @@ category = "Languages"
 description = "Swift sources, formatting, and a separately selected SwiftPM or Xcode backend."
 requires = []
 conflicts = []
+
 [[components]]
 id = "swiftlint"
 label = "SwiftLint"
@@ -159,6 +160,7 @@ category = "Checks"
 description = ""
 requires = ["swift"]
 conflicts = []
+
 [[components]]
 id = "granian"
 label = "Granian"
@@ -166,6 +168,7 @@ category = "Python servers"
 description = ""
 requires = ["python"]
 conflicts = ["gunicorn", "uvicorn"]
+
 [[components]]
 id = "gunicorn"
 label = "Gunicorn"
@@ -173,6 +176,7 @@ category = "Python servers"
 description = ""
 requires = ["python"]
 conflicts = ["granian", "uvicorn"]
+
 [[components]]
 id = "uvicorn"
 label = "Uvicorn"
@@ -180,6 +184,7 @@ category = "Python servers"
 description = ""
 requires = ["python"]
 conflicts = ["granian", "gunicorn"]
+
 [[components]]
 id = "pytest"
 label = "pytest"
@@ -187,6 +192,7 @@ category = "Tests"
 description = ""
 requires = ["python"]
 conflicts = []
+
 [[components]]
 id = "unittest"
 label = "unittest"
@@ -194,6 +200,7 @@ category = "Tests"
 description = ""
 requires = ["python"]
 conflicts = []
+
 [[components]]
 id = "django-tests"
 label = "Django test runner"
@@ -201,6 +208,7 @@ category = "Tests"
 description = ""
 requires = ["django"]
 conflicts = []
+
 [[components]]
 id = "bun-tests"
 label = "Bun test runner"
@@ -208,6 +216,7 @@ category = "Tests"
 description = ""
 requires = ["bun"]
 conflicts = []
+
 [[components]]
 id = "rust-tests"
 label = "Cargo test runner"
@@ -215,6 +224,7 @@ category = "Tests"
 description = ""
 requires = ["rust"]
 conflicts = []
+
 [[components]]
 id = "swift-tests"
 label = "Swift test runner"
@@ -222,6 +232,7 @@ category = "Tests"
 description = ""
 requires = ["swift"]
 conflicts = []
+
 [[components]]
 id = "alembic"
 label = "Alembic"
@@ -229,6 +240,7 @@ category = "Migrations"
 description = ""
 requires = ["python"]
 conflicts = ["django"]
+
 [[components]]
 id = "django-i18n"
 label = "Django translations"
@@ -236,6 +248,7 @@ category = "Translations"
 description = ""
 requires = ["django"]
 conflicts = []
+
 [[components]]
 id = "babel-i18n"
 label = "Babel translations"
@@ -243,6 +256,7 @@ category = "Translations"
 description = ""
 requires = ["python"]
 conflicts = []
+
 [[components]]
 id = "script-i18n"
 label = "package.json translations"
@@ -250,6 +264,7 @@ category = "Translations"
 description = ""
 requires = ["bun"]
 conflicts = []
+
 [[files]]
 id = "readme"
 path = "README.md"
@@ -347,6 +362,7 @@ path = ".env.example"
 template = "templates/env.example"
 when = []
 mode = "once"
+
 [[tasks]]
 id = "ruff-lint"
 name = "lint"
@@ -669,6 +685,7 @@ when = []
 alias = "default"
 quiet = true
 description = "List project tasks and descriptions"
+
 [[tasks]]
 id = "granian-dev"
 name = "dev"
@@ -676,6 +693,7 @@ template = "tasks/granian-dev.sh"
 when = ["granian"]
 directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Run the selected Python server with reload"
+
 [[tasks]]
 id = "granian-run"
 name = "run"
@@ -683,6 +701,7 @@ template = "tasks/granian-run.sh"
 when = ["granian"]
 directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Run the selected Python server without reload"
+
 [[tasks]]
 id = "gunicorn-dev"
 name = "dev"
@@ -690,6 +709,7 @@ template = "tasks/gunicorn-dev.sh"
 when = ["gunicorn"]
 directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Run the selected Python server with reload"
+
 [[tasks]]
 id = "gunicorn-run"
 name = "run"
@@ -697,6 +717,7 @@ template = "tasks/gunicorn-run.sh"
 when = ["gunicorn"]
 directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Run the selected Python server without reload"
+
 [[tasks]]
 id = "uvicorn-dev"
 name = "dev"
@@ -704,6 +725,7 @@ template = "tasks/uvicorn-dev.sh"
 when = ["uvicorn"]
 directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Run the selected Python server with reload"
+
 [[tasks]]
 id = "uvicorn-run"
 name = "run"
@@ -711,6 +733,7 @@ template = "tasks/uvicorn-run.sh"
 when = ["uvicorn"]
 directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Run the selected Python server without reload"
+
 [[tasks]]
 id = "pytest"
 name = "test"
@@ -718,6 +741,7 @@ template = "tasks/pytest.sh"
 when = ["pytest"]
 directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Run selected test runners"
+
 [[tasks]]
 id = "unittest"
 name = "test"
@@ -725,6 +749,7 @@ template = "tasks/unittest.sh"
 when = ["unittest"]
 directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Run selected test runners"
+
 [[tasks]]
 id = "rust-build"
 name = "build"
@@ -732,6 +757,7 @@ template = "tasks/rust-build.sh"
 when = ["rust"]
 directory_env = "PROJECT_RUST_DIRECTORY"
 description = "Build selected project components"
+
 [[tasks]]
 id = "rust-build-release"
 name = "build-release"
@@ -739,6 +765,7 @@ template = "tasks/rust-build-release.sh"
 when = ["rust"]
 directory_env = "PROJECT_RUST_DIRECTORY"
 description = "Build selected native components for release"
+
 [[tasks]]
 id = "javascript-build"
 name = "build"
@@ -746,6 +773,7 @@ template = "tasks/javascript-build.sh"
 when = ["javascript", "bun"]
 directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
 description = "Build selected project components"
+
 [[tasks]]
 id = "alembic-create"
 name = "db:makemigrations"
@@ -754,6 +782,7 @@ when = ["alembic"]
 directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Create a database migration"
 usage = "arg \"[name]\" help=\"Migration name\""
+
 [[tasks]]
 id = "alembic-migrate"
 name = "db:migrate"
@@ -761,6 +790,7 @@ template = "tasks/alembic-migrate.sh"
 when = ["alembic"]
 directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Apply database migrations"
+
 [[tasks]]
 id = "alembic-check"
 name = "db:check"
@@ -768,6 +798,7 @@ template = "tasks/alembic-check.sh"
 when = ["alembic"]
 directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Check for missing database migrations"
+
 [[tasks]]
 id = "swift-format"
 name = "format"
@@ -775,6 +806,7 @@ template = "tasks/swift-format.sh"
 when = ["swift"]
 directory_env = "PROJECT_SWIFT_DIRECTORY"
 description = "Format selected project components"
+
 [[tasks]]
 id = "swift-format-check"
 name = "format-check"
@@ -782,6 +814,7 @@ template = "tasks/swift-format-check.sh"
 when = ["swift"]
 directory_env = "PROJECT_SWIFT_DIRECTORY"
 description = "Check formatting without applying fixes"
+
 [[tasks]]
 id = "swiftlint"
 name = "lint"
@@ -789,6 +822,7 @@ template = "tasks/swiftlint.sh"
 when = ["swiftlint"]
 directory_env = "PROJECT_SWIFT_DIRECTORY"
 description = "Lint selected project components"
+
 [[tasks]]
 id = "swiftlint-fix"
 name = "lint-fix"
@@ -796,6 +830,7 @@ template = "tasks/swiftlint-fix.sh"
 when = ["swiftlint"]
 directory_env = "PROJECT_SWIFT_DIRECTORY"
 description = "Apply supported lint fixes"
+
 [[tasks]]
 id = "django-i18n"
 name = "translations"
@@ -803,6 +838,7 @@ template = "tasks/django-i18n.sh"
 when = ["django-i18n"]
 directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Update and compile selected translations"
+
 [[tasks]]
 id = "babel-i18n"
 name = "translations"
@@ -810,6 +846,7 @@ template = "tasks/babel-i18n.sh"
 when = ["babel-i18n"]
 directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Update and compile selected translations"
+
 [[tasks]]
 id = "script-i18n"
 name = "translations"
@@ -817,6 +854,7 @@ template = "tasks/script-i18n.sh"
 when = ["script-i18n"]
 directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
 description = "Update and compile selected translations"
+
 [[tasks]]
 id = "sqlite-backup"
 name = "db:backup"
@@ -824,6 +862,7 @@ template = "tasks/sqlite-backup.sh"
 when = ["sqlite"]
 usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
 description = "Back up the database to a new SQL file"
+
 [[tasks]]
 id = "sqlite-restore"
 name = "db:restore"
@@ -831,6 +870,7 @@ template = "tasks/sqlite-restore.sh"
 when = ["sqlite"]
 usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
 description = "Restore the database from SQL; stop application writes first"
+
 [[tasks]]
 id = "postgresql-backup"
 name = "db:backup"
@@ -838,6 +878,7 @@ template = "tasks/postgresql-backup.sh"
 when = ["postgresql"]
 usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
 description = "Back up the database to a new SQL file"
+
 [[tasks]]
 id = "postgresql-restore"
 name = "db:restore"
@@ -845,54 +886,63 @@ template = "tasks/postgresql-restore.sh"
 when = ["postgresql"]
 usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
 description = "Restore the database from SQL; stop application writes first"
+
 [[tasks]]
 id = "sqlite-prepare"
 name = "db:prepare"
 template = "tasks/sqlite-prepare.sh"
 when = ["sqlite"]
 description = "Db prepare"
+
 [[tasks]]
 id = "docker-build"
 name = "docker:build"
 template = "tasks/docker-build.sh"
 when = ["docker"]
 description = "Docker build"
+
 [[tasks]]
 id = "docker-check"
 name = "docker:check"
 template = "tasks/docker-check.sh"
 when = ["docker"]
 description = "Docker check"
+
 [[tasks]]
 id = "docker-status"
 name = "docker:status"
 template = "tasks/docker-status.sh"
 when = ["docker"]
 description = "Docker status"
+
 [[tasks]]
 id = "swift-build"
 name = "build"
 template = "tasks/swift-build.sh"
 when = ["swift"]
 description = "Build selected project components"
+
 [[tasks]]
 id = "swift-release"
 name = "build-release"
 template = "tasks/swift-release.sh"
 when = ["swift"]
 description = "Build selected native components for release"
+
 [[tasks]]
 id = "swift-check"
 name = "typecheck"
 template = "tasks/swift-build.sh"
 when = ["swift"]
 description = "Check selected project types and native builds"
+
 [[tasks]]
 id = "swift-test"
 name = "test"
 template = "tasks/swift-test.sh"
 when = ["swift-tests"]
 description = "Run selected test runners"
+
 [[tasks]]
 id = "swift-backend"
 name = "_swift"
@@ -903,6 +953,7 @@ hide = true
 quiet = true
 usage = "arg \"<action>\"; arg \"<configuration>\""
 description = "Run the configured SwiftPM or Xcode backend"
+
 [[tasks]]
 id = "fastapi-app-check"
 name = "app-check"
@@ -910,6 +961,7 @@ template = "tasks/fastapi-app-check.sh"
 when = ["fastapi"]
 description = "Check selected applications"
 directory_env = "PROJECT_PYTHON_DIRECTORY"
+
 [[tasks]]
 id = "django-app-check"
 name = "app-check"
@@ -917,12 +969,14 @@ template = "tasks/django-app-check.sh"
 when = ["django"]
 description = "Check selected applications"
 directory_env = "PROJECT_PYTHON_DIRECTORY"
+
 [[tasks]]
 id = "env-local"
 name = "env:local"
 template = "tasks/env-local.sh"
 when = []
 description = "Create .env from the example without replacing an existing file"
+
 [[tasks]]
 id = "check-lint"
 name = "check"
@@ -930,6 +984,7 @@ template = "tasks/check-lint.sh"
 when = []
 description = "Check code, formatting, types and migrations"
 when_any = ["ruff", "django", "djlint", "rumdl", "rust", "bun", "swiftlint"]
+
 [[tasks]]
 id = "check-format"
 name = "check"
@@ -937,6 +992,7 @@ template = "tasks/check-format-check.sh"
 when = []
 description = "Check code, formatting, types and migrations"
 when_any = ["ruff", "rust", "bun", "rumdl", "djlint", "swift"]
+
 [[tasks]]
 id = "check-types"
 name = "check"
@@ -944,12 +1000,14 @@ template = "tasks/check-typecheck.sh"
 when = []
 description = "Check code, formatting, types and migrations"
 when_any = ["ty", "rust", "swift"]
+
 [[tasks]]
 id = "check-typescript"
 name = "check"
 template = "tasks/check-typecheck.sh"
 when = ["typescript", "bun"]
 description = "Check code, formatting, types and migrations"
+
 [[tasks]]
 id = "check-migrations"
 name = "check"
@@ -957,6 +1015,7 @@ template = "tasks/check-migrations.sh"
 when = []
 description = "Check code, formatting, types and migrations"
 when_any = ["django", "alembic"]
+
 [[tasks]]
 id = "verify-code"
 name = "verify"
@@ -964,6 +1023,7 @@ template = "tasks/verify-check.sh"
 when = []
 description = "Run checks, application checks and tests sequentially"
 when_any = ["alembic", "bun", "django", "djlint", "ruff", "rumdl", "rust", "swift", "swiftlint", "ty"]
+
 [[tasks]]
 id = "verify-app"
 name = "verify"
@@ -971,6 +1031,7 @@ template = "tasks/check-app.sh"
 when = []
 description = "Run checks, application checks and tests sequentially"
 when_any = ["django", "fastapi"]
+
 [[tasks]]
 id = "verify-tests"
 name = "verify"
@@ -978,6 +1039,7 @@ template = "tasks/verify-test.sh"
 when = []
 description = "Run checks, application checks and tests sequentially"
 when_any = ["pytest", "unittest", "django-tests", "bun-tests", "rust-tests", "swift-tests"]
+
 [[tasks]]
 id = "docker-db-backup"
 name = "docker:db:backup"
@@ -986,6 +1048,7 @@ when = ["docker"]
 usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\""
 description = "Backup SQL data in the configured container"
 when_any = ["sqlite", "postgresql"]
+
 [[tasks]]
 id = "docker-db-restore"
 name = "docker:db:restore"
@@ -994,11 +1057,13 @@ when = ["docker"]
 usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\""
 description = "Restore SQL data in the configured container"
 when_any = ["sqlite", "postgresql"]
+
 [[env]]
 id = "PYTHONUNBUFFERED"
 name = "PYTHONUNBUFFERED"
 value = "1"
 when = ["python"]
+
 [[defaults]]
 id = "base"
 template = "settings/base.toml"
@@ -1043,30 +1108,37 @@ when = ["docker"]
 id = "gunicorn-fastapi"
 template = "settings/gunicorn-fastapi.toml"
 when = ["gunicorn", "fastapi"]
+
 [[defaults]]
 id = "granian-django"
 template = "settings/granian-django.toml"
 when = ["django", "granian"]
+
 [[defaults]]
 id = "server"
 template = "settings/server.toml"
 when_any = ["granian", "gunicorn", "uvicorn"]
+
 [[defaults]]
 id = "translations"
 template = "settings/translations.toml"
 when_any = ["django-i18n", "babel-i18n", "script-i18n"]
+
 [[defaults]]
 id = "database"
 template = "settings/database.toml"
 when_any = ["sqlite", "postgresql"]
+
 [[defaults]]
 id = "postgresql"
 template = "settings/postgresql.toml"
 when = ["postgresql"]
+
 [[defaults]]
 id = "python-application"
 template = "settings/python-application.toml"
 when_any = ["django", "fastapi"]
+
 [[defaults]]
 id = "unittest"
 template = "settings/unittest.toml"
