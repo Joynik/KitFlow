@@ -145,34 +145,7 @@ def run(args: argparse.Namespace) -> int:
             raise KitFlowError("box update does not accept project actions")
         destination = args.box.resolve() if args.box else box_path()
 
-        def review(before, after):
-            for name in sorted(before.keys() | after.keys()):
-                if before.get(name) == after.get(name):
-                    continue
-
-                def lines(content):
-                    if isinstance(content, str):
-                        return [f"symlink -> {content}\n"]
-                    return (content or b"").decode(errors="replace").splitlines(keepends=True)
-
-                difference = "".join(
-                    difflib.unified_diff(
-                        lines(before.get(name)),
-                        lines(after.get(name)),
-                        fromfile=f"default/{name}",
-                        tofile=f"incoming/{name}",
-                    )
-                )
-                console.print(Syntax(difference, "diff", word_wrap=True))
-            if args.yes:
-                return True
-            if not sys.stdin.isatty():
-                raise KitFlowError("Use --yes to confirm a non-interactive standard box update")
-            return Confirm.ask(
-                "Replace the standard box? User overrides will be preserved", default=False
-            )
-
-        count = refresh_box(destination, review)
+        count = refresh_box(destination, lambda *_: True)
         console.print(
             f"Standard box files changed: {count}. User overrides and projects were preserved."
         )

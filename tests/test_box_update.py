@@ -103,20 +103,25 @@ def test_bare_startup_keeps_existing_box_without_prompts(boxes, monkeypatch):
     assert box_update.snapshot(settings.box_path()) == before
 
 
-def test_explicit_update_prompts_once_and_yes_supports_automation(boxes, monkeypatch):
+@pytest.mark.parametrize("interactive", [False, True])
+@pytest.mark.parametrize("options", [[], ["-y"]])
+def test_explicit_update_applies_without_diffs_or_prompts(
+    boxes, monkeypatch, capsys, interactive, options
+):
     destination, _ = boxes
     shutil.copytree(destination, settings.box_path())
-    monkeypatch.setattr(cli.sys.stdin, "isatty", lambda: True)
-    prompts = []
-    monkeypatch.setattr(cli.Confirm, "ask", lambda message, **_: prompts.append(message) or True)
-    assert cli.run(cli.parser().parse_args(["box", "update"])) == 0
-    assert len(prompts) == 1
+    monkeypatch.setattr(cli.sys.stdin, "isatty", lambda: interactive)
+    monkeypatch.setattr(
+        cli.Confirm, "ask", lambda *_args, **_kwargs: pytest.fail("Unexpected prompt")
+    )
+    monkeypatch.setattr(cli, "Syntax", lambda *_args, **_kwargs: pytest.fail("Unexpected diff"))
+    assert cli.run(cli.parser().parse_args(["box", "update", *options])) == 0
     assert (
         settings.box_path() / "default/templates/ruff.toml"
     ).read_text() == "line-length = 120\n"
-    (settings.box_path() / "default/templates/ruff.toml").write_text("line-length = 100\n")
-    assert cli.run(cli.parser().parse_args(["box", "update", "-y"])) == 0
-    assert len(prompts) == 1
+    output = capsys.readouterr().out
+    assert "Standard box files changed: 1" in output
+    assert "incoming/" not in output
 
 
 def test_failed_download_does_not_change_box(boxes, monkeypatch):

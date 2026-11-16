@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- Apply `kitflow box update` without displaying differences or requesting confirmation.
+
 ## 0.7.0 — 2026-11-16
 
 ### Added

@@ -50,11 +50,10 @@ Upgrade KitFlow before updating to a newer box schema. Older binaries reject sch
 kitflow box update
 ```
 
-KitFlow downloads a preview, validates it with your overrides, shows differences and asks for one
-confirmation. It replaces only `default/`, including removing obsolete standard files. User files
-and projects stay unchanged. Use `kitflow box update -y` for automation. A failed download or
-invalid configuration leaves the existing standard box unchanged. Keep personal changes outside
-`default/`.
+KitFlow downloads and validates the standard box with your overrides, then replaces `default/`
+without showing differences or asking for confirmation. It also removes obsolete standard files.
+User files and projects stay unchanged. A failed download or invalid configuration leaves the
+existing standard box unchanged. Keep personal changes outside `default/`.
 
 Later bare `kitflow` runs keep the box without downloading updates. Existing flat boxes continue to
 work offline. Their first `kitflow box update` adds `default/` and preserves every existing file as
