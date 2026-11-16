@@ -222,6 +222,8 @@ class Catalog:
 
         def visit(name: str, relative: str = ""):
             for entry_name in self.source_entries(name):
+                if entry_name == ".DS_Store":
+                    continue
                 child_name = f"{name}/{entry_name}"
                 entry = self.source_path(child_name, allow_link=True)
                 child = f"{relative}/{entry_name}" if relative else entry_name

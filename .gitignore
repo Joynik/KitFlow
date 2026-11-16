@@ -5,7 +5,7 @@
 .idea/
 
 # Mac
-.DS_Store/
+.DS_Store
 
 # Python virtual environments
 .venv

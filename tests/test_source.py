@@ -63,6 +63,19 @@ def downloads(monkeypatch, fixture: Path | None = None):
     return calls
 
 
+def test_download_skips_finder_metadata(tmp_path, monkeypatch):
+    import shutil
+
+    fixture = tmp_path / "fixture"
+    shutil.copytree(Path(__file__).parent / "fixtures/catalog", fixture)
+    (fixture / ".DS_Store").write_bytes(b"Finder metadata")
+    (fixture / "templates/.DS_Store").write_bytes(b"Nested Finder metadata")
+    calls = downloads(monkeypatch, fixture)
+    catalog, _ = source.load_box()
+    assert not list(catalog.root.rglob(".DS_Store"))
+    assert not any(".DS_Store" in url for url in calls)
+
+
 def test_first_use_downloads_once_and_keeps_user_edits(monkeypatch):
     calls = downloads(monkeypatch)
     catalog, metadata = source.load_box()

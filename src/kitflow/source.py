@@ -127,6 +127,8 @@ def seed_box(destination: Path):
             if not name.startswith("box/") or entry.get("type") == "tree":
                 continue
             relative = name.removeprefix("box/")
+            if ".DS_Store" in Path(relative).parts:
+                continue
             mode = entry.get("mode")
             if entry.get("type") != "blob" or mode not in {"100644", "100755", "120000"}:
                 raise KitFlowError(f"Unsupported standard box entry: {name}")

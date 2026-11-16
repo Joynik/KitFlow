@@ -55,6 +55,15 @@ def test_directory_lifecycle_preserves_hidden_and_personal_files(tree):
     assert not (project / ".vscode/.new").exists()
 
 
+def test_directory_templates_skip_finder_metadata(tree):
+    box, source, project = tree
+    (source / ".DS_Store").write_bytes(b"Finder metadata")
+    (source / ".nested/.DS_Store").write_bytes(b"Nested Finder metadata")
+    apply(project_plan(box, project), {})
+    assert not list(project.rglob(".DS_Store"))
+    assert (project / ".vscode/.nested/.hidden").read_bytes() == b"\x00binary"
+
+
 def test_modified_child_requires_resolution_and_keep_persists(tree):
     box, source, project = tree
     apply(project_plan(box, project), {})

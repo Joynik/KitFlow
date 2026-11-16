@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.7.1 — 2026-11-16
+
+### Fixed
+
+- Exclude Finder `.DS_Store` metadata from standard box downloads, directory templates and box
+  comparisons.
+
 ### Changed
 
 - Apply `kitflow box update` without displaying differences or requesting confirmation.

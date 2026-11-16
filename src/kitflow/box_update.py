@@ -17,6 +17,8 @@ def snapshot(root: Path) -> dict[str, bytes | str]:
     result = {}
     for path in sorted(root.rglob("*")):
         name = path.relative_to(root).as_posix()
+        if ".DS_Store" in Path(name).parts:
+            continue
         if path.is_symlink():
             result[name] = os.readlink(path)
         elif path.is_file():

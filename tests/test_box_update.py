@@ -178,6 +178,18 @@ def test_update_is_idempotent(boxes):
     assert box_update.refresh_box(destination, lambda *_: pytest.fail("No changes to review")) == 0
 
 
+def test_snapshots_ignore_finder_metadata_in_all_layers(boxes):
+    destination, _ = boxes
+    before = box_update.snapshot(destination)
+    for directory in (destination, destination / "default", destination / "templates"):
+        (directory / ".DS_Store").write_bytes(b"Finder metadata")
+    assert box_update.snapshot(destination) == before
+    assert box_update.refresh_box(destination, lambda *_: True) == 1
+    assert (destination / ".DS_Store").exists()
+    assert (destination / "templates/.DS_Store").exists()
+    assert not (destination / "default/.DS_Store").exists()
+
+
 def test_update_rejects_missing_subcommand_and_project_actions():
     for arguments in (
         ["box"],
