@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.8.1 — 2026-11-16
+
+### Changed
+
+- Choose update actions, conflict handling and plan confirmation from keyboard and mouse menus.
+- Make selected components brighter in the setup wizard.
+
+### Fixed
+
+- Report when no project files need updating without an empty plan or confirmation.
+
 ## 0.8.0 — 2026-11-16
 
 ### Added

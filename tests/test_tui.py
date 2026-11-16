@@ -83,3 +83,22 @@ async def test_optional_recommendation_stays_off_after_back_navigation(tmp_path)
         await pilot.press("right", "right")
         assert "ruff" not in app.model.chosen
         await pilot.press("escape")
+
+
+@pytest.mark.asyncio
+async def test_action_menu_keyboard_mouse_and_escape():
+    from kitflow.tui import ActionMenu
+
+    options = [("files", "Update files"), ("setup", "Change setup"), ("exit", "Exit")]
+    app = ActionMenu("Choose action", options, "files")
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.press("down", "enter")
+    assert app.return_value == "setup"
+    app = ActionMenu("Choose action", options, "files")
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.click(app.query("ListItem")[2])
+    assert app.return_value == "exit"
+    app = ActionMenu("Choose action", options, "files")
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.press("escape")
+    assert app.return_value is None

@@ -7,7 +7,6 @@ from pathlib import Path
 
 from rich.console import Console
 from rich.markdown import Markdown
-from rich.prompt import Confirm, Prompt
 from rich.syntax import Syntax
 from rich.table import Table
 
@@ -26,7 +25,7 @@ def parser() -> argparse.ArgumentParser:
         description="KitFlow — project standards over mise", add_help=False
     )
     result.add_argument("--help", "-h", action="help", help="show this help message and exit")
-    result.add_argument("--version", "-v", action="version", version="KitFlow 0.8.0")
+    result.add_argument("--version", "-v", action="version", version="KitFlow 0.8.1")
     result.add_argument(
         "--instruction",
         "-i",
@@ -83,6 +82,12 @@ Without a command, prepare the local box. User overrides stay in its root direct
     return result
 
 
+def choose_action(title: str, options: list[tuple[str, str]], default: str) -> str | None:
+    from kitflow.tui import ActionMenu
+
+    return ActionMenu(title, options, default).run()
+
+
 def show_diff(change):
     def lines(content):
         text = (
@@ -107,6 +112,9 @@ def show_diff(change):
 
 
 def show_plan(result):
+    if not result.changes:
+        console.print("No files need updating.")
+        return
     table = Table(title="KitFlow · Review plan", expand=True)
     table.add_column("Action", width=12)
     table.add_column("File / block")
@@ -118,8 +126,6 @@ def show_plan(result):
             "Conflict" if change.conflict else change.reason or "Ready",
         )
     console.print(table)
-    if not result.changes:
-        console.print("Files match the selected components.")
 
 
 def run(args: argparse.Namespace) -> int:
@@ -210,12 +216,12 @@ def run(args: argparse.Namespace) -> int:
         excluded = [x for x in excluded if x not in args.manage]
     configure = command == "init" and args.components is None and not args.manage
     if command == "update" and not args.yes and sys.stdin.isatty():
-        action = Prompt.ask(
-            "Update files or change components?",
-            choices=["files", "setup", "cancel"],
-            default="files",
+        action = choose_action(
+            "What would you like to do?",
+            [("files", "Update files"), ("setup", "Change setup"), ("exit", "Exit")],
+            "files",
         )
-        if action == "cancel":
+        if action in (None, "exit"):
             console.print("Cancelled. No files were changed.")
             return 0
         configure = action == "setup"
@@ -240,6 +246,9 @@ def run(args: argparse.Namespace) -> int:
         return 1 if result.changes else 0
     if command == "status":
         return 1 if result.changes else 0
+    if command == "update" and not configure and not result.changes:
+        apply(result, source)
+        return 0
     for change in result.changes:
         if not change.conflict:
             continue
@@ -247,12 +256,17 @@ def run(args: argparse.Namespace) -> int:
         if args.yes or not sys.stdin.isatty():
             console.print("Conflicts remain. Run interactively; no files were changed.")
             return 2
-        answer = Prompt.ask(
-            "replace: apply; skip: skip this update; keep: stop managing; quit: cancel",
-            choices=["replace", "skip", "keep", "quit"],
-            default="skip",
+        answer = choose_action(
+            f"Resolve conflict: {change.artifact.path}",
+            [
+                ("replace", "Replace with box version"),
+                ("skip", "Skip this update"),
+                ("keep", "Keep as user-owned"),
+                ("quit", "Exit without changes"),
+            ],
+            "skip",
         )
-        if answer == "quit":
+        if answer in (None, "quit"):
             return 0
         change.decision = {"replace": "apply", "skip": "skip", "keep": "keep"}[answer]
         if answer == "skip" and change.artifact.id not in document.get("state", {}).get(
@@ -262,7 +276,12 @@ def run(args: argparse.Namespace) -> int:
     if not args.yes:
         if not sys.stdin.isatty():
             raise KitFlowError("Use --yes to confirm a non-interactive plan")
-        if not Confirm.ask("Apply this plan?", default=False):
+        if (
+            choose_action(
+                "Apply this plan?", [("apply", "Apply plan"), ("cancel", "Cancel")], "cancel"
+            )
+            != "apply"
+        ):
             console.print("Cancelled. No files were changed.")
             return 0
     apply(result, source)

@@ -101,13 +101,17 @@ code.
 Run `kitflow init` again to edit the current selection. Ordinary interactive `kitflow update`
 offers:
 
-- `files`: update templates for the saved selection.
-- `setup`: open the same wizard with the current selection to add or remove components.
-- `cancel`: leave the project unchanged.
+- **Update files**: update templates for the saved selection.
+- **Change setup**: open the same wizard with the current selection to add or remove components.
+- **Exit**: leave the project unchanged.
 
 `kitflow update -y` skips the menu and wizard. It applies templates for the saved selection and
 refuses unresolved conflicts. Existing project choices are preserved, including disabled
 recommendations. New languages or frameworks can introduce new recommended tools.
+
+Use Up/Down and Enter, or click an item, to choose an action. Escape cancels. Conflict actions and
+plan confirmations use the same controls. When no files need updating, KitFlow reports this without
+showing an empty plan or asking for confirmation.
 
 Profiles have been replaced by wizard definitions in `kitflow-box.toml`. Existing project selections
 continue working. Old local profile files are no longer read. See the catalog reference for

@@ -42,6 +42,10 @@ class Configurator(App[Selection | None]):
     #hint { height: auto; max-height: 4; margin-bottom: 1; color: #a5b8aa; }
     #components { height: 1fr; border: none; background: transparent; padding: 0; }
     #components > .option-list--option-highlighted { background: #22342a; color: #e4eee6; }
+    #components > .selection-list--button-selected,
+    #components > .selection-list--button-selected-highlighted {
+        color: #111714; background: #50fa7b; text-style: bold;
+    }
     #details { height: 4; padding: 1 0; color: #a5b8aa; }
     #review { height: 1fr; overflow-y: auto; }
     #summary { height: 2; padding: 0 3; color: #a5b8aa; }
@@ -263,5 +267,46 @@ class Configurator(App[Selection | None]):
         actions[index].focus()
 
     @on(Button.Pressed, "#cancel")
+    def action_cancel(self):
+        self.exit(None)
+
+
+class ActionMenu(App[str | None]):
+    """Choose an action with arrows, Enter or the mouse."""
+
+    ENABLE_COMMAND_PALETTE = False
+    CSS = """
+    Screen { align: center middle; background: #111714; color: #e4eee6; }
+    #menu { width: 72; max-width: 95%; height: auto; border: round #50fa7b; padding: 1 2; }
+    #title { height: auto; margin-bottom: 1; text-style: bold; }
+    ListView { height: auto; max-height: 12; background: transparent; }
+    ListItem { height: 3; padding: 1; }
+    ListItem.-highlight { background: #294536; color: #50fa7b; text-style: bold; }
+    #keys { height: 1; margin-top: 1; color: #a5b8aa; }
+    """
+    BINDINGS = [Binding("escape", "cancel", "Exit")]
+
+    def __init__(self, title: str, options: list[tuple[str, str]], default: str):
+        super().__init__()
+        self.heading, self.options, self.default = title, options, default
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="menu"):
+            yield Static(self.heading, id="title", markup=False)
+            yield ListView(*(ListItem(Label(label)) for _, label in self.options), id="actions")
+            yield Static("↑/↓ Choose · Enter Select · Esc Exit", id="keys")
+
+    def on_mount(self):
+        actions = self.query_one(ListView)
+        actions.index = next(
+            i for i, (value, _) in enumerate(self.options) if value == self.default
+        )
+        actions.focus()
+
+    @on(ListView.Selected)
+    def select_action(self, event: ListView.Selected):
+        if event.list_view.index is not None:
+            self.exit(self.options[event.list_view.index][0])
+
     def action_cancel(self):
         self.exit(None)

@@ -131,8 +131,8 @@ def test_update_can_reconfigure_and_remove_components(tmp_path, monkeypatch):
         == 0
     )
     monkeypatch.setattr(cli.sys.stdin, "isatty", lambda: True)
-    monkeypatch.setattr(cli.Prompt, "ask", lambda *_args, **_kwargs: "setup")
-    monkeypatch.setattr(cli.Confirm, "ask", lambda *_args, **_kwargs: True)
+    answers = iter(["setup", "apply"])
+    monkeypatch.setattr(cli, "choose_action", lambda *_args, **_kwargs: next(answers))
     starts = []
 
     def configure(self):
@@ -161,7 +161,7 @@ def test_update_yes_skips_menu_and_wizard(tmp_path, monkeypatch):
     def unexpected(*_args, **_kwargs):
         raise AssertionError("Unexpected interactive setup")
 
-    monkeypatch.setattr(cli.Prompt, "ask", unexpected)
+    monkeypatch.setattr(cli, "choose_action", unexpected)
     monkeypatch.setattr(Configurator, "run", unexpected)
     assert (
         cli.run(cli.parser().parse_args(["update", "-y", "-b", str(CATALOG), "-p", str(tmp_path)]))
@@ -175,7 +175,7 @@ def test_update_wizard_cancel_does_not_write_files(tmp_path, monkeypatch):
     assert invoke(tmp_path, "init", "-c", "ruff", "-y").returncode == 0
     before = {p: p.read_bytes() for p in tmp_path.rglob("*") if p.is_file()}
     monkeypatch.setattr(cli.sys.stdin, "isatty", lambda: True)
-    monkeypatch.setattr(cli.Prompt, "ask", lambda *_args, **_kwargs: "setup")
+    monkeypatch.setattr(cli, "choose_action", lambda *_args, **_kwargs: "setup")
     monkeypatch.setattr(Configurator, "run", lambda self: None)
     assert (
         cli.run(cli.parser().parse_args(["update", "-b", str(CATALOG), "-p", str(tmp_path)])) == 0
@@ -186,3 +186,25 @@ def test_update_wizard_cancel_does_not_write_files(tmp_path, monkeypatch):
 def test_removed_profile_option_is_rejected(tmp_path):
     assert invoke(tmp_path, "init", "--profile", "example", "-y").returncode == 2
     assert not list(tmp_path.iterdir())
+
+
+def test_update_without_changes_shows_message_without_table_or_confirmation(
+    tmp_path, monkeypatch, capsys
+):
+    assert invoke(tmp_path, "init", "-c", "ruff", "-y").returncode == 0
+    monkeypatch.setattr(cli.sys.stdin, "isatty", lambda: True)
+    calls = []
+
+    def choose(*args):
+        calls.append(args)
+        return "files"
+
+    monkeypatch.setattr(cli, "choose_action", choose)
+    assert (
+        cli.run(cli.parser().parse_args(["update", "-b", str(CATALOG), "-p", str(tmp_path)])) == 0
+    )
+    output = capsys.readouterr().out
+    assert "No files need updating." in output
+    assert "Review plan" not in output
+    assert "Configuration saved" not in output
+    assert len(calls) == 1

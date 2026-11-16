@@ -96,7 +96,7 @@ def test_bare_startup_keeps_existing_box_without_prompts(boxes, monkeypatch):
     shutil.copytree(destination, settings.box_path())
     monkeypatch.setattr(cli.sys.stdin, "isatty", lambda: True)
     monkeypatch.setattr(
-        cli.Confirm, "ask", lambda *_args, **_kwargs: pytest.fail("Unexpected prompt")
+        cli, "choose_action", lambda *_args, **_kwargs: pytest.fail("Unexpected prompt")
     )
     before = box_update.snapshot(settings.box_path())
     assert cli.run(cli.parser().parse_args([])) == 0
@@ -112,7 +112,7 @@ def test_explicit_update_applies_without_diffs_or_prompts(
     shutil.copytree(destination, settings.box_path())
     monkeypatch.setattr(cli.sys.stdin, "isatty", lambda: interactive)
     monkeypatch.setattr(
-        cli.Confirm, "ask", lambda *_args, **_kwargs: pytest.fail("Unexpected prompt")
+        cli, "choose_action", lambda *_args, **_kwargs: pytest.fail("Unexpected prompt")
     )
     monkeypatch.setattr(cli, "Syntax", lambda *_args, **_kwargs: pytest.fail("Unexpected diff"))
     assert cli.run(cli.parser().parse_args(["box", "update", *options])) == 0
