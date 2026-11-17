@@ -1,9 +1,9 @@
 # KitFlow
 
 KitFlow is a Python CLI for starting projects and maintaining configuration standards. Select
-components in a keyboard- and mouse-driven interface, review the plan, and apply templates. The
-first use downloads an example box. Run `kitflow box update` to refresh the standard box; project
-commands use your local files.
+components in a keyboard and mouse-driven interface, review the plan, and apply templates. The first
+use downloads an example box. Run `kitflow box update` to refresh the standard box; project commands
+use your local files.
 
 ## Install with Homebrew
 
