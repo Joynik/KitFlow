@@ -1,5 +1,8 @@
 # General
 .DS_Store
+
+# ENV
 .env
 .env.*
 !.env.example
+
