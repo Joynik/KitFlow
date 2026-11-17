@@ -1,6 +1,6 @@
 [vars]
-python_entrypoint = "main.py"
-python_build_directory = "dist"
+python_entrypoint = "main.py" # Entry file, relative to project_root.
+python_build_directory = "dist" # Output folder, relative to project_root.
 
 [env]
 PYTHON_ENTRYPOINT = "{{ env.PYTHON_ENTRYPOINT | default(value=vars.python_entrypoint) }}"
