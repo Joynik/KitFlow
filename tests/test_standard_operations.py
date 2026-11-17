@@ -32,7 +32,7 @@ def test_server_modes_use_the_selected_runtime_and_directory(tmp_path, server):
         **os.environ,
         "PATH": f"{binary}:{os.environ['PATH']}",
         "CALL_LOG": str(log),
-        "PROJECT_PYTHON_DIRECTORY": str(project),
+        "PYTHON_SOURCE": str(project),
         "PYTHON_APP": "sample:app",
         "SERVER_PORT": "9001",
         "BUILD_BEFORE_RUN": "false",
@@ -295,3 +295,202 @@ def test_sqlite_prepare_uses_initialization_sql_and_preserves_existing_database(
     original = target.read_bytes()
     assert subprocess.run(command, env=env, capture_output=True).returncode == 2
     assert target.read_bytes() == original
+
+
+@pytest.mark.parametrize("runner", ["pytest", "unittest"])
+@pytest.mark.parametrize("absolute", [False, True])
+def test_python_tests_discover_sibling_tests_outside_sources(tmp_path, runner, absolute):
+    project = tmp_path / "python project"
+    source = project / "src"
+    tests = project / "custom tests"
+    source.mkdir(parents=True)
+    tests.mkdir()
+    test_file = tests / "test_example.py"
+    test_file.write_text(
+        "import unittest\nclass Example(unittest.TestCase):\n"
+        "    def test_value(self):\n        self.assertEqual(1, 1)\n"
+    )
+    binary = tmp_path / "bin"
+    binary.mkdir()
+    uv = binary / "uv"
+    uv.write_text(
+        f"#!{sys.executable}\nimport os,sys\n"
+        "args=sys.argv[2:]\n"
+        "if args[0]=='pytest': args=['-m','pytest',*args[1:]]\n"
+        "elif args[0]=='python': args=args[1:]\n"
+        f"os.execv({sys.executable!r},[{sys.executable!r},*args])\n"
+    )
+    uv.chmod(0o755)
+    content = Catalog(BOX).render([runner])["task.test"].content
+    assert isinstance(content, bytes)
+    script = tomllib.loads(content.decode())["tasks"]["test"]["run"]
+    env = {
+        **os.environ,
+        "PATH": f"{binary}:{os.environ['PATH']}",
+        "PYTHON_SOURCE": str(source),
+        "PROJECT_ROOT": str(project),
+        "PYTHON_TESTS": str(tests) if absolute else "custom tests",
+        "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+    }
+    result = subprocess.run(
+        ["/bin/sh", "-c", script], cwd=tmp_path, env=env, capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "1 passed" in result.stdout if runner == "pytest" else "Ran 1 test" in result.stderr
+    test_file.write_text(test_file.read_text().replace("assertEqual(1, 1)", "assertEqual(1, 200)"))
+    result = subprocess.run(
+        ["/bin/sh", "-c", script], cwd=tmp_path, env=env, capture_output=True, text=True
+    )
+    assert result.returncode != 0
+
+
+@pytest.mark.parametrize("component", ["python-package", "nuitka"])
+def test_optional_python_build_uses_project_directory_and_preserves_failure(tmp_path, component):
+    from kitflow.catalog import KitFlowError
+    from kitflow.wizard import Wizard
+
+    catalog = Catalog(BOX)
+    assert "task.build" not in catalog.render(["python"])
+    with pytest.raises(KitFlowError, match="[Cc]onflict"):
+        catalog.render(["python-package", "nuitka"])
+    model = Wizard(catalog, ["python"], [], existing=True)
+    step = next(s for s in model.steps() if s.id == "build-tools")
+    model.enter(step)
+    assert not {"python-package", "nuitka"} & model.chosen
+    model.toggle(component)
+    assert component in model.chosen
+    model.toggle(component)
+    assert not {"python-package", "nuitka"} & model.chosen
+    project = tmp_path / "python project"
+    project.mkdir()
+    binary = tmp_path / "bin"
+    binary.mkdir()
+    log = tmp_path / "calls.json"
+    uv = binary / "uv"
+    uv.write_text(
+        f"#!{sys.executable}\nimport json,os,sys\nfrom pathlib import Path\n"
+        'Path(os.environ["CALL_LOG"]).write_text(json.dumps([os.getcwd(),sys.argv[1:]]))\n'
+        'sys.exit(int(os.environ.get("FAIL_CODE","0")))\n'
+    )
+    uv.chmod(0o755)
+    content = catalog.render([component])["task.build"].content
+    assert isinstance(content, bytes)
+    script = tomllib.loads(content.decode())["tasks"]["build"]["run"]
+    env = {
+        **os.environ,
+        "PATH": f"{binary}:{os.environ['PATH']}",
+        "PROJECT_ROOT": str(project),
+        "CALL_LOG": str(log),
+        "PYTHON_ENTRYPOINT": "app files/main.py",
+        "PYTHON_BUILD_DIRECTORY": "build output",
+    }
+    result = subprocess.run(["/bin/sh", "-c", script], env=env)
+    assert result.returncode == 0
+    directory, args = json.loads(log.read_text())
+    assert Path(directory) == project.resolve()
+    assert args == (
+        ["build"]
+        if component == "python-package"
+        else [
+            "run",
+            "--no-sync",
+            "python",
+            "-m",
+            "nuitka",
+            "--mode=standalone",
+            "--output-dir=build output",
+            "app files/main.py",
+        ]
+    )
+    result = subprocess.run(["/bin/sh", "-c", script], env={**env, "FAIL_CODE": "7"})
+    assert result.returncode == 7
+
+
+@pytest.mark.skipif(shutil.which("mise") is None, reason="mise not installed")
+def test_standard_quiet_defaults_hide_command_echo_but_keep_tool_output(tmp_path):
+    config = (BOX / "settings/base.toml").read_text()
+    (tmp_path / ".env").write_text("")
+    (tmp_path / "mise.toml").write_text(config + '\n[tasks.example]\nrun = "echo tool-output"\n')
+    result = subprocess.run(
+        ["mise", "--cd", str(tmp_path), "run", "example"],
+        env={
+            **os.environ,
+            "MISE_TRUSTED_CONFIG_PATHS": str(tmp_path),
+            "MISE_CACHE_DIR": str(tmp_path / "cache"),
+            "MISE_STATE_DIR": str(tmp_path / "state"),
+        },
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == "tool-output"
+    assert "$ echo" not in result.stderr
+
+
+def test_python_source_defaults_upgrade_without_replacing_user_source_path(tmp_path):
+    from kitflow.engine import apply, load_config, plan
+
+    old = Catalog(BOX)
+    old.data["defaults"] = [
+        row for row in old.data["defaults"] if row["id"] not in {"python-project", "python-tests"}
+    ]
+    apply(plan(tmp_path, old, ["pytest"], load_config(tmp_path)), {})
+    path = tmp_path / "mise.toml"
+    path.write_text(path.read_text().replace('python_source = "."', 'python_source = "src"'))
+    apply(plan(tmp_path, Catalog(BOX), ["pytest"], load_config(tmp_path)), {})
+    data = tomllib.loads(path.read_text())
+    assert data["vars"]["python_source"] == "src"
+    assert data["vars"]["project_root"] == "."
+    assert data["vars"]["python_tests"] == "tests"
+    assert "PROJECT_ROOT" in data["env"]
+
+
+@pytest.mark.skipif(shutil.which("mise") is None, reason="mise not installed")
+@pytest.mark.parametrize("override", ["relative", "absolute", "dotenv"])
+def test_python_path_settings_resolve_sources_from_project_root(tmp_path, override):
+    import tomlkit
+
+    from kitflow.engine import apply, load_config, plan
+
+    backend = tmp_path / "nested backend"
+    backend.mkdir()
+    source = backend / "source files"
+    source.mkdir()
+    apply(plan(tmp_path, Catalog(BOX), ["pytest"], load_config(tmp_path)), {})
+    path = tmp_path / "mise.toml"
+    data = tomlkit.parse(path.read_text())
+    data["vars"]["project_root"] = str(backend) if override == "absolute" else "nested backend"
+    data["vars"]["python_source"] = str(source) if override == "absolute" else "source files"
+    data["vars"]["python_tests"] = "test files"
+    data["tasks"]["paths"] = {
+        "run": 'printf \'%s\\n\' "$PROJECT_ROOT" "$PYTHON_SOURCE" "$PYTHON_TESTS"'
+    }
+    path.write_text(tomlkit.dumps(data))
+    (tmp_path / ".env").write_text(
+        f'PROJECT_ROOT="{backend}"\nPYTHON_SOURCE="{source}"\nPYTHON_TESTS="{backend / "external tests"}"\n'
+        if override == "dotenv"
+        else ""
+    )
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if k not in {"PROJECT_ROOT", "PYTHON_SOURCE", "PYTHON_TESTS"}
+    }
+    result = subprocess.run(
+        ["mise", "--cd", str(tmp_path), "run", "paths"],
+        env={
+            **env,
+            "MISE_TRUSTED_CONFIG_PATHS": str(tmp_path),
+            "MISE_CACHE_DIR": str(tmp_path / "cache"),
+            "MISE_STATE_DIR": str(tmp_path / "state"),
+        },
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    root_value, source_value, tests_value = result.stdout.strip().splitlines()
+    assert Path(root_value).resolve() == backend.resolve()
+    assert Path(source_value).resolve() == source.resolve()
+    assert tests_value == (
+        str(backend / "external tests") if override == "dotenv" else "test files"
+    )

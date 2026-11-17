@@ -1,5 +1,6 @@
 [settings]
 task.run_auto_install = false
+task.quiet = true
 
 [env]
 _.file = ".env"

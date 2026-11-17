@@ -1,5 +1,5 @@
 [vars]
-python_directory = "."
+python_source = "."
 
 [env]
-PROJECT_PYTHON_DIRECTORY = "{{ env.PROJECT_PYTHON_DIRECTORY | default(value=config_root ~ '/' ~ vars.python_directory) }}"
+PYTHON_SOURCE = '{% set path = env.PYTHON_SOURCE | default(value=vars.python_source) %}{% if path is starting_with(pat="/") %}{{ path }}{% else %}{{ env.PROJECT_ROOT }}/{{ path }}{% endif %}'

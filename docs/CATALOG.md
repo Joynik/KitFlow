@@ -219,7 +219,7 @@ id = "application-test"
 name = "test"
 template = "tasks/application-test.sh"
 when = ["python"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PROJECT_ROOT"
 description = "Run selected test runners"
 ```
 

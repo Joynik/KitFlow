@@ -1,0 +1,5 @@
+[vars]
+project_root = "."
+
+[env]
+PROJECT_ROOT = '{% set path = env.PROJECT_ROOT | default(value=vars.project_root) %}{% if path is starting_with(pat="/") %}{{ path }}{% else %}{{ config_root }}/{{ path }}{% endif %}'

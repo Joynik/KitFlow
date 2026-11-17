@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Added
+
+- Select Python package or Nuitka standalone builds, or leave Python builds disabled.
+- Configure Python project and test directories independently from source checks.
+
+### Changed
+
+- Seed quiet mise task output for new settings without suppressing program diagnostics.
+- Name Python paths `project_root`, `python_source` and `python_tests`, with matching environment
+  overrides. Resolve relative source and test paths from the Python project root.
+
+### Fixed
+
+- Run pytest and unittest from the Python project directory instead of the source directory.
+
 ## 0.9.1 — 2026-11-17
 
 ### Added

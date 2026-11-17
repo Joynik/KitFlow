@@ -14,7 +14,7 @@ def catalog_path(tmp_path):
     root = tmp_path / "box"
     shutil.copytree(Path(__file__).parent / "fixtures/catalog", root)
     (root / "settings.toml").write_text(
-        '[vars]\npython_directory="."\nport=8000\n[env]\nPROJECT_PYTHON_DIRECTORY="{{ config_root }}/{{ vars.python_directory }}"\n'
+        '[vars]\npython_source="."\nport=8000\n[env]\nPYTHON_SOURCE="{{ config_root }}/{{ vars.python_source }}"\n'
     )
     with (root / "kitflow-box.toml").open("a") as stream:
         stream.write('[[defaults]]\nid="python"\ntemplate="settings.toml"\nwhen=["python"]\n')
@@ -30,16 +30,14 @@ def test_defaults_are_user_owned_across_updates_and_component_removal(catalog_pa
     apply(plan(project, catalog, ["python", "ruff"], load_config(project)), {})
     data = tomllib.loads(path.read_text())
     assert data["vars"]["port"] == 9000
-    assert data["vars"]["python_directory"] == "."
+    assert data["vars"]["python_source"] == "."
     assert "# User settings" in path.read_text()
-    path.write_text(
-        path.read_text().replace('python_directory = "."', 'python_directory = "backend"')
-    )
-    (catalog_path / "settings.toml").write_text('[vars]\npython_directory="changed"\nport=9999\n')
+    path.write_text(path.read_text().replace('python_source = "."', 'python_source = "backend"'))
+    (catalog_path / "settings.toml").write_text('[vars]\npython_source="changed"\nport=9999\n')
     catalog = Catalog(catalog_path)
     assert not plan(project, catalog, ["python", "ruff"], load_config(project)).changes
     apply(plan(project, catalog, [], load_config(project)), {})
-    assert tomllib.loads(path.read_text())["vars"]["python_directory"] == "backend"
+    assert tomllib.loads(path.read_text())["vars"]["python_source"] == "backend"
     assert tomllib.loads(path.read_text())["vars"]["port"] == 9000
 
 

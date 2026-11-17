@@ -142,7 +142,7 @@ the corresponding tools are selected:
 | `mise run typecheck` | Check types |
 | `mise run test` | Run independently selected test tools |
 | `mise run verify` | Run configured code checks, application checks and tests in order |
-| `mise run build` | Build every selected language component |
+| `mise run build` | Build selected components with a build tool |
 | `mise run frontend:dev` | Start the selected frontend development script |
 | `mise run frontend:run` | Start or preview the built frontend |
 | `mise run backend:run` | Run a selected Rust web application |
@@ -155,6 +155,9 @@ command. The aggregate calls the existing mise tasks once, so their user overrid
 Native tool rules still apply: for example, Clippy fixes require a clean version-controlled working
 tree. KitFlow does not install tools. Django commands and djLint use the project environment through
 uv; uv may synchronize the project environment before running them.
+
+New mise settings include `task.quiet = true` to hide echoed commands while retaining program
+output. Existing settings remain user-owned; add this under `[settings]` manually if needed.
 
 Diagnostics use short formats where supported. Warnings, errors and failing filenames remain
 visible. Django HTML tasks scan only `templates/`; edit their fragments if your layout differs.
@@ -171,15 +174,40 @@ creates `.env` from `.env.example` without replacing an existing file.
 kitflow init → Edit mise vars/env → Set local .env values → Run mise tasks
 ```
 
-Set `python_directory`, `javascript_directory`, `rust_directory` and `swift_directory` under
-`[vars]` for the selected languages. Paths are relative to the project root; spaces are supported.
-For example, set `rust_directory = "src-tauri"` for that layout. Each task fragment runs in its
-configured directory. Shared `build`, `check` and `test` tasks combine selected components.
+Set `javascript_directory`, `rust_directory` and `swift_directory` under `[vars]` for those
+languages. Their paths are relative to the project root; spaces are supported. For example, set
+`rust_directory = "src-tauri"` for that layout. Shared `build`, `check` and `test` tasks combine
+selected components.
+
+For Python, configure these mise vars:
+
+```toml
+[vars]
+project_root = "."
+python_source = "src"
+python_tests = "tests"
+```
+
+`project_root` selects the Python project directory for tests and builds. Its relative path starts
+from the directory containing `mise.toml`. `python_source` selects sources for code checks and
+application tasks; its relative path starts from `project_root`. `python_tests` selects test files,
+also relative to `project_root`. Each path can be absolute. Environment overrides are
+`PROJECT_ROOT`, `PYTHON_SOURCE` and `PYTHON_TESTS`.
+
+Existing mise vars/env are user-owned and are not renamed automatically. Rename old Python path
+settings manually when adopting these tasks.
+
+In **Build tools**, choose **Python package** for `uv build` (wheel and source archive), or
+**Nuitka standalone** for a program directory. Leave both unselected for no Python build task.
+Package builds need a suitable build backend in `pyproject.toml`. Install Nuitka in the project
+environment yourself; the task uses `uv run --no-sync` and does not install it. Set
+`python_entrypoint` (default `main.py`) and `python_build_directory` (default `dist`) in mise vars.
+Paths start from the Python project directory. Use Nuitka project options in the entry point for
+application-specific data and compilation settings. A C compiler is required.
 
 Choose test runners separately: Django, pytest, unittest, Bun, Cargo or Swift. Language selection
-alone does not automatically enable a test runner. Configure unittest discovery with
-`unittest_directory`; pytest and Bun use their native project settings. Swift build/type checks use
-compilation.
+alone does not automatically enable a test runner. Configure Python test discovery with
+`python_tests`; Bun uses its native project settings. Swift build/type checks use compilation.
 
 ### Python servers and migrations
 

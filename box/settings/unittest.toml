@@ -1,5 +1,0 @@
-[vars]
-unittest_directory = "tests"
-
-[env]
-UNITTEST_DIRECTORY = "{{ env.UNITTEST_DIRECTORY | default(value=vars.unittest_directory) }}"

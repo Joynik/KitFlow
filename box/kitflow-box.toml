@@ -121,6 +121,24 @@ requires = ["django"]
 conflicts = []
 recommended = true
 
+# Components: build tools — Python
+
+[[components]]
+id = "python-package"
+label = "Python package"
+category = "Build tools"
+description = "Build a wheel and source archive with uv. Leave Python build tools unselected for no build."
+requires = ["python"]
+conflicts = ["nuitka"]
+
+[[components]]
+id = "nuitka"
+label = "Nuitka standalone"
+category = "Build tools"
+description = "Compile an entry point into a standalone directory. Requires Nuitka and a C compiler."
+requires = ["python"]
+conflicts = ["python-package"]
+
 # Components: tools — JavaScript and TypeScript
 
 [[components]]
@@ -730,7 +748,7 @@ id = "ruff-lint"
 name = "lint"
 template = "tasks/ruff-lint.sh"
 when = ["ruff"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Lint selected project components"
 
 [[tasks]]
@@ -738,7 +756,7 @@ id = "django-lint"
 name = "lint"
 template = "tasks/django-lint.sh"
 when = ["django"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Lint selected project components"
 
 [[tasks]]
@@ -746,7 +764,7 @@ id = "djlint-lint"
 name = "lint"
 template = "tasks/djlint-lint.sh"
 when = ["djlint"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Lint selected project components"
 
 [[tasks]]
@@ -785,7 +803,7 @@ id = "ruff-lint-fix"
 name = "lint-fix"
 template = "tasks/ruff-lint-fix.sh"
 when = ["ruff"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Apply supported lint fixes"
 
 [[tasks]]
@@ -826,7 +844,7 @@ id = "ruff-format"
 name = "format"
 template = "tasks/ruff-format.sh"
 when = ["ruff"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Format selected project components"
 
 [[tasks]]
@@ -857,7 +875,7 @@ id = "djlint-format"
 name = "format"
 template = "tasks/djlint-format.sh"
 when = ["djlint"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Format selected project components"
 
 [[tasks]]
@@ -873,7 +891,7 @@ id = "ruff-format-check"
 name = "format-check"
 template = "tasks/ruff-format-check.sh"
 when = ["ruff"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Check formatting without applying fixes"
 
 [[tasks]]
@@ -904,7 +922,7 @@ id = "djlint-format-check"
 name = "format-check"
 template = "tasks/djlint-format-check.sh"
 when = ["djlint"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Check formatting without applying fixes"
 
 [[tasks]]
@@ -922,7 +940,7 @@ id = "ty"
 name = "typecheck"
 template = "tasks/ty.sh"
 when = ["ty"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Check selected project types and native builds"
 
 [[tasks]]
@@ -930,7 +948,7 @@ id = "mypy"
 name = "typecheck"
 template = "tasks/mypy.sh"
 when = ["mypy"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Check selected project types and native builds"
 
 [[tasks]]
@@ -979,7 +997,7 @@ id = "django-test"
 name = "test"
 template = "tasks/django-test.sh"
 when = ["django-tests"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Run selected test runners"
 
 [[tasks]]
@@ -987,7 +1005,7 @@ id = "pytest"
 name = "test"
 template = "tasks/pytest.sh"
 when = ["pytest"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PROJECT_ROOT"
 description = "Run selected test runners"
 
 [[tasks]]
@@ -995,7 +1013,7 @@ id = "unittest"
 name = "test"
 template = "tasks/unittest.sh"
 when = ["unittest"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PROJECT_ROOT"
 description = "Run selected test runners"
 
 [[tasks]]
@@ -1014,6 +1032,22 @@ directory_env = "PROJECT_RUST_DIRECTORY"
 description = "Test doc"
 
 # Tasks: builds
+
+[[tasks]]
+id = "python-package-build"
+name = "build"
+template = "tasks/python-package-build.sh"
+when = ["python-package"]
+directory_env = "PROJECT_ROOT"
+description = "Build selected project components"
+
+[[tasks]]
+id = "nuitka-build"
+name = "build"
+template = "tasks/nuitka-build.sh"
+when = ["nuitka"]
+directory_env = "PROJECT_ROOT"
+description = "Build selected project components"
 
 [[tasks]]
 id = "rust-build"
@@ -1069,7 +1103,7 @@ name = "app-check"
 template = "tasks/fastapi-app-check.sh"
 when = ["fastapi"]
 description = "Check the application configuration"
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 
 [[tasks]]
 id = "django-app-check"
@@ -1077,14 +1111,14 @@ name = "app-check"
 template = "tasks/django-app-check.sh"
 when = ["django"]
 description = "Check the application configuration"
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 
 [[tasks]]
 id = "flask-app-check"
 name = "app-check"
 template = "tasks/flask-app-check.sh"
 when = ["flask"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Check the application configuration"
 
 # Tasks: Python servers
@@ -1094,7 +1128,7 @@ id = "granian-dev"
 name = "dev"
 template = "tasks/granian-dev.sh"
 when = ["granian"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Run the selected Python server with reload"
 
 [[tasks]]
@@ -1102,7 +1136,7 @@ id = "gunicorn-dev"
 name = "dev"
 template = "tasks/gunicorn-dev.sh"
 when = ["gunicorn"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Run the selected Python server with reload"
 
 [[tasks]]
@@ -1110,7 +1144,7 @@ id = "uvicorn-dev"
 name = "dev"
 template = "tasks/uvicorn-dev.sh"
 when = ["uvicorn"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Run the selected Python server with reload"
 
 [[tasks]]
@@ -1118,7 +1152,7 @@ id = "granian-run"
 name = "run"
 template = "tasks/granian-run.sh"
 when = ["granian"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Run the selected Python server without reload"
 
 [[tasks]]
@@ -1126,7 +1160,7 @@ id = "gunicorn-run"
 name = "run"
 template = "tasks/gunicorn-run.sh"
 when = ["gunicorn"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Run the selected Python server without reload"
 
 [[tasks]]
@@ -1134,7 +1168,7 @@ id = "uvicorn-run"
 name = "run"
 template = "tasks/uvicorn-run.sh"
 when = ["uvicorn"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Run the selected Python server without reload"
 
 [[tasks]]
@@ -1142,7 +1176,7 @@ id = "django-start"
 name = "django:runserver"
 template = "tasks/django-start.sh"
 when = ["django"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Django runserver"
 
 # Tasks: frontend development and preview
@@ -1222,7 +1256,7 @@ id = "django-makemigrations"
 name = "db:makemigrations"
 template = "tasks/django-makemigrations.sh"
 when = ["django"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Create a database migration"
 usage = "arg \"[name]\" help=\"Migration name\""
 
@@ -1231,7 +1265,7 @@ id = "alembic-create"
 name = "db:makemigrations"
 template = "tasks/alembic-create.sh"
 when = ["alembic"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Create a database migration"
 usage = "arg \"[name]\" help=\"Migration name\""
 
@@ -1240,7 +1274,7 @@ id = "django-migrate"
 name = "db:migrate"
 template = "tasks/django-migrate.sh"
 when = ["django"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Apply database migrations"
 
 [[tasks]]
@@ -1248,7 +1282,7 @@ id = "alembic-migrate"
 name = "db:migrate"
 template = "tasks/alembic-migrate.sh"
 when = ["alembic"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Apply database migrations"
 
 [[tasks]]
@@ -1256,7 +1290,7 @@ id = "django-migrations-check"
 name = "db:check"
 template = "tasks/django-migrations-check.sh"
 when = ["django"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Check for missing database migrations"
 
 [[tasks]]
@@ -1264,7 +1298,7 @@ id = "alembic-check"
 name = "db:check"
 template = "tasks/alembic-check.sh"
 when = ["alembic"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Check for missing database migrations"
 
 [[tasks]]
@@ -1272,7 +1306,7 @@ id = "django-superuser"
 name = "db:superuser"
 template = "tasks/django-superuser.sh"
 when = ["django"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Db superuser"
 
 [[tasks]]
@@ -1323,7 +1357,7 @@ id = "django-i18n"
 name = "translations"
 template = "tasks/django-i18n.sh"
 when = ["django-i18n"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Update and compile selected translations"
 
 [[tasks]]
@@ -1331,7 +1365,7 @@ id = "babel-i18n"
 name = "translations"
 template = "tasks/babel-i18n.sh"
 when = ["babel-i18n"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
+directory_env = "PYTHON_SOURCE"
 description = "Update and compile selected translations"
 
 [[tasks]]
@@ -1502,6 +1536,11 @@ template = "settings/base.toml"
 when = []
 
 [[defaults]]
+id = "python-project"
+template = "settings/python-project.toml"
+when = ["python"]
+
+[[defaults]]
 id = "python"
 template = "settings/python.toml"
 when = ["python"]
@@ -1572,9 +1611,9 @@ template = "settings/python-application.toml"
 when_any = ["django", "fastapi", "flask"]
 
 [[defaults]]
-id = "unittest"
-template = "settings/unittest.toml"
-when = ["unittest"]
+id = "python-tests"
+template = "settings/python-tests.toml"
+when_any = ["pytest", "unittest"]
 
 [[defaults]]
 id = "frontend-runtime"
@@ -1595,6 +1634,11 @@ when = ["sqlite"]
 id = "prisma"
 template = "settings/prisma.toml"
 when = ["prisma"]
+
+[[defaults]]
+id = "nuitka"
+template = "settings/nuitka.toml"
+when = ["nuitka"]
 
 # Wizard: navigation steps
 
@@ -1644,7 +1688,7 @@ order = 50
 id = "build-tools"
 label = "Build tools"
 categories = ["Build tools"]
-description = "Choose build tools separately from frameworks."
+description = "Choose build tools separately from frameworks. Leave Python build tools unselected for no Python build."
 order = 60
 
 [[steps]]

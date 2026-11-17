@@ -78,7 +78,7 @@ def test_standard_check_runs_only_checks_and_preserves_failure_status(tmp_path):
         "COMMAND_LOG": str(log),
         "FAIL_TOOL": "",
         "TASK_SCRIPTS": str(task_scripts),
-        "PROJECT_PYTHON_DIRECTORY": str(tmp_path),
+        "PYTHON_SOURCE": str(tmp_path),
         "PROJECT_JAVASCRIPT_DIRECTORY": str(tmp_path),
         "PROJECT_RUST_DIRECTORY": str(tmp_path),
         "PROJECT_SWIFT_DIRECTORY": str(tmp_path),

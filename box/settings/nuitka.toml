@@ -1,0 +1,7 @@
+[vars]
+python_entrypoint = "main.py"
+python_build_directory = "dist"
+
+[env]
+PYTHON_ENTRYPOINT = "{{ env.PYTHON_ENTRYPOINT | default(value=vars.python_entrypoint) }}"
+PYTHON_BUILD_DIRECTORY = "{{ env.PYTHON_BUILD_DIRECTORY | default(value=vars.python_build_directory) }}"
