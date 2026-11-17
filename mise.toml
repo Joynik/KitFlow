@@ -7,18 +7,18 @@ task.quiet = true
 PYTHONUNBUFFERED = "1"
 # kitflow:end env.PYTHONUNBUFFERED
 _.file = ".env"
-PROJECT_ROOT = '{% set path = env.PROJECT_ROOT | default(value=vars.project_root) %}{% if path is starting_with(pat="/") %}{{ path }}{% else %}{{ config_root }}/{{ path }}{% endif %}'
-PYTHON_SOURCE = '{% set path = env.PYTHON_SOURCE | default(value=vars.python_source) %}{% if path is starting_with(pat="/") %}{{ path }}{% else %}{{ env.PROJECT_ROOT }}/{{ path }}{% endif %}'
+PROJECT_ROOT = "{{ [config_root, env.PROJECT_ROOT | default(value=vars.project_root)] | join_path | absolute }}"
+PYTHON_SOURCE = "{{ [env.PROJECT_ROOT, env.PYTHON_SOURCE | default(value=vars.python_source)] | join_path | absolute }}"
 PYTHON_TESTS = "{{ env.PYTHON_TESTS | default(value=vars.python_tests) }}"
 PYTHON_ENTRYPOINT = "{{ env.PYTHON_ENTRYPOINT | default(value=vars.python_entrypoint) }}"
 PYTHON_BUILD_DIRECTORY = "{{ env.PYTHON_BUILD_DIRECTORY | default(value=vars.python_build_directory) }}"
 
 [vars]
-project_root = "."
-python_source = "src"
-python_tests = "tests"
-python_entrypoint = "src/kitflow/__main__.py"
-python_build_directory = "dist"
+project_root = "."  # Relative to mise.toml; absolute paths are also allowed.
+python_source = "src"  # Relative to project_root; use "." for the project folder.
+python_tests = "tests"  # Relative to project_root; absolute paths are also allowed.
+python_entrypoint = "src/kitflow/__main__.py"  # Entry file, relative to project_root.
+python_build_directory = "dist"  # Output folder, relative to project_root.
 
 # kitflow:begin task.help
 [tasks."help"]

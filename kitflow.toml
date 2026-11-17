@@ -106,28 +106,28 @@ once = true
 path = "mise.toml"
 kind = "defaults"
 key = ""
-sha256 = "8176e4b9700ed917a59803bd52a0d61e07b561306de85f1bc63b35588269da47"
+sha256 = "39048606cdd0dbcb5cb52daa979856f2a35ff8ab10838d820eee7b92a7241bfb"
 once = true
 
 [state.artifacts."defaults.python"]
 path = "mise.toml"
 kind = "defaults"
 key = ""
-sha256 = "aea40dd0c553c6e515355c871908e6c6f18ed476f067a49b008b627fe7065700"
+sha256 = "83f2b9a76b3cc6926c2a46de1fab91526f77082c60f5cfd1fe4358df5a384d72"
 once = true
 
 [state.artifacts."defaults.python-tests"]
 path = "mise.toml"
 kind = "defaults"
 key = ""
-sha256 = "2b06fa1015cd51495441bae3d818a75bcc58026b46e4bdc17b2f326ef7408504"
+sha256 = "b3886636c7d049718d811f1523c46b73f58620566898b548c57630a7706d696a"
 once = true
 
 [state.artifacts."defaults.nuitka"]
 path = "mise.toml"
 kind = "defaults"
 key = ""
-sha256 = "021eddedf671728f2ff3b0fb3d0593da474712e7c33676b468ead95a3ead81cb"
+sha256 = "b2a8d07731e96b4da6a01140f5254bbdb80bf18620a9cf1a242af8f6e462dc88"
 once = true
 
 [state.artifacts."task.help"]
