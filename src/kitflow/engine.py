@@ -96,7 +96,9 @@ class Plan:
     snapshots: dict[str, bytes | str | None] = field(default_factory=dict)
 
 
-def plan(root: Path, catalog: Catalog, selected: list[str], document: dict) -> Plan:
+def plan(
+    root: Path, catalog: Catalog, selected: list[str], document: dict, *, reset: bool = False
+) -> Plan:
     root = root.resolve()
     selected = catalog.resolve(selected)
     result = Plan(root, deepcopy(document), selected)
@@ -120,6 +122,8 @@ def plan(root: Path, catalog: Catalog, selected: list[str], document: dict) -> P
             record["once"] = True
     candidates = dict(desired)
     for identity, record in records.items():
+        if reset and identity not in desired:
+            continue
         if identity not in candidates:
             candidates[identity] = Artifact(
                 identity,
@@ -132,7 +136,7 @@ def plan(root: Path, catalog: Catalog, selected: list[str], document: dict) -> P
         elif record["path"] != candidates[identity].path:
             raise KitFlowError(f"Template path changed for {identity}; detach or remove it first")
     for identity, artifact in candidates.items():
-        if identity in excluded:
+        if identity in excluded and (not reset or artifact.kind in {"task", "env"}):
             continue
         path = safe_path(root, artifact.path, allow_link=artifact.kind in {"file", "symlink"})
         current_file = read_entry(path)
@@ -156,7 +160,9 @@ def plan(root: Path, catalog: Catalog, selected: list[str], document: dict) -> P
                 continue
             current = owned[2] if owned else None
         if artifact.kind == "defaults":
-            if target and not record:
+            if reset and target:
+                result.changes.append(Change(artifact, None, target.content, "reset-defaults"))
+            elif target and not record:
                 assert not isinstance(current_file, str)
                 assert isinstance(target.content, bytes)
                 content = mise.missing_defaults((current_file or b"").decode(), target.content)
@@ -191,7 +197,7 @@ def plan(root: Path, catalog: Catalog, selected: list[str], document: dict) -> P
                         )
                     )
                     continue
-        if artifact.once:
+        if artifact.once and not reset:
             if current is None and target and not record:
                 result.changes.append(Change(artifact, None, target.content, "create"))
             continue
@@ -207,7 +213,8 @@ def plan(root: Path, catalog: Catalog, selected: list[str], document: dict) -> P
             result.changes.append(Change(artifact, None, None, "forget"))
             continue
         conflict = (
-            artifact.kind != "block"
+            not reset
+            and artifact.kind != "block"
             and current is not None
             and (
                 not record
@@ -230,6 +237,40 @@ def plan(root: Path, catalog: Catalog, selected: list[str], document: dict) -> P
             )
         )
     return result
+
+
+def preview_files(result: Plan) -> dict[str, tuple[bytes | str | None, bytes | str | None]]:
+    """Render the exact selected-file candidates without writing anything."""
+    after = {}
+    for change in result.changes:
+        if change.operation in {"detach", "forget", "adopt"}:
+            continue
+        artifact = change.artifact
+        before = after.get(artifact.path, result.snapshots.get(artifact.path))
+        if artifact.kind in {"task", "env", "defaults"}:
+            assert not isinstance(before, str)
+            after[artifact.path] = update_mise((before or b"").decode(), change).encode()
+        elif artifact.kind == "block":
+            assert not isinstance(before, str)
+            assert not isinstance(change.after, str)
+            after[artifact.path] = file_blocks.replace(before, change.after)
+        else:
+            after[artifact.path] = change.after
+    return {
+        name: (result.snapshots.get(name), content)
+        for name, content in after.items()
+        if result.snapshots.get(name) != content
+    }
+
+
+def update_mise(text: str, change: Change) -> str:
+    assert isinstance(change.after, bytes) or change.after is None
+    if change.artifact.kind == "defaults":
+        assert change.after is not None
+        if change.operation == "reset-defaults":
+            return mise.reset_defaults(text, change.after)
+        return mise.add_defaults(text, change.after)
+    return mise.replace(text, change.artifact, change.after)
 
 
 def atomic_write(path: Path, content: bytes | str, mode: int | None = None):
@@ -298,13 +339,9 @@ def _apply(result: Plan, source: dict):
             if change.operation != "adopt":
                 writes[artifact.path] = change.after
         else:
-            assert not isinstance(change.after, str)
-            if artifact.kind == "defaults":
-                assert change.after is not None
-                mise_text = mise.add_defaults(mise_text, change.after)
-            else:
-                mise_text = mise.replace(mise_text, artifact, change.after)
+            mise_text = update_mise(mise_text, change)
             writes["mise.toml"] = mise_text.encode()
+        excluded.discard(artifact.id)
         if change.after is None:
             records.pop(artifact.id, None)
         else:

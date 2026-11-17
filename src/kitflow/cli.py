@@ -13,7 +13,7 @@ from rich.table import Table
 from kitflow.box_update import refresh_box
 from kitflow.catalog import CURRENT_SCHEMA, KitFlowError
 from kitflow.check import configuration_issues
-from kitflow.engine import CONFIG, apply, load_config, plan
+from kitflow.engine import CONFIG, apply, load_config, plan, preview_files
 from kitflow.settings import box_path, config_directory
 from kitflow.source import load_box, read_instructions
 
@@ -78,6 +78,11 @@ Without a command, prepare the local box. User overrides stay in its root direct
     )
     result.add_argument(
         "--yes", "-y", action="store_true", help="Confirm plan; never overwrite conflicts"
+    )
+    result.add_argument(
+        "--reset",
+        action="store_true",
+        help="Select files to reset from the box, including creation-only files (update only)",
     )
     return result
 
@@ -147,6 +152,12 @@ def show_plan(result):
 
 
 def run(args: argparse.Namespace) -> int:
+    if args.reset and (
+        args.command != "update" or args.yes or args.manage or args.components is not None
+    ):
+        raise KitFlowError("Use update --reset interactively, without --yes or selection options")
+    if args.reset and not sys.stdin.isatty():
+        raise KitFlowError("update --reset requires an interactive terminal")
     if args.box_command and args.command != "box":
         raise KitFlowError("Only box accepts a subcommand: kitflow box update")
     if args.command == "box":
@@ -227,6 +238,24 @@ def run(args: argparse.Namespace) -> int:
     catalog, source = load_box(args.box)
     if command == "update":
         warn_box_schema(catalog.root)
+    if args.reset:
+        from kitflow.tui import ResetFiles
+
+        result = plan(root, catalog, document["selection"]["components"], document, reset=True)
+        candidates = preview_files(result)
+        if not candidates:
+            console.print("No files need resetting.")
+            return 0
+        selected_files = ResetFiles(candidates).run()
+        if not selected_files:
+            console.print("Cancelled. No files were changed.")
+            return 0
+        for change in result.changes:
+            if change.artifact.path not in selected_files or change.operation == "detach":
+                change.decision = "skip"
+        apply(result, source)
+        console.print(f"Files reset: {len(selected_files)}.")
+        return 0
     selection = document["selection"]
     selected = list(selection.get("components", []))
     excluded = list(selection.get("excluded", []))

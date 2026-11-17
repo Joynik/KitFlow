@@ -131,6 +131,22 @@ Profiles have been replaced by wizard definitions in `kitflow-box.toml`. Existin
 continue working. Old local profile files are no longer read. See the catalog reference for
 `[[steps]]`, visibility conditions and `recommended`.
 
+### Reset selected files
+
+```bash
+kitflow update --reset
+```
+
+Use this when you want box defaults back, including creation-only files such as `PROJECT.md` or
+`pyproject.toml`. All file checkboxes start unchecked. Enter or Space toggles a file. Right opens
+its diff; Left hides it. Viewing a diff does not select the file. Binary files show a notice. Choose
+**Replace selected** to confirm replacement; Escape cancels without changes.
+
+For `mise.toml`, this resets KitFlow tasks and current box defaults, including initial vars/env.
+Other user settings and tasks remain. Tasks detached by removing their markers remain user-owned.
+Only selected files change. Normal `update` keeps its existing protections. `--reset` requires an
+interactive terminal and cannot be combined with `--yes`.
+
 ## Run project tasks
 
 KitFlow composes mise tasks from the selected components. The standard box provides these roles when
@@ -354,6 +370,7 @@ see those changes. If the box is missing, run `kitflow` to prepare it first.
 | `kitflow box update` | Update only the standard box in `default/` |
 | `kitflow init` | Choose or change project components |
 | `kitflow update` | Update files or open the setup wizard |
+| `kitflow update --reset` | Select files to restore from box defaults, with optional diffs |
 | `kitflow status` | List pending changes |
 | `kitflow diff` | Show proposed file differences |
 | `kitflow config` | Show configuration paths without creating the box |

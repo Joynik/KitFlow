@@ -130,3 +130,21 @@ def add_defaults(text: str, content: bytes) -> str:
 
     merge(document, incoming)
     return tomlkit.dumps(document)
+
+
+def reset_defaults(text: str, content: bytes) -> str:
+    """Reset only keys defined by the current box, retaining other user settings."""
+    import tomlkit
+
+    document = tomlkit.parse(text)
+    incoming = tomlkit.parse(content.decode())
+
+    def merge(target, source):
+        for name, value in source.items():
+            if isinstance(value, dict) and isinstance(target.get(name), dict):
+                merge(target[name], value)
+            else:
+                target[name] = value
+
+    merge(document, incoming)
+    return tomlkit.dumps(document)

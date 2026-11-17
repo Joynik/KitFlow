@@ -310,3 +310,96 @@ class ActionMenu(App[str | None]):
 
     def action_cancel(self):
         self.exit(None)
+
+
+class ResetFiles(App[list[str] | None]):
+    """Explicit file selection with an optional diff; no file writes in the UI."""
+
+    ENABLE_COMMAND_PALETTE = False
+    CSS = """
+    Screen { background: #111714; color: #e4eee6; padding: 1 3; }
+    #title { height: 3; text-style: bold; }
+    #files { height: 1fr; }
+    #diff { height: 1fr; overflow: auto auto; border: round #36493c; }
+    #buttons { height: 3; align-horizontal: right; }
+    Button { margin-left: 1; }
+    """
+    BINDINGS = [
+        Binding("right", "expand", "Show diff", priority=True),
+        Binding("left", "collapse", "Hide diff", priority=True),
+        Binding("escape", "cancel", "Cancel"),
+    ]
+
+    def __init__(self, candidates):
+        super().__init__()
+        self.candidates = candidates
+
+    def compose(self) -> ComposeResult:
+        yield Static("Reset files from the box. Only checked files will be replaced.", id="title")
+        yield Components(*((Text(name), name, False) for name in self.candidates), id="files")
+        yield Static("", id="diff", markup=False)
+        with Horizontal(id="buttons"):
+            yield Button("Cancel", id="cancel")
+            yield Button("Replace selected", id="replace", variant="error", disabled=True)
+        yield Footer()
+
+    def on_mount(self):
+        self.query_one("#diff").display = False
+        self.query_one("#files").focus()
+
+    @on(SelectionList.SelectedChanged)
+    def selection_changed(self):
+        self.query_one("#replace", Button).disabled = not self.query_one(
+            "#files", Components
+        ).selected
+
+    def action_expand(self):
+        import difflib
+
+        from rich.syntax import Syntax
+
+        choices = self.query_one("#files", Components)
+        if choices.highlighted is None:
+            return
+        name = choices.get_option_at_index(choices.highlighted).value
+        before, after = self.candidates[name]
+
+        def text(value):
+            if isinstance(value, str):
+                return f"symlink -> {value}\n"
+            return (value or b"").decode("utf-8")
+
+        try:
+            old, new = text(before), text(after)
+            if "\0" in old or "\0" in new:
+                raise UnicodeError()
+            difference = "".join(
+                difflib.unified_diff(
+                    old.splitlines(keepends=True),
+                    new.splitlines(keepends=True),
+                    fromfile=f"current/{name}",
+                    tofile=f"box/{name}",
+                )
+            )
+            content = Syntax(difference, "diff", word_wrap=True)
+        except UnicodeError:
+            content = Text("Binary file contents differ.")
+        panel = self.query_one("#diff", Static)
+        panel.update(content)
+        panel.display = True
+
+    @on(SelectionList.SelectionHighlighted)
+    def highlighted(self):
+        if self.query_one("#diff").display:
+            self.action_expand()
+
+    def action_collapse(self):
+        self.query_one("#diff").display = False
+
+    @on(Button.Pressed, "#replace")
+    def replace_selected(self):
+        self.exit(list(self.query_one("#files", Components).selected))
+
+    @on(Button.Pressed, "#cancel")
+    def action_cancel(self):
+        self.exit(None)
