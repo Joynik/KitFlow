@@ -1,3 +1,4 @@
+# <kitflow>
 # VSCode
 .vscode/
 
@@ -64,7 +65,9 @@ build/
 .pytest_cache/
 .coverage
 htmlcov/
+# </kitflow>
 
+# <user>
 # Public example box contains neutral instruction templates
 !box/templates/AGENTS.md
 !box/templates/STANDARDS.md
@@ -73,3 +76,4 @@ htmlcov/
 # Public environment example fragments contain placeholders only.
 !box/templates/env/
 !box/templates/env/**
+# </user>
