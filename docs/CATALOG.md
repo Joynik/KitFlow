@@ -16,8 +16,12 @@ box/
 
 The configuration directory contains the standard box in `default/` and user definitions at its
 root. The standard box uses `schema = 4` for conditional file fragments. KitFlow still reads legacy
-schema 1, 2 and 3 boxes; a user overlay may contain only `schema = 1`. Older KitFlow versions reject
-the new standard schema instead of silently generating incomplete tasks.
+schema 1, 2 and 3 boxes; a user overlay may contain only a schema declaration. Older KitFlow
+versions reject the new standard schema instead of silently generating incomplete tasks.
+
+New user catalogs use the current schema (4). Update commands warn if your user catalog declares an
+older supported schema. Review this reference and update the declaration manually; KitFlow never
+rewrites the schema of an existing user catalog.
 
 KitFlow merges `components`, `files`, `tasks`, `env`, `defaults` and `steps` by stable `id`. A user
 entry replaces the whole standard entry; omitted fields do not inherit values. New IDs append

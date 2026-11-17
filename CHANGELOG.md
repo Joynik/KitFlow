@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Fixed
+
+- Initialize user boxes with the current catalog schema. Warn during project and standard box
+  updates when a user catalog needs a manual schema update, without rewriting the catalog.
+
 ### Added
 
 - Generate baseline mypy, pytest, rustfmt, SwiftLint and Swift formatter configurations for selected

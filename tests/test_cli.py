@@ -205,6 +205,23 @@ def test_update_without_changes_shows_message_without_table_or_confirmation(
     )
     output = capsys.readouterr().out
     assert "No files need updating." in output
+    assert "uses schema 1" in " ".join(output.split())
     assert "Review plan" not in output
     assert "Configuration saved" not in output
     assert len(calls) == 1
+
+
+def test_schema_warning_preserves_older_catalog_and_is_quiet_for_current_schema(tmp_path, capsys):
+    manifest = tmp_path / "kitflow-box.toml"
+    for schema in (1, 2, 3, 4):
+        original = f"# Personal catalog\nschema = {schema}\n"
+        manifest.write_text(original)
+        cli.warn_box_schema(tmp_path)
+        output = capsys.readouterr().out
+        if schema < 4:
+            assert f"uses schema {schema}" in output
+            assert "uses schema 4" in output
+            assert "manually" in output
+        else:
+            assert not output
+        assert manifest.read_text() == original

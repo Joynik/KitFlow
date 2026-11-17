@@ -6,6 +6,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
+CURRENT_SCHEMA = 4
+
 
 class KitFlowError(Exception):
     """An actionable configuration or safety error."""

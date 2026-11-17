@@ -121,6 +121,8 @@ def test_explicit_update_applies_without_diffs_or_prompts(
     ).read_text() == "line-length = 120\n"
     output = capsys.readouterr().out
     assert "Standard box files changed: 1" in output
+    assert "uses schema 1" in " ".join(output.split())
+    assert "manually" in output
     assert "incoming/" not in output
 
 

@@ -82,7 +82,7 @@ def test_first_use_downloads_once_and_keeps_user_edits(monkeypatch):
     assert catalog.root == settings.box_path().resolve()
     assert metadata == {"kind": "user-box"}
     assert calls
-    assert (catalog.root / "kitflow-box.toml").read_text().endswith("schema = 1\n")
+    assert (catalog.root / "kitflow-box.toml").read_text().endswith("schema = 4\n")
     assert all((catalog.root / name).is_dir() for name in ("tasks", "templates"))
     assert not any("empty.md" in url for url in calls)
     assert not (catalog.root / "snapshot.json").exists()

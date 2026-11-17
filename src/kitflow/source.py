@@ -18,7 +18,7 @@ from pathlib import Path
 
 import certifi
 
-from kitflow.catalog import Catalog, KitFlowError, safe_path
+from kitflow.catalog import CURRENT_SCHEMA, Catalog, KitFlowError, safe_path
 from kitflow.settings import box_path
 
 MAX_FILE_BYTES = 2 * 1024 * 1024
@@ -178,7 +178,9 @@ def prepare_user_directories(destination: Path):
     manifest = safe_path(destination, "kitflow-box.toml")
     if not manifest.exists():
         with manifest.open("x", encoding="utf-8") as stream:
-            stream.write("# User overrides for the standard box in default/.\nschema = 1\n")
+            stream.write(
+                f"# User overrides for the standard box in default/.\nschema = {CURRENT_SCHEMA}\n"
+            )
 
 
 def initialize_box(destination: Path):

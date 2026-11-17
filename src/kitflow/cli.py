@@ -11,7 +11,7 @@ from rich.syntax import Syntax
 from rich.table import Table
 
 from kitflow.box_update import refresh_box
-from kitflow.catalog import KitFlowError
+from kitflow.catalog import CURRENT_SCHEMA, KitFlowError
 from kitflow.check import configuration_issues
 from kitflow.engine import CONFIG, apply, load_config, plan
 from kitflow.settings import box_path, config_directory
@@ -88,6 +88,21 @@ def choose_action(title: str, options: list[tuple[str, str]], default: str) -> s
     return ActionMenu(title, options, default).run()
 
 
+def warn_box_schema(root: Path):
+    from kitflow.layers import read_data
+
+    schema = read_data(root)["schema"]
+    if schema != CURRENT_SCHEMA:
+        console.print(
+            f"Warning: {root / 'kitflow-box.toml'} uses schema {schema}; "
+            f"this KitFlow version uses schema {CURRENT_SCHEMA}. "
+            "Review the catalog format and update the schema manually. "
+            "The user catalog was not modified.",
+            style="yellow",
+            markup=False,
+        )
+
+
 def show_diff(change):
     def lines(content):
         text = (
@@ -139,6 +154,7 @@ def run(args: argparse.Namespace) -> int:
         destination = args.box.resolve() if args.box else box_path()
 
         count = refresh_box(destination, lambda *_: True)
+        warn_box_schema(destination)
         console.print(
             f"Standard box files changed: {count}. User overrides and projects were preserved."
         )
@@ -206,6 +222,8 @@ def run(args: argparse.Namespace) -> int:
         raise KitFlowError("Use --components for non-interactive init")
     document = load_config(root)
     catalog, source = load_box(args.box)
+    if command == "update":
+        warn_box_schema(catalog.root)
     selection = document["selection"]
     selected = list(selection.get("components", []))
     excluded = list(selection.get("excluded", []))
