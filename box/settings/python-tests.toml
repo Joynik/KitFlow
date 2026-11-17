@@ -1,5 +1,5 @@
 [vars]
-python_tests = "tests"
+python_tests = "tests" # Relative to project_root; absolute paths are also allowed.
 
 [env]
 PYTHON_TESTS = "{{ env.PYTHON_TESTS | default(value=vars.python_tests) }}"
