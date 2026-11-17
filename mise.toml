@@ -1,15 +1,24 @@
 [settings]
 task.run_auto_install = false
+task.quiet = true
 
 [env]
 # kitflow:begin env.PYTHONUNBUFFERED
 PYTHONUNBUFFERED = "1"
 # kitflow:end env.PYTHONUNBUFFERED
 _.file = ".env"
-PROJECT_PYTHON_DIRECTORY = "{{ env.PROJECT_PYTHON_DIRECTORY | default(value=config_root ~ '/' ~ vars.python_directory) }}"
+PROJECT_ROOT = '{% set path = env.PROJECT_ROOT | default(value=vars.project_root) %}{% if path is starting_with(pat="/") %}{{ path }}{% else %}{{ config_root }}/{{ path }}{% endif %}'
+PYTHON_SOURCE = '{% set path = env.PYTHON_SOURCE | default(value=vars.python_source) %}{% if path is starting_with(pat="/") %}{{ path }}{% else %}{{ env.PROJECT_ROOT }}/{{ path }}{% endif %}'
+PYTHON_TESTS = "{{ env.PYTHON_TESTS | default(value=vars.python_tests) }}"
+PYTHON_ENTRYPOINT = "{{ env.PYTHON_ENTRYPOINT | default(value=vars.python_entrypoint) }}"
+PYTHON_BUILD_DIRECTORY = "{{ env.PYTHON_BUILD_DIRECTORY | default(value=vars.python_build_directory) }}"
 
 [vars]
-python_directory = "src"
+project_root = "."
+python_source = "src"
+python_tests = "tests"
+python_entrypoint = "src/kitflow/__main__.py"
+python_build_directory = "dist"
 
 # kitflow:begin task.help
 [tasks."help"]
@@ -77,7 +86,7 @@ description = "Lint selected project components"
 run = '''
 set -eu
 (
-cd "${PROJECT_PYTHON_DIRECTORY:?Set PROJECT_PYTHON_DIRECTORY in mise.toml}"
+cd "${PYTHON_SOURCE:?Set PYTHON_SOURCE in mise.toml}"
 ruff check . --output-format concise
 )
 rumdl check . --output-format concise --quiet
@@ -90,7 +99,7 @@ description = "Apply supported lint fixes"
 run = '''
 set -eu
 (
-cd "${PROJECT_PYTHON_DIRECTORY:?Set PROJECT_PYTHON_DIRECTORY in mise.toml}"
+cd "${PYTHON_SOURCE:?Set PYTHON_SOURCE in mise.toml}"
 ruff check . --fix --output-format concise
 )
 rumdl check . --fix --output-format concise --quiet
@@ -103,7 +112,7 @@ description = "Format selected project components"
 run = '''
 set -eu
 (
-cd "${PROJECT_PYTHON_DIRECTORY:?Set PROJECT_PYTHON_DIRECTORY in mise.toml}"
+cd "${PYTHON_SOURCE:?Set PYTHON_SOURCE in mise.toml}"
 ruff format .
 )
 rumdl fmt . --output-format concise --quiet
@@ -116,7 +125,7 @@ description = "Check formatting without applying fixes"
 run = '''
 set -eu
 (
-cd "${PROJECT_PYTHON_DIRECTORY:?Set PROJECT_PYTHON_DIRECTORY in mise.toml}"
+cd "${PYTHON_SOURCE:?Set PYTHON_SOURCE in mise.toml}"
 ruff format . --check
 )
 rumdl fmt . --check --output-format concise --quiet
@@ -129,7 +138,7 @@ description = "Check selected project types and native builds"
 run = '''
 set -eu
 (
-cd "${PROJECT_PYTHON_DIRECTORY:?Set PROJECT_PYTHON_DIRECTORY in mise.toml}"
+cd "${PYTHON_SOURCE:?Set PYTHON_SOURCE in mise.toml}"
 ty check . --output-format concise
 )
 '''
@@ -141,8 +150,22 @@ description = "Run selected test runners"
 run = '''
 set -eu
 (
-cd "${PROJECT_PYTHON_DIRECTORY:?Set PROJECT_PYTHON_DIRECTORY in mise.toml}"
-uv run pytest --quiet
+cd "${PROJECT_ROOT:?Set PROJECT_ROOT in mise.toml}"
+uv run pytest "${PYTHON_TESTS:-tests}" --quiet
 )
 '''
 # kitflow:end task.test
+
+# kitflow:begin task.build
+[tasks."build"]
+description = "Build selected project components"
+run = '''
+set -eu
+(
+cd "${PROJECT_ROOT:?Set PROJECT_ROOT in mise.toml}"
+uv run --no-sync python -m nuitka --mode=standalone \
+    --output-dir="${PYTHON_BUILD_DIRECTORY:-dist}" \
+    "${PYTHON_ENTRYPOINT:?Set PYTHON_ENTRYPOINT in mise.toml or .env}"
+)
+'''
+# kitflow:end task.build
