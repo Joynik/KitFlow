@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.1 — 2026-11-17
+
 ### Added
 
 - Add selectable Prisma ORM 7 with creation-only config and schema examples, explicit client and
@@ -9,12 +11,17 @@
 - Add framework-specific, server, Rust and Prisma environment examples.
 - Generate baseline mypy, pytest, rustfmt, SwiftLint and Swift formatter configurations for selected
   components.
+- Add editable agent ignore fragments and conditional database, SQLite and test exclusions for
+  Docker builds.
 
 ### Changed
 
 - Rename database execution and SQLite parameters without legacy aliases. Resolve SQLite database
   paths from `.env` relative to the project root or accept absolute paths. Separate SQLite initial
-  settings from shared database operations.
+  settings from shared database operations. Existing projects must manually rename `DATABASE_TARGET`
+  to `DATABASE_EXECUTION_MODE`, `DATABASE_SQLITE_PATH` to `SQLITE_DATABASE_PATH`,
+  `DATABASE_INIT_SQL` to `SQLITE_INIT_SQL`, and `DATABASE_DOCKER_SQLITE_PATH` to
+  `SQLITE_CONTAINER_PATH`, plus their corresponding mise vars.
 
 ### Fixed
 
