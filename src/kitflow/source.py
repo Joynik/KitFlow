@@ -1,14 +1,13 @@
 """Download the example box; project operations read local files."""
 
-import base64
 import fcntl
-import json
+import io
 import os
-import re
 import shutil
 import ssl
 import subprocess
 import sys
+import tarfile
 import tempfile
 import urllib.error
 import urllib.parse
@@ -47,21 +46,17 @@ def fetch(url: str) -> bytes:
     parsed = urllib.parse.urlsplit(url)
     if parsed.scheme != "https" or parsed.hostname != "api.github.com":
         raise KitFlowError("Catalog requests must use https://api.github.com")
-    accept = (
-        "application/vnd.github.raw+json"
-        if "/contents/" in parsed.path
-        else "application/vnd.github+json"
-    )
-    headers = {"User-Agent": "KitFlow/0.1", "Accept": accept}
+    headers = {"User-Agent": "KitFlow/0.1", "Accept": "application/vnd.github+json"}
     token = github_token()
     if token:
         headers["Authorization"] = f"Bearer {token}"
     request = urllib.request.Request(url, headers=headers)
     context = ssl.create_default_context(cafile=os.environ.get("SSL_CERT_FILE") or certifi.where())
+    limit = 32 * 1024 * 1024 if "/tarball/" in parsed.path else MAX_FILE_BYTES
     with urllib.request.urlopen(request, timeout=15, context=context) as response:
-        data = response.read(MAX_FILE_BYTES + 1)
-    if len(data) > MAX_FILE_BYTES:
-        raise KitFlowError("Catalog file exceeds 2 MiB limit")
+        data = response.read(limit + 1)
+    if len(data) > limit:
+        raise KitFlowError("GitHub download exceeds size limit")
     return data
 
 
@@ -86,11 +81,45 @@ def github_token() -> str | None:
     return None
 
 
-def content_url(repository: str, commit: str, path: str) -> str:
-    return (
-        f"https://api.github.com/repos/{repository}/contents/"
-        f"{urllib.parse.quote(path, safe='/')}?ref={commit}"
-    )
+def extract_box(content: bytes, destination: Path):
+    """Read only box entries; never let archive extraction follow links."""
+    total = 0
+    seen = set()
+    with tarfile.open(fileobj=io.BytesIO(content), mode="r:gz") as archive:
+        for index, member in enumerate(archive):
+            if index >= 10000:
+                raise KitFlowError("Standard box archive contains too many entries")
+            parts = member.name.split("/")
+            if len(parts) < 3 or parts[1] != "box":
+                continue
+            relative = "/".join(parts[2:]).rstrip("/")
+            if not relative or ".DS_Store" in Path(relative).parts:
+                continue
+            target = safe_path(destination, relative)
+            if relative in seen:
+                raise KitFlowError(f"Duplicate standard box entry: {relative}")
+            seen.add(relative)
+            if member.isdir():
+                target.mkdir(parents=True, exist_ok=True)
+                continue
+            if not member.isfile() and not member.issym():
+                raise KitFlowError(f"Unsupported standard box entry: {relative}")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if member.issym():
+                if relative == "kitflow-box.toml" or Path(member.linkname).is_absolute():
+                    raise KitFlowError(
+                        f"Only relative template symbolic links are supported: {relative}"
+                    )
+                target.symlink_to(member.linkname)
+            else:
+                total += member.size
+                if member.size > MAX_FILE_BYTES or total > 64 * 1024 * 1024:
+                    raise KitFlowError("Standard box contents exceed size limit")
+                stream = archive.extractfile(member)
+                if stream is None:
+                    raise KitFlowError(f"Cannot read standard box entry: {relative}")
+                with stream:
+                    target.write_bytes(stream.read())
 
 
 def seed_box(destination: Path):
@@ -107,54 +136,8 @@ def seed_box(destination: Path):
             return
         staging = Path(tempfile.mkdtemp(prefix=".box-download-", dir=destination.parent))
         print("Downloading standard box…", file=sys.stderr, flush=True)
-        commit = json.loads(
-            fetch(f"https://api.github.com/repos/{DEFAULT_REPOSITORY}/commits/main")
-        )["sha"]
-        if not re.fullmatch(r"[a-f0-9]{40}", commit):
-            raise KitFlowError("GitHub returned an invalid commit")
-        manifest = fetch(content_url(DEFAULT_REPOSITORY, commit, "box/kitflow-box.toml"))
-        (staging / "kitflow-box.toml").write_bytes(manifest)
-        tree = json.loads(
-            fetch(
-                f"https://api.github.com/repos/{DEFAULT_REPOSITORY}/git/trees/{commit}?recursive=1"
-            )
-        )
-        if tree.get("truncated"):
-            raise KitFlowError("GitHub returned an incomplete box file list")
-        for entry in tree["tree"]:
-            name = entry["path"]
-            if not name.startswith("box/") or entry.get("type") == "tree":
-                continue
-            relative = name.removeprefix("box/")
-            if ".DS_Store" in Path(relative).parts:
-                continue
-            mode = entry.get("mode")
-            if entry.get("type") != "blob" or mode not in {"100644", "100755", "120000"}:
-                raise KitFlowError(f"Unsupported standard box entry: {name}")
-            target = safe_path(staging, relative)
-            if relative == "kitflow-box.toml":
-                if mode == "120000":
-                    raise KitFlowError("The box manifest must be a regular file")
-                continue
-            content = (
-                fetch(content_url(DEFAULT_REPOSITORY, commit, name)) if mode != "120000" else b""
-            )
-            target.parent.mkdir(parents=True, exist_ok=True)
-            if mode == "120000":
-                sha = entry.get("sha", "")
-                if not re.fullmatch(r"[a-f0-9]{40}", sha):
-                    raise KitFlowError(f"Invalid symbolic link blob: {name}")
-                blob = json.loads(
-                    fetch(f"https://api.github.com/repos/{DEFAULT_REPOSITORY}/git/blobs/{sha}")
-                )
-                if blob.get("encoding") != "base64":
-                    raise KitFlowError(f"Invalid symbolic link encoding: {name}")
-                link = base64.b64decode(blob["content"]).decode("utf-8")
-                if Path(link).is_absolute():
-                    raise KitFlowError(f"Only relative symbolic links are supported: {name}")
-                target.symlink_to(link)
-            else:
-                target.write_bytes(content)
+        archive = fetch(f"https://api.github.com/repos/{DEFAULT_REPOSITORY}/tarball/main")
+        extract_box(archive, staging)
         (staging / "INSTRUCTION.md").write_text(read_instructions(staging), encoding="utf-8")
         Catalog(staging)
         staging.rename(destination)
@@ -163,7 +146,7 @@ def seed_box(destination: Path):
         raise KitFlowError(
             f"Cannot prepare the initial box: {error}. Retry online or use --box PATH."
         ) from error
-    except (KeyError, ValueError, TypeError) as error:
+    except (ValueError, TypeError, tarfile.TarError) as error:
         raise KitFlowError(f"Invalid initial box: {error}") from error
     finally:
         if staging is not None:

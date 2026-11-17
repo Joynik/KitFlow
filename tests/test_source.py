@@ -1,8 +1,5 @@
-import base64
-import hashlib
 import io
-import json
-import os
+import tarfile
 import urllib.error
 from pathlib import Path
 from types import SimpleNamespace
@@ -16,48 +13,14 @@ from kitflow.catalog import KitFlowError
 def downloads(monkeypatch, fixture: Path | None = None):
     calls = []
     fixture_root = fixture or Path(__file__).parent / "fixtures/catalog"
-    commit = "a" * 40
-    links = {
-        hashlib.sha1(path.relative_to(fixture_root).as_posix().encode()).hexdigest(): path
-        for path in fixture_root.rglob("*")
-        if path.is_symlink()
-    }
 
     def fetch(url):
         calls.append(url)
-        if "/commits/" in url:
-            return json.dumps({"sha": commit}).encode()
-        if "/git/trees/" in url:
-            assert url.endswith(f"/{commit}?recursive=1")
-            return json.dumps(
-                {
-                    "truncated": False,
-                    "tree": [
-                        {
-                            "path": "box/" + path.relative_to(fixture_root).as_posix(),
-                            "type": "blob",
-                            "mode": "120000" if path.is_symlink() else "100644",
-                            "sha": hashlib.sha1(
-                                path.relative_to(fixture_root).as_posix().encode()
-                            ).hexdigest(),
-                        }
-                        for path in fixture_root.rglob("*")
-                        if path.is_file() or path.is_symlink()
-                    ],
-                }
-            ).encode()
-        if "/git/blobs/" in url:
-            path = links[url.rsplit("/", 1)[1]]
-            return json.dumps(
-                {
-                    "encoding": "base64",
-                    "content": base64.b64encode(os.readlink(path).encode()).decode(),
-                }
-            ).encode()
-        prefix = f"https://api.github.com/repos/{source.DEFAULT_REPOSITORY}/contents/box/"
-        assert url.startswith(prefix)
-        assert url.endswith(f"?ref={commit}")
-        return (fixture_root / url[len(prefix) :].split("?")[0]).read_bytes()
+        assert url == f"https://api.github.com/repos/{source.DEFAULT_REPOSITORY}/tarball/main"
+        output = io.BytesIO()
+        with tarfile.open(fileobj=output, mode="w:gz") as archive:
+            archive.add(fixture_root, arcname="snapshot/box")
+        return output.getvalue()
 
     monkeypatch.setattr(source, "fetch", fetch)
     return calls
@@ -81,7 +44,7 @@ def test_first_use_downloads_once_and_keeps_user_edits(monkeypatch):
     catalog, metadata = source.load_box()
     assert catalog.root == settings.box_path().resolve()
     assert metadata == {"kind": "user-box"}
-    assert calls
+    assert len(calls) == 1
     assert (catalog.root / "kitflow-box.toml").read_text().endswith("schema = 4\n")
     assert all((catalog.root / name).is_dir() for name in ("tasks", "templates"))
     assert not any("empty.md" in url for url in calls)
@@ -159,7 +122,7 @@ def test_compiled_instructions_use_the_runtime_directory(tmp_path, monkeypatch):
     assert source.read_instructions() == "# Installed guide\n"
 
 
-def test_private_content_request_uses_token_and_raw_media_type(monkeypatch):
+def test_archive_request_uses_token(monkeypatch):
     monkeypatch.setenv("GITHUB_TOKEN", "test-only-token")
     requests = []
 
@@ -170,10 +133,10 @@ def test_private_content_request_uses_token_and_raw_media_type(monkeypatch):
         return io.BytesIO(b"content")
 
     monkeypatch.setattr(source.urllib.request, "urlopen", open_request)
-    url = source.content_url(source.DEFAULT_REPOSITORY, "a" * 40, "box/kitflow-box.toml")
+    url = f"https://api.github.com/repos/{source.DEFAULT_REPOSITORY}/tarball/main"
     assert source.fetch(url) == b"content"
     assert requests[0].get_header("Authorization") == "Bearer test-only-token"
-    assert requests[0].get_header("Accept") == "application/vnd.github.raw+json"
+    assert requests[0].get_header("Accept") == "application/vnd.github+json"
     assert "test-only-token" not in requests[0].full_url
     with pytest.raises(KitFlowError, match="api.github.com"):
         source.fetch("https://example.com/kitflow-box.toml")
@@ -194,29 +157,28 @@ def test_first_use_downloads_wizard_definition_from_the_same_commit(tmp_path, mo
     calls = downloads(monkeypatch, fixture)
     catalog, _ = source.load_box()
     assert Wizard(catalog, [], []).steps()[0].label == "Choose a language"
-    assert all("?ref=" + "a" * 40 in url for url in calls if "/contents/" in url)
+    assert len(calls) == 1
 
 
-@pytest.mark.parametrize("truncated", [True, False])
-def test_invalid_download_keeps_initial_box_absent(monkeypatch, truncated):
-    downloads(monkeypatch)
-    original = source.fetch
-
-    def invalid_tree(url):
-        if "/git/trees/" in url:
-            return json.dumps(
-                {
-                    "truncated": truncated,
-                    "tree": [{"path": "box/tasks/example.sh", "type": "commit", "mode": "160000"}],
-                }
-            ).encode()
-        return original(url)
-
-    monkeypatch.setattr(source, "fetch", invalid_tree)
-    with pytest.raises(KitFlowError, match="incomplete|Unsupported"):
+@pytest.mark.parametrize(
+    ("name", "kind", "link"),
+    [
+        ("snapshot/box/../escape", tarfile.REGTYPE, ""),
+        ("snapshot/box/pipe", tarfile.FIFOTYPE, ""),
+        ("snapshot/box/link", tarfile.SYMTYPE, "/outside"),
+    ],
+)
+def test_invalid_download_keeps_initial_box_absent(monkeypatch, name, kind, link):
+    output = io.BytesIO()
+    with tarfile.open(fileobj=output, mode="w:gz") as archive:
+        member = tarfile.TarInfo(name)
+        member.type = kind
+        member.linkname = link
+        archive.addfile(member)
+    monkeypatch.setattr(source, "fetch", lambda _: output.getvalue())
+    with pytest.raises(KitFlowError):
         source.load_box()
     assert not settings.box_path().exists()
-    assert not list(settings.config_directory().glob(".box-download-*"))
 
 
 def test_initial_download_includes_hidden_binary_directory_templates_and_link_text(
@@ -237,5 +199,4 @@ def test_initial_download_includes_hidden_binary_directory_templates_and_link_te
     assert artifacts["editor/.nested/file.pdf"].content == b"%PDF\x00\xff"
     assert artifacts["editor/skill"].content == "../../personal-skill"
     assert artifacts["editor/skill"].kind == "symlink"
-    assert any("/git/blobs/" in url for url in calls)
-    assert not any("/contents/box/templates/editor/skill" in url for url in calls)
+    assert len(calls) == 1
