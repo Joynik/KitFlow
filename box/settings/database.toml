@@ -1,14 +1,10 @@
 [vars]
-# native or docker; restore requires application writes to be stopped.
-database_target = "native"
-database_sqlite_path = "db.sqlite3"
+# native runs locally; docker runs inside the configured Compose service.
+database_execution_mode = "native"
 database_backup_file = "backup.sql"
 database_restore_file = ""
-database_init_sql = ""
 
 [env]
-DATABASE_TARGET = "{{ env.DATABASE_TARGET | default(value=vars.database_target) }}"
-DATABASE_SQLITE_PATH = "{{ config_root }}/{{ vars.database_sqlite_path }}"
+DATABASE_EXECUTION_MODE = "{{ env.DATABASE_EXECUTION_MODE | default(value=vars.database_execution_mode) }}"
 DATABASE_BACKUP_FILE = "{{ env.DATABASE_BACKUP_FILE | default(value=vars.database_backup_file) }}"
 DATABASE_RESTORE_FILE = "{{ env.DATABASE_RESTORE_FILE | default(value=vars.database_restore_file) }}"
-DATABASE_INIT_SQL = "{{ env.DATABASE_INIT_SQL | default(value=vars.database_init_sql) }}"

@@ -2,15 +2,22 @@
 
 ## Unreleased
 
+### Added
+
+- Add framework-specific, server and Rust environment examples.
+- Generate baseline mypy, pytest, rustfmt, SwiftLint and Swift formatter configurations for selected
+  components.
+
+### Changed
+
+- Rename database execution and SQLite parameters without legacy aliases. Resolve SQLite database
+  paths from `.env` relative to the project root or accept absolute paths. Separate SQLite initial
+  settings from shared database operations.
+
 ### Fixed
 
 - Initialize user boxes with the current catalog schema. Warn during project and standard box
   updates when a user catalog needs a manual schema update, without rewriting the catalog.
-
-### Added
-
-- Generate baseline mypy, pytest, rustfmt, SwiftLint and Swift formatter configurations for selected
-  components.
 
 ## 0.9.0 — 2026-11-17
 

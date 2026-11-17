@@ -443,13 +443,17 @@ mode = "managed"
 format = "dotenv"
 fragments = [
   { template = "templates/env/general.env" },
-  { template = "templates/env/python-app.env", when_any = ["django", "fastapi", "flask"] },
+  { template = "templates/env/python-application.env", when_any = ["django", "fastapi", "flask"] },
   { template = "templates/env/django.env", when = ["django"] },
+  { template = "templates/env/fastapi.env", when = ["fastapi"] },
+  { template = "templates/env/flask.env", when = ["flask"] },
   { template = "templates/env/server.env", when_any = ["granian", "gunicorn", "uvicorn"] },
   { template = "templates/env/gunicorn.env", when = ["gunicorn"] },
-  { template = "templates/env/database.env", when_any = ["sqlite", "postgresql"] },
+  { template = "templates/env/granian.env", when = ["granian"] },
+  { template = "templates/env/database-operations.env", when_any = ["sqlite", "postgresql"] },
   { template = "templates/env/postgresql.env", when = ["postgresql"] },
   { template = "templates/env/sqlite.env", when = ["sqlite"] },
+  { template = "templates/env/rust.env", when_any = ["axum", "actix-web"] },
 ]
 
 # Files: Docker build context
@@ -1487,6 +1491,11 @@ when_any = ["nextjs", "nuxt", "sveltekit", "astro"]
 id = "rust-runtime"
 template = "settings/rust-runtime.toml"
 when_any = ["axum", "actix-web"]
+
+[[defaults]]
+id = "sqlite"
+template = "settings/sqlite.toml"
+when = ["sqlite"]
 
 # Wizard: navigation steps
 

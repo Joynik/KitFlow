@@ -1,0 +1,7 @@
+[vars]
+sqlite_database_path = "data/application.sqlite3"
+sqlite_init_sql = ""
+
+[env]
+SQLITE_DATABASE_PATH = '{% set path = env.SQLITE_DATABASE_PATH | default(value=vars.sqlite_database_path) %}{% if path is starting_with(pat="/") %}{{ path }}{% else %}{{ config_root }}/{{ path }}{% endif %}'
+SQLITE_INIT_SQL = "{{ env.SQLITE_INIT_SQL | default(value=vars.sqlite_init_sql) }}"

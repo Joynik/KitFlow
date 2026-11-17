@@ -70,10 +70,10 @@ def test_sqlite_backup_restore_preserves_data_and_refuses_overwrites(tmp_path, t
     env = {
         **os.environ,
         "PATH": f"{binaries}:{os.environ['PATH']}",
-        "DATABASE_SQLITE_PATH": str(database),
-        "DATABASE_DOCKER_SQLITE_PATH": str(database),
+        "SQLITE_DATABASE_PATH": str(database),
+        "SQLITE_CONTAINER_PATH": str(database),
         "usage_file": str(backup),
-        "DATABASE_TARGET": target,
+        "DATABASE_EXECUTION_MODE": target,
         "COMPOSE_FILE": "compose.yml",
         "COMPOSE_ENV_FILE": ".env",
         "DATABASE_DOCKER_SERVICE": "database",
@@ -201,3 +201,48 @@ def test_mixed_build_runs_every_component_in_its_own_directory(tmp_path):
     assert Path(calls["cargo"]) == (project / "rust part").resolve()
     assert Path(calls["bun"]) == (project / "frontend").resolve()
     assert Path(calls["swift"]) == (project / "swift part").resolve()
+
+
+@pytest.mark.skipif(shutil.which("mise") is None, reason="mise executable not installed")
+@pytest.mark.parametrize("value", ["data with spaces/app.sqlite3", "/tmp/absolute app.sqlite3"])
+def test_sqlite_path_override_is_resolved_from_project_root(tmp_path, value):
+    from kitflow.engine import apply, load_config, plan
+
+    apply(plan(tmp_path, Catalog(BOX), ["sqlite"], load_config(tmp_path)), {})
+    (tmp_path / ".env").write_text(f'SQLITE_DATABASE_PATH="{value}"\n')
+    result = subprocess.run(
+        ["mise", "env", "--json"],
+        cwd=tmp_path,
+        env={
+            **os.environ,
+            "MISE_TRUSTED_CONFIG_PATHS": str(tmp_path),
+            "MISE_CACHE_DIR": str(tmp_path / "cache"),
+            "MISE_STATE_DIR": str(tmp_path / "state"),
+        },
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    expected = value if Path(value).is_absolute() else str(tmp_path / value)
+    assert json.loads(result.stdout)["SQLITE_DATABASE_PATH"] == expected
+
+
+@pytest.mark.skipif(shutil.which("sqlite3") is None, reason="SQLite CLI not installed")
+def test_sqlite_prepare_uses_initialization_sql_and_preserves_existing_database(tmp_path):
+    target = tmp_path / "nested directory" / "application.sqlite3"
+    initial = tmp_path / "initial.sql"
+    initial.write_text("CREATE TABLE example(value TEXT); INSERT INTO example VALUES ('initial');")
+    env = {
+        **os.environ,
+        "DATABASE_EXECUTION_MODE": "native",
+        "SQLITE_DATABASE_PATH": str(target),
+        "SQLITE_INIT_SQL": str(initial),
+    }
+    command = ["/bin/sh", "-eu", str(BOX / "tasks/sqlite-prepare.sh")]
+    result = subprocess.run(command, env=env, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+    with sqlite3.connect(target) as connection:
+        assert connection.execute("SELECT value FROM example").fetchone() == ("initial",)
+    original = target.read_bytes()
+    assert subprocess.run(command, env=env, capture_output=True).returncode == 2
+    assert target.read_bytes() == original

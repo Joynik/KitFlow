@@ -221,8 +221,20 @@ your extraction mapping file; the package.json backend uses `i18n_script`.
 SQLite and PostgreSQL provide `db:backup FILE` and `db:restore FILE`. Defaults use
 `database_backup_file` and `database_restore_file`. PostgreSQL uses `PGHOST`, `PGPORT`, `PGDATABASE`
 and `PGUSER`; keep its password in `.pgpass` or local environment settings. SQLite uses
-`database_sqlite_path`. `db:prepare` creates a new SQLite database, optionally from
-`database_init_sql`, without replacing an existing database.
+`sqlite_database_path`. `db:prepare` creates a new SQLite database, optionally from
+`sqlite_init_sql`, without replacing an existing database.
+
+`DATABASE_EXECUTION_MODE` selects `native` or `docker`. `SQLITE_DATABASE_PATH` accepts an absolute
+path or a path relative to the project root, including paths with spaces. `.env` overrides
+`vars.sqlite_database_path`. `SQLITE_INIT_SQL` is used only when creating a new database with
+`db:prepare`; it is not a restore input. The container path is `SQLITE_CONTAINER_PATH`.
+
+Environment examples are separated by purpose: `general.env`, framework examples,
+`python-application.env`, server examples, `database-operations.env` and database connection
+examples. `PYTHON_APP` is the server's `module:object` import path, not a general Python setting.
+Django and FastAPI application settings must read their example variables explicitly. Flask's secret
+example requires `app.config.from_prefixed_env()` or an equivalent settings loader. Commented
+examples do nothing until enabled and connected to application settings.
 
 Backups never replace existing files. **Stop application writes before restoring.** Restore replaces
 data. SQLite stages SQL in a temporary database and refuses restoration with pending WAL files.

@@ -2,10 +2,10 @@
 compose_file = "compose.yml"
 compose_env_file = ".env"
 database_docker_service = "db"
-database_docker_sqlite_path = "/app/db.sqlite3"
+sqlite_container_path = "/app/db.sqlite3"
 
 [env]
 COMPOSE_FILE = "{{ config_root }}/{{ vars.compose_file }}"
 COMPOSE_ENV_FILE = "{{ config_root }}/{{ vars.compose_env_file }}"
 DATABASE_DOCKER_SERVICE = "{{ env.DATABASE_DOCKER_SERVICE | default(value=vars.database_docker_service) }}"
-DATABASE_DOCKER_SQLITE_PATH = "{{ env.DATABASE_DOCKER_SQLITE_PATH | default(value=vars.database_docker_sqlite_path) }}"
+SQLITE_CONTAINER_PATH = "{{ env.SQLITE_CONTAINER_PATH | default(value=vars.sqlite_container_path) }}"

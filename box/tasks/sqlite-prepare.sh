@@ -1,12 +1,13 @@
-[ "${DATABASE_TARGET:-native}" = native ] || { echo "Prepare SQLite in the container explicitly" >&2; exit 2; }
-: "${DATABASE_SQLITE_PATH:?Set vars.database_sqlite_path}"
-[ ! -e "$DATABASE_SQLITE_PATH" ] && [ ! -L "$DATABASE_SQLITE_PATH" ] || { echo "SQLite database already exists" >&2; exit 2; }
-temporary=$(mktemp "$(dirname "$DATABASE_SQLITE_PATH")/.kitflow-prepare.XXXXXX")
+[ "${DATABASE_EXECUTION_MODE:-native}" = native ] || { echo "Prepare SQLite in the container explicitly" >&2; exit 2; }
+: "${SQLITE_DATABASE_PATH:?Set vars.sqlite_database_path}"
+[ ! -e "$SQLITE_DATABASE_PATH" ] && [ ! -L "$SQLITE_DATABASE_PATH" ] || { echo "SQLite database already exists" >&2; exit 2; }
+mkdir -p "$(dirname "$SQLITE_DATABASE_PATH")"
+temporary=$(mktemp "$(dirname "$SQLITE_DATABASE_PATH")/.kitflow-prepare.XXXXXX")
 trap 'rm -f "$temporary" "$temporary-wal" "$temporary-shm"' EXIT HUP INT TERM
-if [ -n "${DATABASE_INIT_SQL:-}" ]; then
-    [ -f "$DATABASE_INIT_SQL" ] || { echo "Initialization SQL does not exist: $DATABASE_INIT_SQL" >&2; exit 2; }
-    sqlite3 -bail "$temporary" < "$DATABASE_INIT_SQL"
+if [ -n "${SQLITE_INIT_SQL:-}" ]; then
+    [ -f "$SQLITE_INIT_SQL" ] || { echo "Initialization SQL does not exist: $SQLITE_INIT_SQL" >&2; exit 2; }
+    sqlite3 -bail "$temporary" < "$SQLITE_INIT_SQL"
 else
     sqlite3 -bail "$temporary" 'PRAGMA user_version=0;'
 fi
-ln "$temporary" "$DATABASE_SQLITE_PATH"
+ln "$temporary" "$SQLITE_DATABASE_PATH"
