@@ -227,6 +227,55 @@ def test_sqlite_path_override_is_resolved_from_project_root(tmp_path, value):
     assert json.loads(result.stdout)["SQLITE_DATABASE_PATH"] == expected
 
 
+@pytest.mark.parametrize(
+    ("task", "arguments"),
+    [
+        ("validate", ["validate"]),
+        ("generate", ["generate"]),
+        ("makemigrations", ["migrate", "dev", "--create-only", "--name", "new fields"]),
+        ("migrate", ["migrate", "deploy"]),
+        ("status", ["migrate", "status"]),
+        ("format", ["format"]),
+    ],
+)
+def test_data_access_tasks_use_local_cli_and_explicit_actions(tmp_path, task, arguments):
+    binary = tmp_path / "bin"
+    binary.mkdir()
+    tool = binary / "bunx"
+    tool.write_text(
+        f'#!{sys.executable}\nimport json,os,sys\nfrom pathlib import Path\nPath(os.environ["CALL_LOG"]).write_text(json.dumps([os.getcwd(),sys.argv[1:]]))\n'
+    )
+    tool.chmod(0o755)
+    project = tmp_path / "javascript directory"
+    project.mkdir()
+    log = tmp_path / "calls.json"
+    artifact = Catalog(BOX).render(["prisma", "sqlite"])[f"task.prisma:{task}"]
+    assert isinstance(artifact.content, bytes)
+    script = tomllib.loads(artifact.content.decode())["tasks"][f"prisma:{task}"]["run"]
+    result = subprocess.run(
+        ["/bin/sh", "-c", script],
+        env={
+            **os.environ,
+            "PATH": f"{binary}:{os.environ['PATH']}",
+            "CALL_LOG": str(log),
+            "PROJECT_JAVASCRIPT_DIRECTORY": str(project),
+            "PRISMA_CONFIG": "config with spaces.ts",
+            "usage_name": "new fields",
+        },
+    )
+    assert result.returncode == 0
+    directory, actual = json.loads(log.read_text())
+    assert Path(directory) == project.resolve()
+    assert actual == [
+        "--bun",
+        "--no-install",
+        "prisma",
+        *arguments,
+        "--config",
+        "config with spaces.ts",
+    ]
+
+
 @pytest.mark.skipif(shutil.which("sqlite3") is None, reason="SQLite CLI not installed")
 def test_sqlite_prepare_uses_initialization_sql_and_preserves_existing_database(tmp_path):
     target = tmp_path / "nested directory" / "application.sqlite3"

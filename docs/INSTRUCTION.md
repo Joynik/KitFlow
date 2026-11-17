@@ -236,6 +236,28 @@ Django and FastAPI application settings must read their example variables explic
 example requires `app.config.from_prefixed_env()` or an equivalent settings loader. Commented
 examples do nothing until enabled and connected to application settings.
 
+Select Prisma ORM under **Data access** after choosing JavaScript/TypeScript and PostgreSQL or
+SQLite. This component targets stable Prisma ORM 7. Install Prisma 7 and its runtime dependencies in
+your application separately; tasks use the local CLI with `bunx --no-install`.
+
+KitFlow creates `prisma.config.ts` and `prisma/schema.prisma` once. Edit the example model and
+configure `DATABASE_URL` in your local `.env`. These files remain user-owned. Configure
+`prisma_config`, `prisma_schema_path` and `prisma_migrations_path` in mise. For a nested JavaScript
+application, move the initial Prisma files into that application and adjust those paths.
+
+- `prisma:validate` checks the schema without connecting to the database; `check` includes it.
+- `prisma:generate` explicitly generates the client.
+- `prisma:makemigrations NAME` creates a development migration with `--create-only`. Review its SQL.
+  Prisma may require a shadow database and interactive drift resolution.
+- `prisma:migrate` applies committed migrations with `migrate deploy`.
+- `prisma:status` inspects the database migration status; `prisma:format` formats the schema.
+
+No task automatically resets a database or accepts data loss. Prisma commands retain diagnostics;
+update notices and color are disabled. Prisma 8 release candidates use a different workflow and are
+not covered by these templates. PostgreSQL client backups still use `PG*` variables, independently
+of Prisma's `DATABASE_URL`; configure both to point to the same intended database. For SQLite, keep
+`DATABASE_URL` and `SQLITE_DATABASE_PATH` consistent.
+
 Backups never replace existing files. **Stop application writes before restoring.** Restore replaces
 data. SQLite stages SQL in a temporary database and refuses restoration with pending WAL files.
 PostgreSQL restores in a transaction and stops on SQL errors. Restore only trusted SQL files.

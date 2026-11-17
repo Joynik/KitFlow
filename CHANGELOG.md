@@ -4,7 +4,9 @@
 
 ### Added
 
-- Add framework-specific, server and Rust environment examples.
+- Add selectable Prisma ORM 7 with creation-only config and schema examples, explicit client and
+  migration tasks, and schema validation in `check`.
+- Add framework-specific, server, Rust and Prisma environment examples.
 - Generate baseline mypy, pytest, rustfmt, SwiftLint and Swift formatter configurations for selected
   components.
 

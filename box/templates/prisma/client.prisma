@@ -1,0 +1,5 @@
+// Prisma ORM 7. Replace the example model with your application models.
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}

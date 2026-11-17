@@ -1,0 +1,9 @@
+[vars]
+prisma_config = "prisma.config.ts"
+prisma_schema_path = "prisma/schema.prisma"
+prisma_migrations_path = "prisma/migrations"
+
+[env]
+PRISMA_CONFIG = "{{ env.PRISMA_CONFIG | default(value=vars.prisma_config) }}"
+PRISMA_SCHEMA_PATH = "{{ env.PRISMA_SCHEMA_PATH | default(value=vars.prisma_schema_path) }}"
+PRISMA_MIGRATIONS_PATH = "{{ env.PRISMA_MIGRATIONS_PATH | default(value=vars.prisma_migrations_path) }}"

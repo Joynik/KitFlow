@@ -62,6 +62,18 @@ description = "Database selection without server installation."
 requires = []
 conflicts = ["postgresql"]
 
+# Components: data access
+
+[[components]]
+id = "prisma"
+label = "Prisma ORM"
+category = "Data access"
+description = "Prisma ORM 7 schema, client generation and explicit migrations; select PostgreSQL or SQLite."
+requires = ["bun"]
+conflicts = []
+when = ["javascript"]
+when_any = ["postgresql", "sqlite"]
+
 # Components: infrastructure
 
 [[components]]
@@ -418,6 +430,7 @@ mode = "managed"
 fragments = [
   { template = "templates/gitignore/general.txt" },
   { template = "templates/gitignore/agents.txt", when = ["agents"] },
+  { template = "templates/gitignore/prisma.txt", when = ["prisma"] },
   { template = "templates/gitignore/python.txt", when = ["python"] },
   { template = "templates/gitignore/javascript.txt", when = ["javascript"] },
   { template = "templates/gitignore/rust.txt", when = ["rust"] },
@@ -454,6 +467,7 @@ fragments = [
   { template = "templates/env/postgresql.env", when = ["postgresql"] },
   { template = "templates/env/sqlite.env", when = ["sqlite"] },
   { template = "templates/env/rust.env", when_any = ["axum", "actix-web"] },
+  { template = "templates/env/prisma.env", when = ["prisma"] },
 ]
 
 # Files: Docker build context
@@ -466,6 +480,7 @@ when = ["docker"]
 fragments = [
   { template = "templates/dockerignore/general.txt" },
   { template = "templates/dockerignore/agents.txt", when = ["agents"] },
+  { template = "templates/dockerignore/prisma.txt", when = ["prisma"] },
   { template = "templates/dockerignore/python.txt", when = ["python"] },
   { template = "templates/dockerignore/javascript.txt", when = ["javascript"] },
   { template = "templates/dockerignore/rust.txt", when = ["rust"] },
@@ -569,6 +584,27 @@ template = "templates/swift-format.json"
 when = ["swift"]
 mode = "managed"
 
+# Files: Prisma application configuration (created once, then user-owned)
+
+[[files]]
+id = "prisma-config"
+path = "prisma.config.ts"
+template = "templates/prisma.config.ts"
+when = ["prisma"]
+mode = "once"
+
+[[files]]
+id = "prisma-schema"
+path = "prisma/schema.prisma"
+when = ["prisma"]
+mode = "once"
+fragments = [
+  { template = "templates/prisma/client.prisma" },
+  { template = "templates/prisma/postgresql.prisma", when = ["postgresql"] },
+  { template = "templates/prisma/sqlite.prisma", when = ["sqlite"] },
+  { template = "templates/prisma/example.prisma" },
+]
+
 # Files: Markdown configuration
 
 [[files]]
@@ -669,7 +705,7 @@ name = "verify"
 template = "tasks/verify-check.sh"
 when = []
 description = "Run checks, application checks and tests sequentially"
-when_any = ["alembic", "bun", "django", "djlint", "ruff", "rumdl", "rust", "swift", "swiftlint", "ty", "mypy"]
+when_any = ["alembic", "bun", "django", "djlint", "ruff", "rumdl", "rust", "swift", "swiftlint", "ty", "mypy", "prisma"]
 
 [[tasks]]
 id = "verify-app"
@@ -1368,6 +1404,64 @@ usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\""
 description = "Restore SQL data in the configured container"
 when_any = ["sqlite", "postgresql"]
 
+# Tasks: Prisma ORM
+
+[[tasks]]
+id = "prisma-validate"
+name = "prisma:validate"
+template = "tasks/prisma-validate.sh"
+when = ["prisma"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Validate the Prisma schema"
+
+[[tasks]]
+id = "prisma-generate"
+name = "prisma:generate"
+template = "tasks/prisma-generate.sh"
+when = ["prisma"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Generate the Prisma client"
+
+[[tasks]]
+id = "prisma-makemigrations"
+name = "prisma:makemigrations"
+template = "tasks/prisma-makemigrations.sh"
+when = ["prisma"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Create a Prisma migration without applying it"
+usage = "arg \"[name]\" help=\"Migration name\""
+
+[[tasks]]
+id = "prisma-migrate"
+name = "prisma:migrate"
+template = "tasks/prisma-migrate.sh"
+when = ["prisma"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Apply committed Prisma migrations"
+
+[[tasks]]
+id = "prisma-status"
+name = "prisma:status"
+template = "tasks/prisma-status.sh"
+when = ["prisma"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Show Prisma database migration status"
+
+[[tasks]]
+id = "prisma-format"
+name = "prisma:format"
+template = "tasks/prisma-format.sh"
+when = ["prisma"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Format the Prisma schema"
+
+[[tasks]]
+id = "check-prisma"
+name = "check"
+template = "tasks/check-prisma.sh"
+when = ["prisma"]
+description = "Check code, formatting, types and migrations"
+
 # Tasks: internal Swift backend
 
 [[tasks]]
@@ -1497,6 +1591,11 @@ id = "sqlite"
 template = "settings/sqlite.toml"
 when = ["sqlite"]
 
+[[defaults]]
+id = "prisma"
+template = "settings/prisma.toml"
+when = ["prisma"]
+
 # Wizard: navigation steps
 
 [[steps]]
@@ -1526,6 +1625,13 @@ label = "Databases"
 categories = ["Databases"]
 description = "Choose a database, or continue without one."
 order = 40
+
+[[steps]]
+id = "data-access"
+label = "Data access"
+categories = ["Data access"]
+description = "Choose a database access toolkit separately from the database."
+order = 45
 
 [[steps]]
 id = "infrastructure"
