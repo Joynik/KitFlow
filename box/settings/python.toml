@@ -1,5 +1,5 @@
 [vars]
-python_source = "."
+python_source = "." # Relative to project_root; use "." for the project folder.
 
 [env]
-PYTHON_SOURCE = '{% set path = env.PYTHON_SOURCE | default(value=vars.python_source) %}{% if path is starting_with(pat="/") %}{{ path }}{% else %}{{ env.PROJECT_ROOT }}/{{ path }}{% endif %}'
+PYTHON_SOURCE = '{{ [env.PROJECT_ROOT, env.PYTHON_SOURCE | default(value=vars.python_source)] | join_path | absolute }}'
