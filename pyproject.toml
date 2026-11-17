@@ -20,7 +20,7 @@ dev = [
   "pytest>=9.2.0",
   "pytest-asyncio>=1.5.0",
   "ruff>=0.17.5",
-  "ty>=0.0.104",
+  "ty>=0.0.105",
 ]
 build = [
   "nuitka>=4.3.5",
