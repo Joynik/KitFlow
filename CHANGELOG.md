@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.9.0 — 2026-11-17
+
+### Added
+
+- Assemble managed text files from ordered, conditional UTF-8 fragments, with optional dotenv
+  duplicate-variable checks.
+- Add Docker-only `.dockerignore` and selectable mypy type checks with concise diagnostics.
+
+### Changed
+
+- Build `.gitignore` and `.env.example` from the selected components using standard box schema 4.
+  `.env.example` now receives managed updates with conflict protection; `.env` remains user-owned.
+
 ## 0.8.1 — 2026-11-16
 
 ### Changed

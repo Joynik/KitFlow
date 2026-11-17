@@ -8,15 +8,15 @@ component IDs. An empty condition applies to every project.
 box/
 ├── kitflow-box.toml       Components, conditions and output paths
 ├── settings/          Creation-only mise defaults
-├── templates/         Whole-file templates
+├── templates/         File, directory and text fragment templates
 └── tasks/             Shell fragments, without mise table headers
 ```
 
 ## Standard and user layers
 
 The configuration directory contains the standard box in `default/` and user definitions at its
-root. The standard box uses `schema = 3` for the declarative wizard. KitFlow still reads legacy
-schema 1 and 2 boxes; a user overlay may contain only `schema = 1`. Older KitFlow versions reject
+root. The standard box uses `schema = 4` for conditional file fragments. KitFlow still reads legacy
+schema 1, 2 and 3 boxes; a user overlay may contain only `schema = 1`. Older KitFlow versions reject
 the new standard schema instead of silently generating incomplete tasks.
 
 KitFlow merges `components`, `files`, `tasks`, `env`, `defaults` and `steps` by stable `id`. A user
@@ -292,3 +292,39 @@ mode = "once"
 
 An empty file rule requires `mode = "once"` and must not specify `template`. Existing files are
 preserved. Created files are never updated or deleted afterward.
+
+## Composed text files
+
+Use `fragments` instead of `template` to assemble one UTF-8 file from ordered parts:
+
+```toml
+[[files]]
+id = "ignore"
+path = ".gitignore"
+mode = "managed"
+fragments = [
+  { template = "templates/gitignore/general.txt" },
+  { template = "templates/gitignore/python.txt", when = ["python"] },
+  { template = "templates/gitignore/web.txt", when_any = ["javascript", "typescript"] },
+]
+```
+
+A file rule accepts exactly one source: `template`, `fragments` or `empty`. A fragment accepts
+`template`, `when` and `when_any`. Both file and fragment conditions must match. Paths use the same
+user-over-standard lookup as other templates. Fragments must be regular UTF-8 files, not folders or
+symbolic links. Leading and trailing line breaks are removed from each part; nonempty parts are
+joined with one blank line, followed by a final newline. Other whitespace and comments are
+preserved.
+
+Put section comments inside the fragments. The final file has one artifact ID and checksum. Updates
+replace the whole generated file after the usual conflict review; they do not merge local edits into
+individual parts. Removing a component removes its parts on the next project update.
+
+For environment examples, set `format = "dotenv"`. Duplicate assignment names, including `export`
+assignments, are rejected when their fragments are selected together. `kitflow check` also checks
+compatible fragment combinations. Commented examples do not count as assignments. Put shared
+variables in one general fragment. Keep actual secrets in the user-owned `.env`.
+
+The standard `.gitignore` and `.env.example` always exist. `.dockerignore` requires the Docker
+component. All three use only matching fragments; `.env.example` is managed, while `.env` remains
+user-owned. Upgrade KitFlow before downloading schema 4 standard boxes.

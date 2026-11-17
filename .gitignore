@@ -125,3 +125,7 @@ STANDARDS.md
 
 # Local reference files are not standard box content.
 /temp/
+
+# Public environment example fragments contain placeholders only.
+!box/templates/env/
+!box/templates/env/**

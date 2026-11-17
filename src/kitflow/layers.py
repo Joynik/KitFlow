@@ -12,8 +12,8 @@ SECTIONS = ("components", "files", "tasks", "env", "defaults", "steps")
 def read_data(root: Path) -> dict:
     path = safe_path(root, "kitflow-box.toml")
     data = tomllib.loads(path.read_text(encoding="utf-8"))
-    if type(data.get("schema")) is not int or data["schema"] not in {1, 2, 3}:
-        raise KitFlowError(f"{path}: unsupported catalog schema; expected 1, 2 or 3")
+    if type(data.get("schema")) is not int or data["schema"] not in {1, 2, 3, 4}:
+        raise KitFlowError(f"{path}: unsupported catalog schema; expected 1, 2, 3 or 4")
     # Old profile exclusions no longer affect component-based project selections.
     if data["schema"] < 3 and isinstance(data.get("disabled"), dict):
         data["disabled"].pop("profiles", None)

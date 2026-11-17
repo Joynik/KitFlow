@@ -1,0 +1,9 @@
+# JavaScript and TypeScript
+node_modules/
+.pnp.*
+.yarn/
+dist/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*

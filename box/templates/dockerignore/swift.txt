@@ -1,0 +1,4 @@
+# Swift and Xcode
+.build/
+.swiftpm/
+DerivedData/

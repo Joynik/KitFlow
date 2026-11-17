@@ -1,0 +1,4 @@
+# Next.js
+.next/
+out/
+.vercel/

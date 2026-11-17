@@ -66,8 +66,8 @@ class Catalog:
             from kitflow.layers import load_data
 
             self.data, self.sources = load_data(self.root, self.standard)
-            if self.data.get("schema") not in {1, 2, 3}:
-                raise KitFlowError("Unsupported catalog schema; expected 1, 2 or 3")
+            if self.data.get("schema") not in {1, 2, 3, 4}:
+                raise KitFlowError("Unsupported catalog schema; expected 1, 2, 3 or 4")
             for _, data in self.sources:
                 self.validate(data)
             self.validate(self.data)
@@ -127,6 +127,39 @@ class Catalog:
                 if section == "files" and row.get("mode", "managed") not in {"managed", "once"}:
                     raise KitFlowError("File mode must be managed or once")
                 if section == "files":
+                    sources = sum(key in row for key in ("template", "empty", "fragments"))
+                    if sources != 1:
+                        raise KitFlowError(
+                            "Files require exactly one of template, empty or fragments"
+                        )
+                    if "fragments" in row:
+                        fragments = row["fragments"]
+                        if not isinstance(fragments, list) or not fragments:
+                            raise KitFlowError("File fragments must be a nonempty array")
+                        if row.get("format") not in {None, "dotenv"}:
+                            raise KitFlowError("Composed file format must be dotenv or omitted")
+                        for fragment in fragments:
+                            if not isinstance(fragment, dict) or set(fragment) - {
+                                "template",
+                                "when",
+                                "when_any",
+                            }:
+                                raise KitFlowError(
+                                    "File fragments accept template, when and when_any"
+                                )
+                            if not isinstance(fragment.get("template"), str):
+                                raise KitFlowError("File fragments require a template")
+                            for key in ("when", "when_any"):
+                                values = fragment.get(key, [])
+                                if not isinstance(values, list) or any(
+                                    not isinstance(x, str) for x in values
+                                ):
+                                    raise KitFlowError(
+                                        "Fragment conditions must be arrays of component IDs"
+                                    )
+                        continue
+                    if "format" in row:
+                        raise KitFlowError("File format requires fragments")
                     if row.get("empty") is True:
                         if "template" in row or row.get("mode") != "once":
                             raise KitFlowError("Empty files require mode once and no template")
@@ -211,7 +244,7 @@ class Catalog:
 
     def file_templates(self, row: dict) -> list[tuple[str, str, Path | None]]:
         """Expand a directory into stable file IDs, including hidden entries."""
-        if row.get("empty") is True:
+        if row.get("empty") is True or "fragments" in row:
             return [(row["id"], row["path"], None)]
         source = self.source_path(row["template"], allow_link=True)
         if source.is_symlink():
@@ -242,6 +275,27 @@ class Catalog:
         visit(row["template"])
         return result
 
+    def compose_file(self, row: dict, chosen: set[str], *, check_duplicates=True) -> bytes:
+        parts = []
+        variables = set()
+        for fragment in row["fragments"]:
+            if not self.enabled(fragment, chosen):
+                continue
+            text = self.template(fragment["template"]).decode("utf-8").strip("\r\n")
+            if row.get("format") == "dotenv" and check_duplicates:
+                for line in text.splitlines():
+                    match = re.match(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=", line)
+                    if match:
+                        name = match[1]
+                        if name in variables:
+                            raise KitFlowError(
+                                f"Duplicate environment variable {name} in {row['path']}"
+                            )
+                        variables.add(name)
+            if text:
+                parts.append(text)
+        return ("\n\n".join(parts) + "\n" if parts else "").encode("utf-8")
+
     def render(self, selected: list[str], *, check_conflicts: bool = True) -> dict[str, Artifact]:
         chosen = set(self.resolve(selected, check_conflicts=check_conflicts))
         result = {}
@@ -268,7 +322,11 @@ class Catalog:
                     raise KitFlowError(f"Duplicate or reserved file target: {target}")
                 paths.add(target)
                 is_link = source is not None and source.is_symlink()
-                content = b""
+                content = (
+                    self.compose_file(row, chosen, check_duplicates=check_conflicts)
+                    if "fragments" in row
+                    else b""
+                )
                 if source is not None:
                     content = self.link_target(source) if is_link else source.read_bytes()
                 result[file_id] = Artifact(

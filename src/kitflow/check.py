@@ -1,5 +1,6 @@
 """Read-only validation of box definitions and connected project configuration."""
 
+import itertools
 import json
 import re
 import tomllib
@@ -22,7 +23,7 @@ BOX_FIELDS = {
         "when",
         "when_any",
     },
-    "files": {"id", "path", "template", "when", "when_any", "mode", "empty"},
+    "files": {"id", "path", "template", "when", "when_any", "mode", "empty", "fragments", "format"},
     "tasks": {
         "id",
         "name",
@@ -136,6 +137,32 @@ def configuration_issues(
     if catalog is not None:
         checked = set()
         for row in catalog.data.get("files", []):
+            if "fragments" in row:
+                # Check compatible fragment combinations, including duplicate dotenv keys.
+                fragments = row["fragments"]
+                conditions = [row, *fragments]
+                for condition in conditions:
+                    catalog.enabled(condition, set(catalog.components))
+                choices = [
+                    [*row.get("when", []), *fragment.get("when", []), *([option] if option else [])]
+                    for fragment in fragments
+                    for option in fragment.get("when_any", []) or [None]
+                ]
+                for left, right in itertools.combinations_with_replacement(choices, 2):
+                    for option in row.get("when_any", []) or [None]:
+                        try:
+                            selected = catalog.resolve(
+                                [*left, *right, *([option] if option else [])]
+                            )
+                        except KitFlowError:
+                            continue
+                        try:
+                            catalog.compose_file(row, set(selected))
+                        except errors as error:
+                            issue = (box / "kitflow-box.toml", str(error))
+                            if issue not in issues:
+                                issues.append(issue)
+                continue
             if row.get("empty") is True:
                 continue
             for _, output, target in catalog.file_templates(row):

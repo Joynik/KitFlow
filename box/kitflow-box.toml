@@ -1,5 +1,7 @@
 # KitFlow catalog: all paths are relative to this directory.
-schema = 3
+schema = 4
+
+# Components: languages
 
 [[components]]
 id = "python"
@@ -27,20 +29,22 @@ conflicts = []
 when = []
 
 [[components]]
-id = "django"
-label = "Django"
-category = "Frameworks"
-description = "Django checks and migrations with separately selected server and tests."
-requires = ["python"]
-conflicts = ["fastapi", "flask"]
+id = "rust"
+label = "Rust"
+category = "Languages"
+description = "Cargo checks, builds and formatting in the configured Rust directory."
+requires = []
+conflicts = []
 
 [[components]]
-id = "fastapi"
-label = "FastAPI"
-category = "Frameworks"
-description = "FastAPI application with separately selected server, migrations and tests."
-requires = ["python"]
-conflicts = ["django", "flask"]
+id = "swift"
+label = "Swift"
+category = "Languages"
+description = "Swift sources, formatting, and a separately selected SwiftPM or Xcode backend."
+requires = []
+conflicts = []
+
+# Components: databases
 
 [[components]]
 id = "postgresql"
@@ -58,6 +62,8 @@ description = "Database selection without server installation."
 requires = []
 conflicts = ["postgresql"]
 
+# Components: infrastructure
+
 [[components]]
 id = "docker"
 label = "Docker Compose"
@@ -65,6 +71,8 @@ category = "Infrastructure"
 description = "Start, stop and view logs for an existing Compose project."
 requires = []
 conflicts = []
+
+# Components: tools — Python
 
 [[components]]
 id = "ruff"
@@ -85,13 +93,12 @@ conflicts = []
 recommended = true
 
 [[components]]
-id = "rumdl"
-label = "rumdl"
+id = "mypy"
+label = "mypy"
 category = "Checks"
-description = "Markdown linting and formatting."
-requires = []
+description = "Python static type checking with concise diagnostics."
+requires = ["python"]
 conflicts = []
-recommended = true
 
 [[components]]
 id = "djlint"
@@ -102,48 +109,7 @@ requires = ["django"]
 conflicts = []
 recommended = true
 
-[[components]]
-id = "agents"
-label = "Agent instructions"
-category = "Instructions"
-description = "Generic agent instructions; an empty PROJECT.md is created once."
-requires = []
-conflicts = []
-recommended = true
-
-[[components]]
-id = "rust"
-label = "Rust"
-category = "Languages"
-description = "Cargo checks, builds and formatting in the configured Rust directory."
-requires = []
-conflicts = []
-
-[[components]]
-id = "tauri"
-label = "Tauri"
-category = "Desktop frameworks"
-description = "Desktop application shell; use Bun for development and application builds."
-requires = ["rust", "bun"]
-conflicts = []
-when = ["rust"]
-
-[[components]]
-id = "react"
-label = "React"
-category = "Frameworks"
-description = "React frontend selection; application files are supplied by the project scaffold."
-requires = ["javascript"]
-conflicts = []
-
-[[components]]
-id = "vite"
-label = "Vite"
-category = "Build tools"
-description = "Frontend development server and production assets through Bun."
-requires = ["javascript", "bun"]
-conflicts = ["nextjs", "nuxt", "sveltekit", "astro"]
-when_any = ["javascript", "typescript"]
+# Components: tools — JavaScript and TypeScript
 
 [[components]]
 id = "bun"
@@ -155,12 +121,15 @@ conflicts = []
 recommended = true
 
 [[components]]
-id = "swift"
-label = "Swift"
-category = "Languages"
-description = "Swift sources, formatting, and a separately selected SwiftPM or Xcode backend."
-requires = []
-conflicts = []
+id = "vite"
+label = "Vite"
+category = "Build tools"
+description = "Frontend development server and production assets through Bun."
+requires = ["javascript", "bun"]
+conflicts = ["nextjs", "nuxt", "sveltekit", "astro"]
+when_any = ["javascript", "typescript"]
+
+# Components: tools — Swift
 
 [[components]]
 id = "swiftlint"
@@ -170,6 +139,132 @@ description = ""
 requires = ["swift"]
 conflicts = []
 recommended = true
+
+# Components: tools — shared
+
+[[components]]
+id = "rumdl"
+label = "rumdl"
+category = "Checks"
+description = "Markdown linting and formatting."
+requires = []
+conflicts = []
+recommended = true
+
+# Components: frameworks — Python
+
+[[components]]
+id = "django"
+label = "Django"
+category = "Frameworks"
+description = "Django checks and migrations with separately selected server and tests."
+requires = ["python"]
+conflicts = ["fastapi", "flask"]
+
+[[components]]
+id = "fastapi"
+label = "FastAPI"
+category = "Frameworks"
+description = "FastAPI application with separately selected server, migrations and tests."
+requires = ["python"]
+conflicts = ["django", "flask"]
+
+[[components]]
+id = "flask"
+label = "Flask"
+category = "Frameworks"
+requires = ["python"]
+description = "Lightweight WSGI application; choose a server separately."
+conflicts = ["django", "fastapi", "uvicorn"]
+
+# Components: frameworks — JavaScript and TypeScript
+
+[[components]]
+id = "react"
+label = "React"
+category = "Frameworks"
+description = "React frontend selection; application files are supplied by the project scaffold."
+requires = ["javascript"]
+conflicts = []
+
+[[components]]
+id = "nextjs"
+label = "Next.js (React)"
+category = "Frameworks"
+requires = ["react", "bun"]
+description = "React web application. Uses the project dev, build and start scripts."
+when_any = ["javascript", "typescript"]
+conflicts = ["nuxt", "sveltekit", "astro", "vite"]
+
+[[components]]
+id = "vue"
+label = "Vue"
+category = "Frameworks"
+requires = ["javascript"]
+description = "Vue user interface; select Vite or Nuxt separately."
+when_any = ["javascript", "typescript"]
+
+[[components]]
+id = "nuxt"
+label = "Nuxt (Vue)"
+category = "Frameworks"
+requires = ["vue", "bun"]
+description = "Vue web application. Uses the project dev, build and preview scripts."
+when_any = ["javascript", "typescript"]
+conflicts = ["nextjs", "sveltekit", "astro", "vite"]
+
+[[components]]
+id = "svelte"
+label = "Svelte"
+category = "Frameworks"
+requires = ["javascript"]
+description = "Svelte user interface; select Vite or SvelteKit separately."
+when_any = ["javascript", "typescript"]
+
+[[components]]
+id = "sveltekit"
+label = "SvelteKit (Svelte)"
+category = "Frameworks"
+requires = ["svelte", "bun"]
+description = "Svelte web application. Uses the project dev, build and preview scripts."
+when_any = ["javascript", "typescript"]
+conflicts = ["nextjs", "nuxt", "astro", "vite"]
+
+[[components]]
+id = "astro"
+label = "Astro"
+category = "Frameworks"
+requires = ["javascript", "bun"]
+description = "Content-oriented website. Uses the project dev, build and preview scripts."
+when_any = ["javascript", "typescript"]
+conflicts = ["nextjs", "nuxt", "sveltekit", "vite"]
+
+# Components: frameworks — Rust
+
+[[components]]
+id = "axum"
+label = "Axum"
+category = "Frameworks"
+requires = ["rust"]
+description = "Rust HTTP application; Cargo build, checks, tests and backend run tasks."
+
+[[components]]
+id = "actix-web"
+label = "Actix Web"
+category = "Frameworks"
+requires = ["rust"]
+description = "Rust HTTP application; Cargo build, checks, tests and backend run tasks."
+
+[[components]]
+id = "tauri"
+label = "Tauri"
+category = "Desktop frameworks"
+description = "Desktop application shell; use Bun for development and application builds."
+requires = ["rust", "bun"]
+conflicts = []
+when = ["rust"]
+
+# Components: application servers — Python
 
 [[components]]
 id = "granian"
@@ -197,6 +292,8 @@ description = "ASGI server for Django or FastAPI."
 requires = ["python"]
 conflicts = ["granian", "gunicorn", "flask"]
 when_any = ["django", "fastapi"]
+
+# Components: tests
 
 [[components]]
 id = "pytest"
@@ -249,6 +346,8 @@ requires = ["swift"]
 conflicts = []
 recommended = true
 
+# Components: migrations
+
 [[components]]
 id = "alembic"
 label = "Alembic"
@@ -256,6 +355,8 @@ category = "Migrations"
 description = ""
 requires = ["python"]
 conflicts = ["django"]
+
+# Components: translations
 
 [[components]]
 id = "django-i18n"
@@ -281,71 +382,19 @@ description = ""
 requires = ["bun"]
 conflicts = []
 
+# Components: instructions
+
 [[components]]
-id = "flask"
-label = "Flask"
-category = "Frameworks"
-requires = ["python"]
-description = "Lightweight WSGI application; choose a server separately."
-conflicts = ["django", "fastapi", "uvicorn"]
-[[components]]
-id = "vue"
-label = "Vue"
-category = "Frameworks"
-requires = ["javascript"]
-description = "Vue user interface; select Vite or Nuxt separately."
-when_any = ["javascript", "typescript"]
-[[components]]
-id = "svelte"
-label = "Svelte"
-category = "Frameworks"
-requires = ["javascript"]
-description = "Svelte user interface; select Vite or SvelteKit separately."
-when_any = ["javascript", "typescript"]
-[[components]]
-id = "nextjs"
-label = "Next.js (React)"
-category = "Frameworks"
-requires = ["react", "bun"]
-description = "React web application. Uses the project dev, build and start scripts."
-when_any = ["javascript", "typescript"]
-conflicts = ["nuxt", "sveltekit", "astro", "vite"]
-[[components]]
-id = "nuxt"
-label = "Nuxt (Vue)"
-category = "Frameworks"
-requires = ["vue", "bun"]
-description = "Vue web application. Uses the project dev, build and preview scripts."
-when_any = ["javascript", "typescript"]
-conflicts = ["nextjs", "sveltekit", "astro", "vite"]
-[[components]]
-id = "sveltekit"
-label = "SvelteKit (Svelte)"
-category = "Frameworks"
-requires = ["svelte", "bun"]
-description = "Svelte web application. Uses the project dev, build and preview scripts."
-when_any = ["javascript", "typescript"]
-conflicts = ["nextjs", "nuxt", "astro", "vite"]
-[[components]]
-id = "astro"
-label = "Astro"
-category = "Frameworks"
-requires = ["javascript", "bun"]
-description = "Content-oriented website. Uses the project dev, build and preview scripts."
-when_any = ["javascript", "typescript"]
-conflicts = ["nextjs", "nuxt", "sveltekit", "vite"]
-[[components]]
-id = "axum"
-label = "Axum"
-category = "Frameworks"
-requires = ["rust"]
-description = "Rust HTTP application; Cargo build, checks, tests and backend run tasks."
-[[components]]
-id = "actix-web"
-label = "Actix Web"
-category = "Frameworks"
-requires = ["rust"]
-description = "Rust HTTP application; Cargo build, checks, tests and backend run tasks."
+id = "agents"
+label = "Agent instructions"
+category = "Instructions"
+description = "Generic agent instructions; an empty PROJECT.md is created once."
+requires = []
+conflicts = []
+recommended = true
+
+# Files: project documents
+
 [[files]]
 id = "readme"
 path = "README.md"
@@ -360,12 +409,73 @@ empty = true
 when = ["agents"]
 mode = "once"
 
+# Files: shared configuration
+
 [[files]]
 id = "gitignore"
 path = ".gitignore"
-template = "templates/gitignore"
-when = []
 mode = "managed"
+fragments = [
+  { template = "templates/gitignore/general.txt" },
+  { template = "templates/gitignore/python.txt", when = ["python"] },
+  { template = "templates/gitignore/javascript.txt", when = ["javascript"] },
+  { template = "templates/gitignore/rust.txt", when = ["rust"] },
+  { template = "templates/gitignore/swift.txt", when = ["swift"] },
+  { template = "templates/gitignore/django.txt", when = ["django"] },
+  { template = "templates/gitignore/nextjs.txt", when = ["nextjs"] },
+  { template = "templates/gitignore/nuxt.txt", when = ["nuxt"] },
+  { template = "templates/gitignore/sveltekit.txt", when = ["sveltekit"] },
+  { template = "templates/gitignore/astro.txt", when = ["astro"] },
+  { template = "templates/gitignore/tauri.txt", when = ["tauri"] },
+  { template = "templates/gitignore/sqlite.txt", when = ["sqlite"] },
+  { template = "templates/gitignore/ruff.txt", when = ["ruff"] },
+  { template = "templates/gitignore/mypy.txt", when = ["mypy"] },
+  { template = "templates/gitignore/rumdl.txt", when = ["rumdl"] },
+  { template = "templates/gitignore/database.txt", when_any = ["postgresql", "sqlite"] },
+  { template = "templates/gitignore/tests.txt", when_any = ["pytest", "unittest", "django-tests"] },
+]
+
+[[files]]
+id = "env-example"
+path = ".env.example"
+mode = "managed"
+format = "dotenv"
+fragments = [
+  { template = "templates/env/general.env" },
+  { template = "templates/env/python-app.env", when_any = ["django", "fastapi", "flask"] },
+  { template = "templates/env/django.env", when = ["django"] },
+  { template = "templates/env/server.env", when_any = ["granian", "gunicorn", "uvicorn"] },
+  { template = "templates/env/gunicorn.env", when = ["gunicorn"] },
+  { template = "templates/env/database.env", when_any = ["sqlite", "postgresql"] },
+  { template = "templates/env/postgresql.env", when = ["postgresql"] },
+  { template = "templates/env/sqlite.env", when = ["sqlite"] },
+]
+
+# Files: Docker build context
+
+[[files]]
+id = "dockerignore"
+path = ".dockerignore"
+mode = "managed"
+when = ["docker"]
+fragments = [
+  { template = "templates/dockerignore/general.txt" },
+  { template = "templates/dockerignore/python.txt", when = ["python"] },
+  { template = "templates/dockerignore/javascript.txt", when = ["javascript"] },
+  { template = "templates/dockerignore/rust.txt", when = ["rust"] },
+  { template = "templates/dockerignore/swift.txt", when = ["swift"] },
+  { template = "templates/dockerignore/django.txt", when = ["django"] },
+  { template = "templates/dockerignore/nextjs.txt", when = ["nextjs"] },
+  { template = "templates/dockerignore/nuxt.txt", when = ["nuxt"] },
+  { template = "templates/dockerignore/sveltekit.txt", when = ["sveltekit"] },
+  { template = "templates/dockerignore/astro.txt", when = ["astro"] },
+  { template = "templates/dockerignore/tauri.txt", when = ["tauri"] },
+  { template = "templates/dockerignore/ruff.txt", when = ["ruff"] },
+  { template = "templates/dockerignore/mypy.txt", when = ["mypy"] },
+  { template = "templates/dockerignore/rumdl.txt", when = ["rumdl"] },
+]
+
+# Files: Python configuration
 
 [[files]]
 id = "pyproject"
@@ -396,18 +506,31 @@ when = ["ty"]
 mode = "managed"
 
 [[files]]
+id = "djlint"
+path = ".djlintrc"
+template = "templates/djlintrc.json"
+when = ["djlint"]
+mode = "managed"
+
+# Files: JavaScript and TypeScript configuration
+
+[[files]]
+id = "bunfig"
+path = "bunfig.toml"
+template = "templates/bunfig.toml"
+when = ["bun"]
+mode = "managed"
+
+# Files: Markdown configuration
+
+[[files]]
 id = "rumdl"
 path = "rumdl.toml"
 template = "templates/rumdl.toml"
 when = ["rumdl"]
 mode = "managed"
 
-[[files]]
-id = "djlint"
-path = ".djlintrc"
-template = "templates/djlintrc.json"
-when = ["djlint"]
-mode = "managed"
+# Files: agent instructions
 
 [[files]]
 id = "agents"
@@ -430,19 +553,93 @@ template = "templates/TOOLS.md"
 when = ["agents"]
 mode = "managed"
 
-[[files]]
-id = "bunfig"
-path = "bunfig.toml"
-template = "templates/bunfig.toml"
-when = ["bun"]
-mode = "managed"
+# Tasks
+# Fragments with the same name compose one task; their relative order is preserved.
 
-[[files]]
-id = "env-example"
-path = ".env.example"
-template = "templates/env.example"
+# Tasks: help and local environment
+
+[[tasks]]
+id = "help"
+name = "help"
+template = "tasks/help.sh"
 when = []
-mode = "once"
+alias = "default"
+quiet = true
+description = "List project tasks and descriptions"
+
+[[tasks]]
+id = "env-local"
+name = "env:local"
+template = "tasks/env-local.sh"
+when = []
+description = "Create .env from the example without replacing an existing file"
+
+# Tasks: combined checks
+
+[[tasks]]
+id = "check-lint"
+name = "check"
+template = "tasks/check-lint.sh"
+when = []
+description = "Check code, formatting, types and migrations"
+when_any = ["ruff", "django", "djlint", "rumdl", "rust", "bun", "swiftlint"]
+
+[[tasks]]
+id = "check-format"
+name = "check"
+template = "tasks/check-format-check.sh"
+when = []
+description = "Check code, formatting, types and migrations"
+when_any = ["ruff", "rust", "bun", "rumdl", "djlint", "swift"]
+
+[[tasks]]
+id = "check-types"
+name = "check"
+template = "tasks/check-typecheck.sh"
+when = []
+description = "Check code, formatting, types and migrations"
+when_any = ["ty", "mypy", "rust", "swift"]
+
+[[tasks]]
+id = "check-typescript"
+name = "check"
+template = "tasks/check-typecheck.sh"
+when = ["typescript", "bun"]
+description = "Check code, formatting, types and migrations"
+
+[[tasks]]
+id = "check-migrations"
+name = "check"
+template = "tasks/check-migrations.sh"
+when = []
+description = "Check code, formatting, types and migrations"
+when_any = ["django", "alembic"]
+
+[[tasks]]
+id = "verify-code"
+name = "verify"
+template = "tasks/verify-check.sh"
+when = []
+description = "Run checks, application checks and tests sequentially"
+when_any = ["alembic", "bun", "django", "djlint", "ruff", "rumdl", "rust", "swift", "swiftlint", "ty", "mypy"]
+
+[[tasks]]
+id = "verify-app"
+name = "verify"
+template = "tasks/check-app.sh"
+when = []
+description = "Run checks, application checks and tests sequentially"
+when_any = ["django", "fastapi", "flask"]
+
+[[tasks]]
+id = "verify-tests"
+name = "verify"
+template = "tasks/verify-test.sh"
+when = []
+description = "Run checks, application checks and tests sequentially"
+when_any = ["pytest", "unittest", "django-tests", "bun-tests", "rust-tests", "swift-tests"]
+
+# Tasks: lint and fixes
 
 [[tasks]]
 id = "ruff-lint"
@@ -476,122 +673,12 @@ when = ["rumdl"]
 description = "Lint selected project components"
 
 [[tasks]]
-id = "ruff-format"
-name = "format"
-template = "tasks/ruff-format.sh"
-when = ["ruff"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
-description = "Format selected project components"
-
-[[tasks]]
-id = "ruff-format-check"
-name = "format-check"
-template = "tasks/ruff-format-check.sh"
-when = ["ruff"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
-description = "Check formatting without applying fixes"
-
-[[tasks]]
-id = "ty"
-name = "typecheck"
-template = "tasks/ty.sh"
-when = ["ty"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
-description = "Check selected project types and native builds"
-
-[[tasks]]
-id = "django-makemigrations"
-name = "db:makemigrations"
-template = "tasks/django-makemigrations.sh"
-when = ["django"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
-description = "Create a database migration"
-usage = "arg \"[name]\" help=\"Migration name\""
-
-[[tasks]]
-id = "django-migrate"
-name = "db:migrate"
-template = "tasks/django-migrate.sh"
-when = ["django"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
-description = "Apply database migrations"
-
-[[tasks]]
-id = "django-superuser"
-name = "db:superuser"
-template = "tasks/django-superuser.sh"
-when = ["django"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
-description = "Db superuser"
-
-[[tasks]]
-id = "django-start"
-name = "django:runserver"
-template = "tasks/django-start.sh"
-when = ["django"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
-description = "Django runserver"
-
-[[tasks]]
-id = "docker-up"
-name = "docker:up"
-template = "tasks/docker-up.sh"
-when = ["docker"]
-description = "Docker up"
-
-[[tasks]]
-id = "docker-down"
-name = "docker:down"
-template = "tasks/docker-down.sh"
-when = ["docker"]
-description = "Docker down"
-
-[[tasks]]
-id = "docker-logs"
-name = "docker:logs"
-template = "tasks/docker-logs.sh"
-when = ["docker"]
-description = "Docker logs"
-
-[[tasks]]
 id = "rust-lint"
 name = "lint"
 template = "tasks/rust-lint.sh"
 when = ["rust"]
 directory_env = "PROJECT_RUST_DIRECTORY"
 description = "Lint selected project components"
-
-[[tasks]]
-id = "rust-format"
-name = "format"
-template = "tasks/rust-format.sh"
-when = ["rust"]
-directory_env = "PROJECT_RUST_DIRECTORY"
-description = "Format selected project components"
-
-[[tasks]]
-id = "rust-format-check"
-name = "format-check"
-template = "tasks/rust-format-check.sh"
-when = ["rust"]
-directory_env = "PROJECT_RUST_DIRECTORY"
-description = "Check formatting without applying fixes"
-
-[[tasks]]
-id = "rust-check"
-name = "typecheck"
-template = "tasks/rust-check.sh"
-when = ["rust"]
-directory_env = "PROJECT_RUST_DIRECTORY"
-description = "Check selected project types and native builds"
-
-[[tasks]]
-id = "rust-test"
-name = "test"
-template = "tasks/rust-test.sh"
-when = ["rust-tests"]
-directory_env = "PROJECT_RUST_DIRECTORY"
-description = "Run selected test runners"
 
 [[tasks]]
 id = "bun-lint"
@@ -602,68 +689,12 @@ directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
 description = "Lint selected project components"
 
 [[tasks]]
-id = "bun-format"
-name = "format"
-template = "tasks/bun-format.sh"
-when = ["bun"]
-directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
-description = "Format selected project components"
-
-[[tasks]]
-id = "bun-format-check"
-name = "format-check"
-template = "tasks/bun-format-check.sh"
-when = ["bun"]
-directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
-description = "Check formatting without applying fixes"
-
-[[tasks]]
-id = "bun-check"
-name = "typecheck"
-template = "tasks/bun-check.sh"
-when = ["typescript", "bun"]
-directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
-description = "Check selected project types and native builds"
-
-[[tasks]]
-id = "bun-test"
-name = "test"
-template = "tasks/bun-test.sh"
-when = ["bun-tests"]
-directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
-description = "Run selected test runners"
-
-[[tasks]]
-id = "tauri-start"
-name = "start"
-template = "tasks/tauri-start.sh"
-when = ["tauri", "bun"]
-directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
-description = "Start"
-
-[[tasks]]
-id = "tauri-build"
-name = "app:build"
-template = "tasks/tauri-build.sh"
-when = ["tauri", "bun"]
-directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
-description = "Build the Tauri application"
-
-[[tasks]]
-id = "vite-start"
-name = "frontend:dev"
-template = "tasks/vite-start.sh"
-when = ["vite", "bun"]
-directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
-description = "Run the frontend development server"
-
-[[tasks]]
-id = "vite-build"
-name = "frontend:build"
-template = "tasks/vite-build.sh"
-when = ["vite", "bun"]
-directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
-description = "Frontend build"
+id = "swiftlint"
+name = "lint"
+template = "tasks/swiftlint.sh"
+when = ["swiftlint"]
+directory_env = "PROJECT_SWIFT_DIRECTORY"
+description = "Lint selected project components"
 
 [[tasks]]
 id = "ruff-lint-fix"
@@ -697,18 +728,45 @@ when = ["rumdl"]
 description = "Apply supported lint fixes"
 
 [[tasks]]
+id = "swiftlint-fix"
+name = "lint-fix"
+template = "tasks/swiftlint-fix.sh"
+when = ["swiftlint"]
+directory_env = "PROJECT_SWIFT_DIRECTORY"
+description = "Apply supported lint fixes"
+
+# Tasks: formatting
+
+[[tasks]]
+id = "ruff-format"
+name = "format"
+template = "tasks/ruff-format.sh"
+when = ["ruff"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Format selected project components"
+
+[[tasks]]
+id = "rust-format"
+name = "format"
+template = "tasks/rust-format.sh"
+when = ["rust"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Format selected project components"
+
+[[tasks]]
+id = "bun-format"
+name = "format"
+template = "tasks/bun-format.sh"
+when = ["bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Format selected project components"
+
+[[tasks]]
 id = "rumdl-format"
 name = "format"
 template = "tasks/rumdl-format.sh"
 when = ["rumdl"]
 description = "Format selected project components"
-
-[[tasks]]
-id = "rumdl-format-check"
-name = "format-check"
-template = "tasks/rumdl-format-check.sh"
-when = ["rumdl"]
-description = "Check formatting without applying fixes"
 
 [[tasks]]
 id = "djlint-format"
@@ -719,6 +777,45 @@ directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Format selected project components"
 
 [[tasks]]
+id = "swift-format"
+name = "format"
+template = "tasks/swift-format.sh"
+when = ["swift"]
+directory_env = "PROJECT_SWIFT_DIRECTORY"
+description = "Format selected project components"
+
+[[tasks]]
+id = "ruff-format-check"
+name = "format-check"
+template = "tasks/ruff-format-check.sh"
+when = ["ruff"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Check formatting without applying fixes"
+
+[[tasks]]
+id = "rust-format-check"
+name = "format-check"
+template = "tasks/rust-format-check.sh"
+when = ["rust"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Check formatting without applying fixes"
+
+[[tasks]]
+id = "bun-format-check"
+name = "format-check"
+template = "tasks/bun-format-check.sh"
+when = ["bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Check formatting without applying fixes"
+
+[[tasks]]
+id = "rumdl-format-check"
+name = "format-check"
+template = "tasks/rumdl-format-check.sh"
+when = ["rumdl"]
+description = "Check formatting without applying fixes"
+
+[[tasks]]
 id = "djlint-format-check"
 name = "format-check"
 template = "tasks/djlint-format-check.sh"
@@ -727,12 +824,71 @@ directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Check formatting without applying fixes"
 
 [[tasks]]
-id = "django-migrations-check"
-name = "db:check"
-template = "tasks/django-migrations-check.sh"
-when = ["django"]
+id = "swift-format-check"
+name = "format-check"
+template = "tasks/swift-format-check.sh"
+when = ["swift"]
+directory_env = "PROJECT_SWIFT_DIRECTORY"
+description = "Check formatting without applying fixes"
+
+# Tasks: types and native checks
+
+[[tasks]]
+id = "ty"
+name = "typecheck"
+template = "tasks/ty.sh"
+when = ["ty"]
 directory_env = "PROJECT_PYTHON_DIRECTORY"
-description = "Check for missing database migrations"
+description = "Check selected project types and native builds"
+
+[[tasks]]
+id = "mypy"
+name = "typecheck"
+template = "tasks/mypy.sh"
+when = ["mypy"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Check selected project types and native builds"
+
+[[tasks]]
+id = "rust-check"
+name = "typecheck"
+template = "tasks/rust-check.sh"
+when = ["rust"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Check selected project types and native builds"
+
+[[tasks]]
+id = "bun-check"
+name = "typecheck"
+template = "tasks/bun-check.sh"
+when = ["typescript", "bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Check selected project types and native builds"
+
+[[tasks]]
+id = "swift-check"
+name = "typecheck"
+template = "tasks/swift-build.sh"
+when = ["swift"]
+description = "Check selected project types and native builds"
+
+# Tasks: tests
+
+[[tasks]]
+id = "rust-test"
+name = "test"
+template = "tasks/rust-test.sh"
+when = ["rust-tests"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Run selected test runners"
+
+[[tasks]]
+id = "bun-test"
+name = "test"
+template = "tasks/bun-test.sh"
+when = ["bun-tests"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Run selected test runners"
 
 [[tasks]]
 id = "django-test"
@@ -741,79 +897,6 @@ template = "tasks/django-test.sh"
 when = ["django-tests"]
 directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Run selected test runners"
-
-[[tasks]]
-id = "rust-test-doc"
-name = "test:doc"
-template = "tasks/rust-test-doc.sh"
-when = ["rust-tests"]
-directory_env = "PROJECT_RUST_DIRECTORY"
-description = "Test doc"
-
-[[tasks]]
-id = "vite-preview"
-name = "frontend:preview"
-template = "tasks/vite-preview.sh"
-when = ["vite", "bun"]
-directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
-description = "Frontend preview"
-
-[[tasks]]
-id = "help"
-name = "help"
-template = "tasks/help.sh"
-when = []
-alias = "default"
-quiet = true
-description = "List project tasks and descriptions"
-
-[[tasks]]
-id = "granian-dev"
-name = "dev"
-template = "tasks/granian-dev.sh"
-when = ["granian"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
-description = "Run the selected Python server with reload"
-
-[[tasks]]
-id = "granian-run"
-name = "run"
-template = "tasks/granian-run.sh"
-when = ["granian"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
-description = "Run the selected Python server without reload"
-
-[[tasks]]
-id = "gunicorn-dev"
-name = "dev"
-template = "tasks/gunicorn-dev.sh"
-when = ["gunicorn"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
-description = "Run the selected Python server with reload"
-
-[[tasks]]
-id = "gunicorn-run"
-name = "run"
-template = "tasks/gunicorn-run.sh"
-when = ["gunicorn"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
-description = "Run the selected Python server without reload"
-
-[[tasks]]
-id = "uvicorn-dev"
-name = "dev"
-template = "tasks/uvicorn-dev.sh"
-when = ["uvicorn"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
-description = "Run the selected Python server with reload"
-
-[[tasks]]
-id = "uvicorn-run"
-name = "run"
-template = "tasks/uvicorn-run.sh"
-when = ["uvicorn"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
-description = "Run the selected Python server without reload"
 
 [[tasks]]
 id = "pytest"
@@ -832,11 +915,43 @@ directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Run selected test runners"
 
 [[tasks]]
+id = "swift-test"
+name = "test"
+template = "tasks/swift-test.sh"
+when = ["swift-tests"]
+description = "Run selected test runners"
+
+[[tasks]]
+id = "rust-test-doc"
+name = "test:doc"
+template = "tasks/rust-test-doc.sh"
+when = ["rust-tests"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Test doc"
+
+# Tasks: builds
+
+[[tasks]]
 id = "rust-build"
 name = "build"
 template = "tasks/rust-build.sh"
 when = ["rust"]
 directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Build selected project components"
+
+[[tasks]]
+id = "javascript-build"
+name = "build"
+template = "tasks/javascript-build.sh"
+when = ["javascript", "bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Build selected project components"
+
+[[tasks]]
+id = "swift-build"
+name = "build"
+template = "tasks/swift-build.sh"
+when = ["swift"]
 description = "Build selected project components"
 
 [[tasks]]
@@ -848,12 +963,184 @@ directory_env = "PROJECT_RUST_DIRECTORY"
 description = "Build selected native components for release"
 
 [[tasks]]
-id = "javascript-build"
-name = "build"
-template = "tasks/javascript-build.sh"
-when = ["javascript", "bun"]
+id = "swift-release"
+name = "build-release"
+template = "tasks/swift-release.sh"
+when = ["swift"]
+description = "Build selected native components for release"
+
+[[tasks]]
+id = "tauri-build"
+name = "app:build"
+template = "tasks/tauri-build.sh"
+when = ["tauri", "bun"]
 directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
-description = "Build selected project components"
+description = "Build the Tauri application"
+
+# Tasks: Python application checks
+
+[[tasks]]
+id = "fastapi-app-check"
+name = "app-check"
+template = "tasks/fastapi-app-check.sh"
+when = ["fastapi"]
+description = "Check the application configuration"
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+
+[[tasks]]
+id = "django-app-check"
+name = "app-check"
+template = "tasks/django-app-check.sh"
+when = ["django"]
+description = "Check the application configuration"
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+
+[[tasks]]
+id = "flask-app-check"
+name = "app-check"
+template = "tasks/flask-app-check.sh"
+when = ["flask"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Check the application configuration"
+
+# Tasks: Python servers
+
+[[tasks]]
+id = "granian-dev"
+name = "dev"
+template = "tasks/granian-dev.sh"
+when = ["granian"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Run the selected Python server with reload"
+
+[[tasks]]
+id = "gunicorn-dev"
+name = "dev"
+template = "tasks/gunicorn-dev.sh"
+when = ["gunicorn"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Run the selected Python server with reload"
+
+[[tasks]]
+id = "uvicorn-dev"
+name = "dev"
+template = "tasks/uvicorn-dev.sh"
+when = ["uvicorn"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Run the selected Python server with reload"
+
+[[tasks]]
+id = "granian-run"
+name = "run"
+template = "tasks/granian-run.sh"
+when = ["granian"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Run the selected Python server without reload"
+
+[[tasks]]
+id = "gunicorn-run"
+name = "run"
+template = "tasks/gunicorn-run.sh"
+when = ["gunicorn"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Run the selected Python server without reload"
+
+[[tasks]]
+id = "uvicorn-run"
+name = "run"
+template = "tasks/uvicorn-run.sh"
+when = ["uvicorn"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Run the selected Python server without reload"
+
+[[tasks]]
+id = "django-start"
+name = "django:runserver"
+template = "tasks/django-start.sh"
+when = ["django"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Django runserver"
+
+# Tasks: frontend development and preview
+
+[[tasks]]
+id = "vite-start"
+name = "frontend:dev"
+template = "tasks/vite-start.sh"
+when = ["vite", "bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Run the frontend development server"
+
+[[tasks]]
+id = "frontend-dev"
+name = "frontend:dev"
+template = "tasks/javascript-dev.sh"
+when_any = ["nextjs", "nuxt", "sveltekit", "astro"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Run the frontend development server"
+
+[[tasks]]
+id = "frontend-run"
+name = "frontend:run"
+template = "tasks/javascript-run.sh"
+when_any = ["nextjs", "nuxt", "sveltekit", "astro"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Run the frontend start or preview script"
+
+[[tasks]]
+id = "vite-build"
+name = "frontend:build"
+template = "tasks/vite-build.sh"
+when = ["vite", "bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Frontend build"
+
+[[tasks]]
+id = "vite-preview"
+name = "frontend:preview"
+template = "tasks/vite-preview.sh"
+when = ["vite", "bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Frontend preview"
+
+# Tasks: Rust application servers
+
+[[tasks]]
+id = "rust-server-run"
+name = "backend:run"
+template = "tasks/rust-run.sh"
+when_any = ["axum", "actix-web"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Run the Rust application"
+
+[[tasks]]
+id = "rust-server-release"
+name = "backend:run-release"
+template = "tasks/rust-run-release.sh"
+when_any = ["axum", "actix-web"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Run the optimized Rust application"
+
+# Tasks: desktop development
+
+[[tasks]]
+id = "tauri-start"
+name = "start"
+template = "tasks/tauri-start.sh"
+when = ["tauri", "bun"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Start"
+
+# Tasks: migrations and database utilities
+
+[[tasks]]
+id = "django-makemigrations"
+name = "db:makemigrations"
+template = "tasks/django-makemigrations.sh"
+when = ["django"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Create a database migration"
+usage = "arg \"[name]\" help=\"Migration name\""
 
 [[tasks]]
 id = "alembic-create"
@@ -865,12 +1152,28 @@ description = "Create a database migration"
 usage = "arg \"[name]\" help=\"Migration name\""
 
 [[tasks]]
+id = "django-migrate"
+name = "db:migrate"
+template = "tasks/django-migrate.sh"
+when = ["django"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Apply database migrations"
+
+[[tasks]]
 id = "alembic-migrate"
 name = "db:migrate"
 template = "tasks/alembic-migrate.sh"
 when = ["alembic"]
 directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Apply database migrations"
+
+[[tasks]]
+id = "django-migrations-check"
+name = "db:check"
+template = "tasks/django-migrations-check.sh"
+when = ["django"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Check for missing database migrations"
 
 [[tasks]]
 id = "alembic-check"
@@ -881,36 +1184,55 @@ directory_env = "PROJECT_PYTHON_DIRECTORY"
 description = "Check for missing database migrations"
 
 [[tasks]]
-id = "swift-format"
-name = "format"
-template = "tasks/swift-format.sh"
-when = ["swift"]
-directory_env = "PROJECT_SWIFT_DIRECTORY"
-description = "Format selected project components"
+id = "django-superuser"
+name = "db:superuser"
+template = "tasks/django-superuser.sh"
+when = ["django"]
+directory_env = "PROJECT_PYTHON_DIRECTORY"
+description = "Db superuser"
 
 [[tasks]]
-id = "swift-format-check"
-name = "format-check"
-template = "tasks/swift-format-check.sh"
-when = ["swift"]
-directory_env = "PROJECT_SWIFT_DIRECTORY"
-description = "Check formatting without applying fixes"
+id = "sqlite-prepare"
+name = "db:prepare"
+template = "tasks/sqlite-prepare.sh"
+when = ["sqlite"]
+description = "Db prepare"
+
+# Tasks: database backups and restores
 
 [[tasks]]
-id = "swiftlint"
-name = "lint"
-template = "tasks/swiftlint.sh"
-when = ["swiftlint"]
-directory_env = "PROJECT_SWIFT_DIRECTORY"
-description = "Lint selected project components"
+id = "sqlite-backup"
+name = "db:backup"
+template = "tasks/sqlite-backup.sh"
+when = ["sqlite"]
+usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
+description = "Back up the database to a new SQL file"
 
 [[tasks]]
-id = "swiftlint-fix"
-name = "lint-fix"
-template = "tasks/swiftlint-fix.sh"
-when = ["swiftlint"]
-directory_env = "PROJECT_SWIFT_DIRECTORY"
-description = "Apply supported lint fixes"
+id = "postgresql-backup"
+name = "db:backup"
+template = "tasks/postgresql-backup.sh"
+when = ["postgresql"]
+usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
+description = "Back up the database to a new SQL file"
+
+[[tasks]]
+id = "sqlite-restore"
+name = "db:restore"
+template = "tasks/sqlite-restore.sh"
+when = ["sqlite"]
+usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
+description = "Restore the database from SQL; stop application writes first"
+
+[[tasks]]
+id = "postgresql-restore"
+name = "db:restore"
+template = "tasks/postgresql-restore.sh"
+when = ["postgresql"]
+usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
+description = "Restore the database from SQL; stop application writes first"
+
+# Tasks: translations
 
 [[tasks]]
 id = "django-i18n"
@@ -936,44 +1258,28 @@ when = ["script-i18n"]
 directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
 description = "Update and compile selected translations"
 
-[[tasks]]
-id = "sqlite-backup"
-name = "db:backup"
-template = "tasks/sqlite-backup.sh"
-when = ["sqlite"]
-usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
-description = "Back up the database to a new SQL file"
+# Tasks: Docker Compose
 
 [[tasks]]
-id = "sqlite-restore"
-name = "db:restore"
-template = "tasks/sqlite-restore.sh"
-when = ["sqlite"]
-usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
-description = "Restore the database from SQL; stop application writes first"
+id = "docker-up"
+name = "docker:up"
+template = "tasks/docker-up.sh"
+when = ["docker"]
+description = "Docker up"
 
 [[tasks]]
-id = "postgresql-backup"
-name = "db:backup"
-template = "tasks/postgresql-backup.sh"
-when = ["postgresql"]
-usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
-description = "Back up the database to a new SQL file"
+id = "docker-down"
+name = "docker:down"
+template = "tasks/docker-down.sh"
+when = ["docker"]
+description = "Docker down"
 
 [[tasks]]
-id = "postgresql-restore"
-name = "db:restore"
-template = "tasks/postgresql-restore.sh"
-when = ["postgresql"]
-usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
-description = "Restore the database from SQL; stop application writes first"
-
-[[tasks]]
-id = "sqlite-prepare"
-name = "db:prepare"
-template = "tasks/sqlite-prepare.sh"
-when = ["sqlite"]
-description = "Db prepare"
+id = "docker-logs"
+name = "docker:logs"
+template = "tasks/docker-logs.sh"
+when = ["docker"]
+description = "Docker logs"
 
 [[tasks]]
 id = "docker-build"
@@ -997,131 +1303,6 @@ when = ["docker"]
 description = "Docker status"
 
 [[tasks]]
-id = "swift-build"
-name = "build"
-template = "tasks/swift-build.sh"
-when = ["swift"]
-description = "Build selected project components"
-
-[[tasks]]
-id = "swift-release"
-name = "build-release"
-template = "tasks/swift-release.sh"
-when = ["swift"]
-description = "Build selected native components for release"
-
-[[tasks]]
-id = "swift-check"
-name = "typecheck"
-template = "tasks/swift-build.sh"
-when = ["swift"]
-description = "Check selected project types and native builds"
-
-[[tasks]]
-id = "swift-test"
-name = "test"
-template = "tasks/swift-test.sh"
-when = ["swift-tests"]
-description = "Run selected test runners"
-
-[[tasks]]
-id = "swift-backend"
-name = "_swift"
-template = "tasks/_swift.sh"
-when = ["swift"]
-directory_env = "PROJECT_SWIFT_DIRECTORY"
-hide = true
-quiet = true
-usage = "arg \"<action>\"; arg \"<configuration>\""
-description = "Run the configured SwiftPM or Xcode backend"
-
-[[tasks]]
-id = "fastapi-app-check"
-name = "app-check"
-template = "tasks/fastapi-app-check.sh"
-when = ["fastapi"]
-description = "Check the application configuration"
-directory_env = "PROJECT_PYTHON_DIRECTORY"
-
-[[tasks]]
-id = "django-app-check"
-name = "app-check"
-template = "tasks/django-app-check.sh"
-when = ["django"]
-description = "Check the application configuration"
-directory_env = "PROJECT_PYTHON_DIRECTORY"
-
-[[tasks]]
-id = "env-local"
-name = "env:local"
-template = "tasks/env-local.sh"
-when = []
-description = "Create .env from the example without replacing an existing file"
-
-[[tasks]]
-id = "check-lint"
-name = "check"
-template = "tasks/check-lint.sh"
-when = []
-description = "Check code, formatting, types and migrations"
-when_any = ["ruff", "django", "djlint", "rumdl", "rust", "bun", "swiftlint"]
-
-[[tasks]]
-id = "check-format"
-name = "check"
-template = "tasks/check-format-check.sh"
-when = []
-description = "Check code, formatting, types and migrations"
-when_any = ["ruff", "rust", "bun", "rumdl", "djlint", "swift"]
-
-[[tasks]]
-id = "check-types"
-name = "check"
-template = "tasks/check-typecheck.sh"
-when = []
-description = "Check code, formatting, types and migrations"
-when_any = ["ty", "rust", "swift"]
-
-[[tasks]]
-id = "check-typescript"
-name = "check"
-template = "tasks/check-typecheck.sh"
-when = ["typescript", "bun"]
-description = "Check code, formatting, types and migrations"
-
-[[tasks]]
-id = "check-migrations"
-name = "check"
-template = "tasks/check-migrations.sh"
-when = []
-description = "Check code, formatting, types and migrations"
-when_any = ["django", "alembic"]
-
-[[tasks]]
-id = "verify-code"
-name = "verify"
-template = "tasks/verify-check.sh"
-when = []
-description = "Run checks, application checks and tests sequentially"
-when_any = ["alembic", "bun", "django", "djlint", "ruff", "rumdl", "rust", "swift", "swiftlint", "ty"]
-
-[[tasks]]
-id = "verify-app"
-name = "verify"
-template = "tasks/check-app.sh"
-when = []
-description = "Run checks, application checks and tests sequentially"
-when_any = ["django", "fastapi", "flask"]
-
-[[tasks]]
-id = "verify-tests"
-name = "verify"
-template = "tasks/verify-test.sh"
-when = []
-description = "Run checks, application checks and tests sequentially"
-when_any = ["pytest", "unittest", "django-tests", "bun-tests", "rust-tests", "swift-tests"]
-
-[[tasks]]
 id = "docker-db-backup"
 name = "docker:db:backup"
 template = "tasks/docker-db-backup.sh"
@@ -1139,55 +1320,40 @@ usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\""
 description = "Restore SQL data in the configured container"
 when_any = ["sqlite", "postgresql"]
 
+# Tasks: internal Swift backend
+
 [[tasks]]
-id = "frontend-dev"
-name = "frontend:dev"
-template = "tasks/javascript-dev.sh"
-when_any = ["nextjs", "nuxt", "sveltekit", "astro"]
-directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
-description = "Run the frontend development server"
-[[tasks]]
-id = "frontend-run"
-name = "frontend:run"
-template = "tasks/javascript-run.sh"
-when_any = ["nextjs", "nuxt", "sveltekit", "astro"]
-directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
-description = "Run the frontend start or preview script"
-[[tasks]]
-id = "rust-server-run"
-name = "backend:run"
-template = "tasks/rust-run.sh"
-when_any = ["axum", "actix-web"]
-directory_env = "PROJECT_RUST_DIRECTORY"
-description = "Run the Rust application"
-[[tasks]]
-id = "rust-server-release"
-name = "backend:run-release"
-template = "tasks/rust-run-release.sh"
-when_any = ["axum", "actix-web"]
-directory_env = "PROJECT_RUST_DIRECTORY"
-description = "Run the optimized Rust application"
-[[tasks]]
-id = "flask-app-check"
-name = "app-check"
-template = "tasks/flask-app-check.sh"
-when = ["flask"]
-directory_env = "PROJECT_PYTHON_DIRECTORY"
-description = "Check the application configuration"
+id = "swift-backend"
+name = "_swift"
+template = "tasks/_swift.sh"
+when = ["swift"]
+directory_env = "PROJECT_SWIFT_DIRECTORY"
+hide = true
+quiet = true
+usage = "arg \"<action>\"; arg \"<configuration>\""
+description = "Run the configured SwiftPM or Xcode backend"
+
+# Environment: managed values
+
 [[env]]
 id = "PYTHONUNBUFFERED"
 name = "PYTHONUNBUFFERED"
 value = "1"
 when = ["python"]
 
+# Settings: creation-only mise defaults
+# Order matters: specific defaults precede general fallbacks. Do not sort these entries.
+
 [[defaults]]
 id = "flask-wsgi"
 template = "settings/flask-wsgi.toml"
 when = ["flask", "granian"]
+
 [[defaults]]
 id = "frontend-preview"
 template = "settings/javascript-preview.toml"
 when_any = ["nuxt", "sveltekit", "astro"]
+
 [[defaults]]
 id = "base"
 template = "settings/base.toml"
@@ -1267,14 +1433,18 @@ when_any = ["django", "fastapi", "flask"]
 id = "unittest"
 template = "settings/unittest.toml"
 when = ["unittest"]
+
 [[defaults]]
 id = "frontend-runtime"
 template = "settings/javascript-runtime.toml"
 when_any = ["nextjs", "nuxt", "sveltekit", "astro"]
+
 [[defaults]]
 id = "rust-runtime"
 template = "settings/rust-runtime.toml"
 when_any = ["axum", "actix-web"]
+
+# Wizard: navigation steps
 
 [[steps]]
 id = "languages"

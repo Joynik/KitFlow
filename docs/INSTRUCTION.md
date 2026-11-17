@@ -74,6 +74,16 @@ contents. Missing targets are allowed. Absolute links are rejected. See
 [the catalog reference](https://github.com/Joynik/KitFlow/blob/main/docs/CATALOG.md) for the full
 format.
 
+The standard box assembles `.gitignore` and `.env.example` from the selected components. Choosing
+Docker also creates `.dockerignore`. General parts apply to every project; other parts apply only
+when their language, framework or tool is selected. Edit parts under `templates/gitignore/`,
+`templates/env/` or `templates/dockerignore/` in your user box to override standard parts.
+
+Run `kitflow update` after changing parts or components. Local edits to generated files require
+conflict review. Copy `.env.example` to `.env` for local values; KitFlow never updates `.env`.
+Duplicate active variable names in selected environment parts fail validation. See
+**Composed text files** in the catalog reference to define your own assembled files.
+
 ## Set up a project
 
 ```bash

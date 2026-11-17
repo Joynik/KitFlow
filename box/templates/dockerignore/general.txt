@@ -1,0 +1,7 @@
+# General
+.git/
+.DS_Store
+.env
+.env.*
+!.env.example
+backup.sql
