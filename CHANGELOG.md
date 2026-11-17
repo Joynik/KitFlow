@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Normalize generated Python root and source paths and explain path variables with short comments.
+
 ## 0.10.0 — 2026-11-17
 
 ### Added
