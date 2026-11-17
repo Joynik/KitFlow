@@ -1,0 +1,190 @@
+schema = 1
+
+[selection]
+components = ["python", "ruff", "ty", "rumdl", "pytest", "agents"]
+excluded = []
+
+[state.artifacts.readme]
+path = "README.md"
+kind = "file"
+key = ""
+sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+once = true
+
+[state.artifacts.project]
+path = "PROJECT.md"
+kind = "file"
+key = ""
+sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+once = true
+
+[state.artifacts.gitignore]
+path = ".gitignore"
+kind = "file"
+key = ""
+sha256 = "080d1295d1361f5b74fdc753d407a4d8c7c78a241a8c7113d55e0ac5b0db3335"
+once = false
+
+[state.artifacts.env-example]
+path = ".env.example"
+kind = "file"
+key = ""
+sha256 = "970d5d48bdfc85b006d512837d74304cdbcebd4346e84233711a56f3acf6cb4e"
+once = false
+
+[state.artifacts.pyproject]
+path = "pyproject.toml"
+kind = "file"
+key = ""
+sha256 = "eac83c28d48261307bbeb2f2bc2e56d93af6f63c41474d955fb976851e6a56cd"
+once = false
+
+[state.artifacts.python-version]
+path = ".python-version"
+kind = "file"
+key = ""
+sha256 = "a876e0b10411037a012498b9fe18d9bc1df32ed8b722a13564dc944ddcfd9135"
+once = false
+
+[state.artifacts.ruff]
+path = "ruff.toml"
+kind = "file"
+key = ""
+sha256 = "1e2dd54898340a3aba538cc6fb6f23a09b693466824ad00976d110cb4df88f3c"
+once = false
+
+[state.artifacts.ty]
+path = "ty.toml"
+kind = "file"
+key = ""
+sha256 = "088c51794d0b18f15f75a5a0a7893245b750820386ff46fa75c653e0f6759b7f"
+once = false
+
+[state.artifacts.pytest]
+path = "pytest.ini"
+kind = "file"
+key = ""
+sha256 = "9114b5322e2693875b2265f049e0eaeaffb27c313a6c960dab41c239c2c17478"
+once = false
+
+[state.artifacts.rumdl]
+path = "rumdl.toml"
+kind = "file"
+key = ""
+sha256 = "888f8bdfdf27050d9bfe2a47051708241b890406eda949eebdbda64b9c193c33"
+once = false
+
+[state.artifacts.agents]
+path = "AGENTS.md"
+kind = "file"
+key = ""
+sha256 = "e9308b50035fe9733fe3d5a63c2cfac5df1ffb38731a4e18d3a90cbbfc41a87b"
+once = false
+
+[state.artifacts.standards]
+path = "STANDARDS.md"
+kind = "file"
+key = ""
+sha256 = "516e6629f5a21a169440c91237549074806e32e1de98eeba7ff53b8bb5b47bb8"
+once = false
+
+[state.artifacts.tools]
+path = "TOOLS.md"
+kind = "file"
+key = ""
+sha256 = "590bd05dea7d0c759c23eeeb5c6929a4bca584a2ed32d8ec5685adcf7d3bf216"
+once = false
+
+[state.artifacts."defaults.base"]
+path = "mise.toml"
+kind = "defaults"
+key = ""
+sha256 = "5840d0b604ca62fa33c874876c2f4f91acb141fc22737547c9e66f69b275188f"
+once = true
+
+[state.artifacts."defaults.python"]
+path = "mise.toml"
+kind = "defaults"
+key = ""
+sha256 = "b0e1057cc9e144d995772b6fa57e043fa4d37fd0ca20e44b7e3da54a84f6792b"
+once = true
+
+[state.artifacts."task.help"]
+path = "mise.toml"
+kind = "task"
+key = "help"
+sha256 = "5a976415c57aa16ecef2ca94edfaebdb201a17d2c0a86f439a735bf7f112ecc8"
+once = false
+
+[state.artifacts."task.env:local"]
+path = "mise.toml"
+kind = "task"
+key = "env:local"
+sha256 = "bb3be6a1ff16beca762a86612a74a11adb3dd66e084c7b791cdc776c2b97a7e7"
+once = false
+
+[state.artifacts."task.check"]
+path = "mise.toml"
+kind = "task"
+key = "check"
+sha256 = "e67f2ff50bd1b27dc64ff88161e89f3677a8bc64a8e2a66caae172fd1a1ce980"
+once = false
+
+[state.artifacts."task.verify"]
+path = "mise.toml"
+kind = "task"
+key = "verify"
+sha256 = "f08e1f82cadea6080381bde71846793ee4aa644d31d0ee70865646317873362b"
+once = false
+
+[state.artifacts."task.lint"]
+path = "mise.toml"
+kind = "task"
+key = "lint"
+sha256 = "394cbd38afee52dbde16887aacfada5d41b129b817bf0ccf5dae64469bc363e3"
+once = false
+
+[state.artifacts."task.lint-fix"]
+path = "mise.toml"
+kind = "task"
+key = "lint-fix"
+sha256 = "4b29add3ddefec157513d45ac7e4b934228df37663801814fe147be9eb260995"
+once = false
+
+[state.artifacts."task.format"]
+path = "mise.toml"
+kind = "task"
+key = "format"
+sha256 = "a16c17c754e055eba25d397fa7fb8ea52e757da1a609c97e71cd9a7eb0cc9c61"
+once = false
+
+[state.artifacts."task.format-check"]
+path = "mise.toml"
+kind = "task"
+key = "format-check"
+sha256 = "34abc6bf0e41e844f6e82721f1b03b6f2763aa828621a194075e5185baa6a7e6"
+once = false
+
+[state.artifacts."task.typecheck"]
+path = "mise.toml"
+kind = "task"
+key = "typecheck"
+sha256 = "3ae070e40cc772a1a950e6f91793642f7c8903e31a884ee385df6cfbee9bd726"
+once = false
+
+[state.artifacts."task.test"]
+path = "mise.toml"
+kind = "task"
+key = "test"
+sha256 = "de2953aa9f2430268c7e90df30757a0250378b29f627f598ba424b7c092245fd"
+once = false
+
+[state.artifacts."env.PYTHONUNBUFFERED"]
+path = "mise.toml"
+kind = "env"
+key = "PYTHONUNBUFFERED"
+sha256 = "4a9f2ca64c8cf6432c1be8b7d2b5aa5523f457a776841a8793e89c949c41dc83"
+once = false
+
+[source]
+kind = "user-box"
