@@ -102,3 +102,40 @@ def test_alternative_conditions_are_combined_with_required_components(catalog_pa
     catalog = Catalog(catalog_path)
     assert "task.conditional" not in catalog.render(["python"])
     assert "task.conditional" in catalog.render(["ruff"])
+
+
+@pytest.mark.parametrize("absolute_paths", [False, True])
+def test_generated_python_paths_are_normalized(tmp_path, absolute_paths):
+    import json
+    import os
+
+    if not shutil.which("mise"):
+        pytest.skip("mise is not installed")
+    project = tmp_path / "project with spaces"
+    project.mkdir()
+    catalog = Catalog(Path(__file__).parents[1] / "box")
+    apply(plan(project, catalog, ["python", "pytest", "nuitka"], load_config(project)), {})
+    path = project / "mise.toml"
+    text = path.read_text()
+    assert "# Relative to mise.toml" in text
+    assert "# Entry file, relative to project_root." in text
+    root = project / "backend"
+    source = root / "missing" / "src"
+    import tomlkit
+
+    document = tomlkit.parse(text)
+    document["vars"]["project_root"] = str(root) if absolute_paths else "./backend/."
+    document["vars"]["python_source"] = str(source) if absolute_paths else "./missing/src/."
+    path.write_text(tomlkit.dumps(document))
+    environment = {key: value for key, value in os.environ.items() if not key.startswith("MISE_")}
+    for key in ("PROJECT_ROOT", "PYTHON_SOURCE", "PYTHON_TESTS"):
+        environment.pop(key, None)
+    environment["MISE_TRUSTED_CONFIG_PATHS"] = str(project)
+    environment["MISE_STATE_DIR"] = str(tmp_path / "mise-state")
+    result = subprocess.run(
+        ["mise", "env", "--json"], cwd=project, env=environment, capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr
+    values = json.loads(result.stdout)
+    assert values["PROJECT_ROOT"] == str(root)
+    assert values["PYTHON_SOURCE"] == str(source)

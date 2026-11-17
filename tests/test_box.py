@@ -15,16 +15,6 @@ def test_example_box_builds_basic_python_project(tmp_path):
     assert not plan(tmp_path, catalog, selected, load_config(tmp_path)).changes
 
 
-def test_example_box_has_no_removed_tool_templates():
-    root = Path(__file__).parents[1] / "box"
-    assert not (root / "templates/skills").exists()
-    for path in root.rglob("*"):
-        if path.is_file():
-            text = path.read_text().lower()
-            assert "beads" not in text, path
-            assert "graphify" not in text, path
-
-
 def test_standard_check_runs_only_checks_and_preserves_failure_status(tmp_path):
     import os
     import subprocess

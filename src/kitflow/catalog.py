@@ -23,7 +23,7 @@ def safe_path(root: Path, name: str, *, allow_link: bool = False) -> Path:
         or str(PurePosixPath(name)) != name
     ):
         raise KitFlowError(f"Unsafe path: {name!r}")
-    if parts[0] in {".git", ".beads", ".venv"} or name == "kitflow.toml":
+    if parts[0] in {".git", ".venv"} or name == "kitflow.toml":
         raise KitFlowError(f"Reserved path: {name}")
     path = root.joinpath(*parts)
     for parent in list(path.parents) if allow_link else [path, *path.parents]:
