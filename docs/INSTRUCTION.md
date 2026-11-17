@@ -79,10 +79,14 @@ Docker also creates `.dockerignore`. General parts apply to every project; other
 when their language, framework or tool is selected. Edit parts under `templates/gitignore/`,
 `templates/env/` or `templates/dockerignore/` in your user box to override standard parts.
 
-Run `kitflow update` after changing parts or components. Local edits to generated files require
-conflict review. Copy `.env.example` to `.env` for local values; KitFlow never updates `.env`.
-Duplicate active variable names in selected environment parts fail validation. See
-**Composed text files** in the catalog reference to define your own assembled files.
+Run `kitflow update` after changing parts or components. In `.gitignore`, KitFlow replaces only the
+region between `# <kitflow>` and `# </kitflow>`, without conflicts or diff output. Put personal
+rules in `# <user>` / `# </user>` or anywhere outside the KitFlow block; updates preserve them.
+Missing or damaged KitFlow markers leave the entire file unchanged. Existing unmarked files are
+preserved; add markers manually to opt in. Other managed files still require conflict review for
+local edits. Copy `.env.example` to `.env` for local values; KitFlow never updates `.env`. Duplicate
+active variable names in selected environment parts fail validation. See **Composed text files** in
+the catalog reference to define your own assembled files.
 
 ## Set up a project
 
@@ -311,7 +315,7 @@ kitflow update   # Review and apply the changes
 Unchanged files from removed components are deleted after confirmation. Modified files require an
 explicit decision. KitFlow does not recursively delete directories.
 
-If a managed file was edited in the project, KitFlow shows the differences and asks:
+For whole-file management, local edits cause KitFlow to show differences and ask:
 
 | Answer | Result |
 | --- | --- |
@@ -321,8 +325,8 @@ If a managed file was edited in the project, KitFlow shows the differences and a
 | `quit` | Cancel without applying changes |
 
 At first setup, skipping an existing file also leaves it under your control. An identical file can
-be adopted without replacement. Files marked `mode = "once"`, including the example README.md and
-PROJECT.md, are created only if absent. KitFlow never updates or deletes them afterward.
+be adopted without replacement. Files marked `mode = "once"`, including README.md, PROJECT.md and
+`pyproject.toml`, are created only if absent. KitFlow never updates or deletes them afterward.
 
 KitFlow manages marked tasks and environment entries in `mise.toml`. Remove both markers around a
 block to take control of it. Install tools yourself, then run tasks with `mise run TASK`.

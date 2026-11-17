@@ -126,8 +126,12 @@ class Catalog:
                     value = row.get(name, [])
                     if not isinstance(value, list) or any(not isinstance(x, str) for x in value):
                         raise KitFlowError(f"{section}.{name} must be an array of component IDs")
-                if section == "files" and row.get("mode", "managed") not in {"managed", "once"}:
-                    raise KitFlowError("File mode must be managed or once")
+                if section == "files" and row.get("mode", "managed") not in {
+                    "managed",
+                    "once",
+                    "block",
+                }:
+                    raise KitFlowError("File mode must be managed, once or block")
                 if section == "files":
                     sources = sum(key in row for key in ("template", "empty", "fragments"))
                     if sources != 1:
@@ -306,6 +310,12 @@ class Catalog:
         for row in self.data.get("files", []):
             if not self.enabled(row, chosen):
                 continue
+            if (
+                row.get("mode") == "block"
+                and "template" in row
+                and self.source_path(row["template"], allow_link=True).is_dir()
+            ):
+                raise KitFlowError("Block mode does not support directory templates")
             identity, path = row["id"], row["path"]
             if not re.fullmatch(r"[a-z][a-z0-9_-]*", identity) or identity in file_ids:
                 raise KitFlowError(f"Invalid or duplicate file ID: {identity}")
@@ -324,6 +334,7 @@ class Catalog:
                     raise KitFlowError(f"Duplicate or reserved file target: {target}")
                 paths.add(target)
                 is_link = source is not None and source.is_symlink()
+                kind = "symlink" if is_link else "file"
                 content = (
                     self.compose_file(row, chosen, check_duplicates=check_conflicts)
                     if "fragments" in row
@@ -331,12 +342,23 @@ class Catalog:
                 )
                 if source is not None:
                     content = self.link_target(source) if is_link else source.read_bytes()
+                if row.get("mode") == "block":
+                    from kitflow import file_blocks
+
+                    if is_link or file_id != identity:
+                        raise KitFlowError(
+                            "Block mode requires one regular text file, not a directory or link"
+                        )
+                    assert isinstance(content, bytes)
+                    content = content.rstrip(b"\r\n") + b"\n" if content else b""
+                    file_blocks.wrap(content)
+                    kind = "block"
                 result[file_id] = Artifact(
                     file_id,
                     target,
                     content,
                     row.get("mode") == "once",
-                    kind="symlink" if is_link else "file",
+                    kind=kind,
                 )
         for row in self.data.get("defaults", []):
             if self.enabled(row, chosen):

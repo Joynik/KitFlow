@@ -148,6 +148,33 @@ Keep output paths stable for an existing artifact ID. A path migration requires 
 the old artifact before adopting the new path. Empty directories and recursive directory deletion
 are not supported.
 
+## Managed text block
+
+Use `mode = "block"` to update only a marked region of a text file. It accepts one UTF-8 file or
+conditional `fragments`, not directories, symbolic links or empty-file declarations. The standard
+`.gitignore` uses this mode. New files contain:
+
+```gitignore
+# <kitflow>
+# Generated rules and component sections
+# </kitflow>
+
+# <user>
+# Rules here are preserved during KitFlow updates.
+# Rules in the kitflow block are replaced automatically during updates.
+# </user>
+```
+
+Updates replace only the content between the KitFlow markers, without local-edit conflict prompts or
+diff output. Everything outside that region, including the user block and its comments, stays
+byte-for-byte unchanged. Do not put ownership markers in templates or fragments.
+
+Missing, duplicate, reversed or incomplete KitFlow markers leave the entire file unchanged and
+exclude it from management. Existing unmarked files, including files managed by older versions, are
+also preserved. To opt in, add one valid KitFlow marker pair manually, put personal rules outside
+it, then use `kitflow init -m FILE_ID` if the file was excluded. Updates do not insert missing
+markers. Removing the file rule removes only its marked block, leaving the user content.
+
 ## Directory templates
 
 A `template` may point to a directory. Its contents are copied recursively under `path`:
@@ -320,9 +347,11 @@ symbolic links. Leading and trailing line breaks are removed from each part; non
 joined with one blank line, followed by a final newline. Other whitespace and comments are
 preserved.
 
-Put section comments inside the fragments. The final file has one artifact ID and checksum. Updates
-replace the whole generated file after the usual conflict review; they do not merge local edits into
-individual parts. Removing a component removes its parts on the next project update.
+Put section comments inside the fragments. The generated content has one artifact ID and checksum.
+With `mode = "managed"`, updates replace the whole file after conflict review. With
+`mode = "block"`, updates replace only the marked KitFlow region automatically. Neither mode merges
+local edits into individual parts. Removing a component removes its parts on the next project
+update.
 
 For environment examples, set `format = "dotenv"`. Duplicate assignment names, including `export`
 assignments, are rejected when their fragments are selected together. `kitflow check` also checks
@@ -330,5 +359,6 @@ compatible fragment combinations. Commented examples do not count as assignments
 variables in one general fragment. Keep actual secrets in the user-owned `.env`.
 
 The standard `.gitignore` and `.env.example` always exist. `.dockerignore` requires the Docker
-component. All three use only matching fragments; `.env.example` is managed, while `.env` remains
-user-owned. Upgrade KitFlow before downloading schema 4 standard boxes.
+component. All three use only matching fragments. `.gitignore` uses block management; `.env.example`
+and `.dockerignore` use whole-file management. `.env` remains user-owned. Upgrade KitFlow before
+downloading schema 4 standard boxes.

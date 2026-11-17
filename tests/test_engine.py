@@ -204,3 +204,45 @@ def test_env_header_comment_and_missing_final_newline(tmp_path, original):
     assert not make_plan(tmp_path, {artifact.id: artifact}).changes
     apply(make_plan(tmp_path, {}, []), {})
     assert "NAME" not in tomllib.loads((tmp_path / "mise.toml").read_text())["env"]
+
+
+@pytest.mark.parametrize("selected", [["python"], []])
+@pytest.mark.parametrize("modified", [False, True])
+def test_managed_file_becomes_creation_only_before_update_or_removal(tmp_path, selected, modified):
+    box = tmp_path / "box"
+    box.mkdir()
+    manifest = box / "kitflow-box.toml"
+    manifest.write_text(
+        'schema=4\n[[components]]\nid="python"\nlabel="Python"\ncategory="Languages"\n'
+        '[[files]]\nid="pyproject"\npath="pyproject.toml"\ntemplate="project.toml"\n'
+        'when=["python"]\nmode="managed"\n'
+    )
+    (box / "project.toml").write_text('[project]\nname="example"\n')
+    project = tmp_path / "project"
+    project.mkdir()
+    apply(plan(project, Catalog(box), ["python"], load_config(project)), {})
+    pyproject = project / "pyproject.toml"
+    if modified:
+        pyproject.write_text('[project]\nname="personal"\nversion="1.2.3"\n')
+    original = pyproject.read_bytes()
+    venv = project / ".venv" / "sentinel"
+    venv.parent.mkdir()
+    venv.write_bytes(b"user environment\x00")
+    manifest.write_text(manifest.read_text().replace('mode="managed"', 'mode="once"'))
+    (box / "project.toml").write_text('[project]\nname="changed"\n')
+    result = plan(project, Catalog(box), selected, load_config(project))
+    assert not any(c.artifact.id == "pyproject" for c in result.changes)
+    apply(result, {})
+    assert pyproject.read_bytes() == original
+    assert venv.read_bytes() == b"user environment\x00"
+    assert load_config(project)["state"]["artifacts"]["pyproject"]["once"] is True
+    once_manifest = manifest.read_text()
+    manifest.write_text(once_manifest.split("[[files]]")[0])
+    apply(plan(project, Catalog(box), [], load_config(project)), {})
+    assert pyproject.read_bytes() == original
+    pyproject.unlink()
+    manifest.write_text(once_manifest)
+    assert not any(
+        c.artifact.id == "pyproject"
+        for c in plan(project, Catalog(box), ["python"], load_config(project)).changes
+    )

@@ -25,7 +25,7 @@ def parser() -> argparse.ArgumentParser:
         description="KitFlow — project standards over mise", add_help=False
     )
     result.add_argument("--help", "-h", action="help", help="show this help message and exit")
-    result.add_argument("--version", "-v", action="version", version="KitFlow 0.9.1")
+    result.add_argument("--version", "-v", action="version", version="KitFlow 0.10.0")
     result.add_argument(
         "--instruction",
         "-i",
@@ -104,6 +104,9 @@ def warn_box_schema(root: Path):
 
 
 def show_diff(change):
+    if change.artifact.kind == "block":
+        return
+
     def lines(content):
         text = (
             f"symlink -> {content}\n"

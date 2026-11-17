@@ -10,7 +10,7 @@ from pathlib import Path
 
 import tomlkit
 
-from kitflow import mise
+from kitflow import file_blocks, mise
 from kitflow.catalog import Artifact, Catalog, KitFlowError, safe_path
 
 CONFIG = "kitflow.toml"
@@ -59,11 +59,11 @@ def load_config(root: Path) -> dict:
             if not isinstance(record, dict) or not isinstance(record.get("path"), str):
                 raise KitFlowError(f"Invalid state record: {identity}")
             kind = record.get("kind", "file")
-            if kind not in {"file", "symlink", "task", "env", "defaults"}:
+            if kind not in {"file", "symlink", "block", "task", "env", "defaults"}:
                 raise KitFlowError(f"Invalid artifact kind: {identity}")
             if kind in {"task", "env", "defaults"} and record["path"] != "mise.toml":
                 raise KitFlowError("Task and environment state must target mise.toml")
-            if kind in {"file", "symlink"} and record["path"] == "mise.toml":
+            if kind in {"file", "symlink", "block"} and record["path"] == "mise.toml":
                 raise KitFlowError("mise.toml cannot be managed as a whole file")
             for field_name in ("key", "sha256"):
                 if not isinstance(record.get(field_name), str):
@@ -101,9 +101,23 @@ def plan(root: Path, catalog: Catalog, selected: list[str], document: dict) -> P
     selected = catalog.resolve(selected)
     result = Plan(root, deepcopy(document), selected)
     result.snapshots[CONFIG] = read_file(root / CONFIG)
-    records = document.get("state", {}).get("artifacts", {})
+    records = result.document.get("state", {}).get("artifacts", {})
     excluded = set(document.get("selection", {}).get("excluded", []))
     desired = catalog.render(selected)
+    creation_only = {
+        row["id"]
+        for row in getattr(catalog, "data", {}).get("files", [])
+        if row.get("mode") == "once"
+    }
+    creation_only.update(identity for identity, artifact in desired.items() if artifact.once)
+    block_ids = {
+        row["id"]
+        for row in getattr(catalog, "data", {}).get("files", [])
+        if row.get("mode") == "block"
+    }
+    for identity, record in records.items():
+        if identity.split("/", 1)[0] in creation_only:
+            record["once"] = True
     candidates = dict(desired)
     for identity, record in records.items():
         if identity not in candidates:
@@ -112,7 +126,7 @@ def plan(root: Path, catalog: Catalog, selected: list[str], document: dict) -> P
                 record["path"],
                 b"",
                 record.get("once", False),
-                record.get("kind", "file"),
+                "block" if identity in block_ids else record.get("kind", "file"),
                 record.get("key", ""),
             )
         elif record["path"] != candidates[identity].path:
@@ -126,6 +140,21 @@ def plan(root: Path, catalog: Catalog, selected: list[str], document: dict) -> P
         current = current_file
         record = records.get(identity)
         target = desired.get(identity)
+        if artifact.kind == "block":
+            assert not isinstance(current_file, str)
+            owned = file_blocks.span(current_file) if current_file is not None else None
+            if owned is None and (current_file is not None or record):
+                result.changes.append(
+                    Change(
+                        artifact,
+                        None,
+                        None,
+                        "detach",
+                        reason="Missing or damaged KitFlow markers; file left unchanged",
+                    )
+                )
+                continue
+            current = owned[2] if owned else None
         if artifact.kind == "defaults":
             if target and not record:
                 assert not isinstance(current_file, str)
@@ -177,12 +206,18 @@ def plan(root: Path, catalog: Catalog, selected: list[str], document: dict) -> P
         if not target and current is None:
             result.changes.append(Change(artifact, None, None, "forget"))
             continue
-        conflict = current is not None and (
-            not record
-            or digest(current) != record.get("sha256")
-            or isinstance(current, str) != (record.get("kind", "file") == "symlink")
+        conflict = (
+            artifact.kind != "block"
+            and current is not None
+            and (
+                not record
+                or digest(current) != record.get("sha256")
+                or isinstance(current, str) != (record.get("kind", "file") == "symlink")
+            )
         )
         operation = "delete" if not target else "create" if current is None else "update"
+        if artifact.kind == "block" and not target:
+            operation = "remove-block"
         result.changes.append(
             Change(
                 artifact,
@@ -253,7 +288,13 @@ def _apply(result: Plan, source: dict):
         if change.operation == "forget":
             records.pop(artifact.id, None)
             continue
-        if artifact.kind in {"file", "symlink"}:
+        if artifact.kind == "block":
+            if change.operation != "adopt":
+                snapshot = result.snapshots.get(artifact.path)
+                assert not isinstance(snapshot, str)
+                assert not isinstance(change.after, str)
+                writes[artifact.path] = file_blocks.replace(snapshot, change.after)
+        elif artifact.kind in {"file", "symlink"}:
             if change.operation != "adopt":
                 writes[artifact.path] = change.after
         else:

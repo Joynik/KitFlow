@@ -2,8 +2,12 @@
 
 ## Unreleased
 
+## 0.10.0 — 2026-11-17
+
 ### Added
 
+- Manage `.gitignore` with separate KitFlow and user blocks. Automatically replace only the KitFlow
+  region without conflicts or diffs; preserve existing files with missing or damaged markers.
 - Select Python package or Nuitka standalone builds, or leave Python builds disabled.
 - Configure Python project and test directories independently from source checks.
 
@@ -11,10 +15,13 @@
 
 - Seed quiet mise task output for new settings without suppressing program diagnostics.
 - Name Python paths `project_root`, `python_source` and `python_tests`, with matching environment
-  overrides. Resolve relative source and test paths from the Python project root.
+  overrides. Resolve relative source and test paths from the Python project root. Existing mise
+  vars/env remain user-owned and must be renamed manually.
 
 ### Fixed
 
+- Create `pyproject.toml` once and preserve it during updates and component removal, including
+  projects that previously managed the file.
 - Run pytest and unittest from the Python project directory instead of the source directory.
 
 ## 0.9.1 — 2026-11-17

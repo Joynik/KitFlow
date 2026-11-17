@@ -444,7 +444,7 @@ mode = "once"
 [[files]]
 id = "gitignore"
 path = ".gitignore"
-mode = "managed"
+mode = "block"
 fragments = [
   { template = "templates/gitignore/general.txt" },
   { template = "templates/gitignore/agents.txt", when = ["agents"] },
@@ -524,7 +524,7 @@ id = "pyproject"
 path = "pyproject.toml"
 template = "templates/pyproject.toml"
 when = ["python"]
-mode = "managed"
+mode = "once"
 
 [[files]]
 id = "python-version"
