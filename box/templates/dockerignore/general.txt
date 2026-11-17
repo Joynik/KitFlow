@@ -1,7 +1,10 @@
 # General
-.git/
 .DS_Store
+
+# Git
+.git/
+
+# ENV
 .env
 .env.*
 !.env.example
-backup.sql

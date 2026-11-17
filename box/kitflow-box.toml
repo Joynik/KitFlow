@@ -475,6 +475,9 @@ fragments = [
   { template = "templates/dockerignore/ruff.txt", when = ["ruff"] },
   { template = "templates/dockerignore/mypy.txt", when = ["mypy"] },
   { template = "templates/dockerignore/rumdl.txt", when = ["rumdl"] },
+  { template = "templates/dockerignore/database.txt", when_any = ["postgresql", "sqlite"] },
+  { template = "templates/dockerignore/sqlite.txt", when = ["sqlite"] },
+  { template = "templates/dockerignore/tests.txt", when_any = ["pytest", "unittest", "django-tests"] },
 ]
 
 # Files: Python configuration
