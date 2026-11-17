@@ -2,8 +2,16 @@
 
 ## Unreleased
 
+## 0.11.0 — 2026-11-17
+
+### Added
+
+- Select files to restore from box defaults with `update --reset`, optional diff previews and all
+  checkboxes initially unchecked. Reset initial mise settings while keeping other user entries.
+
 ### Fixed
 
+- Download the standard box as one archive instead of requesting each file separately.
 - Normalize generated Python root and source paths and explain path variables with short comments.
 
 ## 0.10.0 — 2026-11-17
