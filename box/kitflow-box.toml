@@ -417,6 +417,7 @@ path = ".gitignore"
 mode = "managed"
 fragments = [
   { template = "templates/gitignore/general.txt" },
+  { template = "templates/gitignore/agents.txt", when = ["agents"] },
   { template = "templates/gitignore/python.txt", when = ["python"] },
   { template = "templates/gitignore/javascript.txt", when = ["javascript"] },
   { template = "templates/gitignore/rust.txt", when = ["rust"] },
@@ -460,6 +461,7 @@ mode = "managed"
 when = ["docker"]
 fragments = [
   { template = "templates/dockerignore/general.txt" },
+  { template = "templates/dockerignore/agents.txt", when = ["agents"] },
   { template = "templates/dockerignore/python.txt", when = ["python"] },
   { template = "templates/dockerignore/javascript.txt", when = ["javascript"] },
   { template = "templates/dockerignore/rust.txt", when = ["rust"] },
