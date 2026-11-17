@@ -1,7 +1,7 @@
 schema = 1
 
 [selection]
-components = ["python", "ruff", "ty", "rumdl", "pytest", "agents"]
+components = ["python", "ruff", "ty", "nuitka", "rumdl", "pytest", "agents"]
 excluded = []
 
 [state.artifacts.readme]
@@ -20,7 +20,7 @@ once = true
 
 [state.artifacts.gitignore]
 path = ".gitignore"
-kind = "file"
+kind = "block"
 key = ""
 sha256 = "080d1295d1361f5b74fdc753d407a4d8c7c78a241a8c7113d55e0ac5b0db3335"
 once = false
@@ -37,7 +37,7 @@ path = "pyproject.toml"
 kind = "file"
 key = ""
 sha256 = "eac83c28d48261307bbeb2f2bc2e56d93af6f63c41474d955fb976851e6a56cd"
-once = false
+once = true
 
 [state.artifacts.python-version]
 path = ".python-version"
@@ -64,7 +64,7 @@ once = false
 path = "pytest.ini"
 kind = "file"
 key = ""
-sha256 = "9114b5322e2693875b2265f049e0eaeaffb27c313a6c960dab41c239c2c17478"
+sha256 = "808baa241f71393984cfe0a75f91defee962d11f92dc98ba5a79a1b4829be3be"
 once = false
 
 [state.artifacts.rumdl]
@@ -99,14 +99,35 @@ once = false
 path = "mise.toml"
 kind = "defaults"
 key = ""
-sha256 = "5840d0b604ca62fa33c874876c2f4f91acb141fc22737547c9e66f69b275188f"
+sha256 = "e946f35079fa51475f0281e8a576732db2082e566d23ea941198e865345f19e1"
+once = true
+
+[state.artifacts."defaults.python-project"]
+path = "mise.toml"
+kind = "defaults"
+key = ""
+sha256 = "8176e4b9700ed917a59803bd52a0d61e07b561306de85f1bc63b35588269da47"
 once = true
 
 [state.artifacts."defaults.python"]
 path = "mise.toml"
 kind = "defaults"
 key = ""
-sha256 = "b0e1057cc9e144d995772b6fa57e043fa4d37fd0ca20e44b7e3da54a84f6792b"
+sha256 = "aea40dd0c553c6e515355c871908e6c6f18ed476f067a49b008b627fe7065700"
+once = true
+
+[state.artifacts."defaults.python-tests"]
+path = "mise.toml"
+kind = "defaults"
+key = ""
+sha256 = "2b06fa1015cd51495441bae3d818a75bcc58026b46e4bdc17b2f326ef7408504"
+once = true
+
+[state.artifacts."defaults.nuitka"]
+path = "mise.toml"
+kind = "defaults"
+key = ""
+sha256 = "021eddedf671728f2ff3b0fb3d0593da474712e7c33676b468ead95a3ead81cb"
 once = true
 
 [state.artifacts."task.help"]
@@ -141,42 +162,49 @@ once = false
 path = "mise.toml"
 kind = "task"
 key = "lint"
-sha256 = "394cbd38afee52dbde16887aacfada5d41b129b817bf0ccf5dae64469bc363e3"
+sha256 = "a146f703a34375c1a0cdc095fe3a4b15cebc8ffa95f6be78504a75aeeeb7f539"
 once = false
 
 [state.artifacts."task.lint-fix"]
 path = "mise.toml"
 kind = "task"
 key = "lint-fix"
-sha256 = "4b29add3ddefec157513d45ac7e4b934228df37663801814fe147be9eb260995"
+sha256 = "a508f0d4fcc251405b0b5e36b8feb4197f25b6e0427b4a9c748eb14389120563"
 once = false
 
 [state.artifacts."task.format"]
 path = "mise.toml"
 kind = "task"
 key = "format"
-sha256 = "a16c17c754e055eba25d397fa7fb8ea52e757da1a609c97e71cd9a7eb0cc9c61"
+sha256 = "2f60b397c67f87191513e77fd71d58a4ed839e40f7ed5ee754223ed97198bf22"
 once = false
 
 [state.artifacts."task.format-check"]
 path = "mise.toml"
 kind = "task"
 key = "format-check"
-sha256 = "34abc6bf0e41e844f6e82721f1b03b6f2763aa828621a194075e5185baa6a7e6"
+sha256 = "069379a6705c8aa08b3dfa51dce6b7d81d63edabe94eacfcc0f1733ef652c26b"
 once = false
 
 [state.artifacts."task.typecheck"]
 path = "mise.toml"
 kind = "task"
 key = "typecheck"
-sha256 = "3ae070e40cc772a1a950e6f91793642f7c8903e31a884ee385df6cfbee9bd726"
+sha256 = "d316fed9fb24cccc1ce9881ad2012cfc5c983a803945ed33c3344f7995fe781c"
 once = false
 
 [state.artifacts."task.test"]
 path = "mise.toml"
 kind = "task"
 key = "test"
-sha256 = "de2953aa9f2430268c7e90df30757a0250378b29f627f598ba424b7c092245fd"
+sha256 = "6b48fdbc82039969c822678f49418ab84b0d0d7d39846afa067a5948b534d1ec"
+once = false
+
+[state.artifacts."task.build"]
+path = "mise.toml"
+kind = "task"
+key = "build"
+sha256 = "21b58138f7ade418ebb3e9a46da51ce921d39dc7c507bcfdf8d85ddbfe938ec5"
 once = false
 
 [state.artifacts."env.PYTHONUNBUFFERED"]
