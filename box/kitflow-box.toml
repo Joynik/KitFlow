@@ -506,6 +506,20 @@ when = ["ty"]
 mode = "managed"
 
 [[files]]
+id = "mypy"
+path = "mypy.ini"
+template = "templates/mypy.ini"
+when = ["mypy"]
+mode = "managed"
+
+[[files]]
+id = "pytest"
+path = "pytest.ini"
+template = "templates/pytest.ini"
+when = ["pytest"]
+mode = "managed"
+
+[[files]]
 id = "djlint"
 path = ".djlintrc"
 template = "templates/djlintrc.json"
@@ -519,6 +533,31 @@ id = "bunfig"
 path = "bunfig.toml"
 template = "templates/bunfig.toml"
 when = ["bun"]
+mode = "managed"
+
+# Files: Rust configuration
+
+[[files]]
+id = "rustfmt"
+path = "rustfmt.toml"
+template = "templates/rustfmt.toml"
+when = ["rust"]
+mode = "managed"
+
+# Files: Swift configuration
+
+[[files]]
+id = "swiftlint"
+path = ".swiftlint.yml"
+template = "templates/swiftlint.yml"
+when = ["swiftlint"]
+mode = "managed"
+
+[[files]]
+id = "swift-format"
+path = ".swift-format"
+template = "templates/swift-format.json"
+when = ["swift"]
 mode = "managed"
 
 # Files: Markdown configuration

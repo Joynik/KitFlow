@@ -1,0 +1,5 @@
+# Stable options only. Cargo supplies the Rust edition from Cargo.toml.
+max_width = 100
+hard_tabs = false
+tab_spaces = 4
+newline_style = "Unix"

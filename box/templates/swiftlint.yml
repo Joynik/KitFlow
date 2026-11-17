@@ -1,0 +1,8 @@
+# Keep standard rules and omit generated dependencies and build output.
+excluded:
+  - .build
+  - .swiftpm
+  - DerivedData
+  - Pods
+  - Carthage
+reporter: xcode

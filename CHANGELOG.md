@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Added
+
+- Generate baseline mypy, pytest, rustfmt, SwiftLint and Swift formatter configurations for selected
+  components.
+
 ## 0.9.0 — 2026-11-17
 
 ### Added
