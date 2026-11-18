@@ -11,6 +11,16 @@ from kitflow.catalog import KitFlowError
 CATALOG = Path(__file__).parent / "fixtures/catalog"
 
 
+@pytest.mark.parametrize("flag", ["-v", "--version"])
+def test_cli_reports_package_version(flag, capsys):
+    metadata = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    version = tomllib.loads(metadata.read_text())["project"]["version"]
+    with pytest.raises(SystemExit) as exit_info:
+        cli.parser().parse_args([flag])
+    assert exit_info.value.code == 0
+    assert capsys.readouterr().out == f"KitFlow {version}\n"
+
+
 def test_update_rejects_config_edit_after_loading_selection(tmp_path, monkeypatch):
     init = ["init", "-b", str(CATALOG), "-p", str(tmp_path), "-c", "python", "-y"]
     assert cli.run(cli.parser().parse_args(init)) == 0
