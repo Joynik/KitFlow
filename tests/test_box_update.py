@@ -115,7 +115,7 @@ def test_explicit_update_applies_without_diffs_or_prompts(
         cli, "choose_action", lambda *_args, **_kwargs: pytest.fail("Unexpected prompt")
     )
     monkeypatch.setattr(cli, "Syntax", lambda *_args, **_kwargs: pytest.fail("Unexpected diff"))
-    assert cli.run(cli.parser().parse_args(["box", "update", *options])) == 0
+    assert cli.run(cli.parser().parse_args(["upgrade", *options])) == 0
     assert (
         settings.box_path() / "default/templates/ruff.toml"
     ).read_text() == "line-length = 120\n"
@@ -192,12 +192,13 @@ def test_snapshots_ignore_finder_metadata_in_all_layers(boxes):
     assert not (destination / "default/.DS_Store").exists()
 
 
-def test_update_rejects_missing_subcommand_and_project_actions():
-    for arguments in (
-        ["box"],
-        ["box", "update", "-c", "python"],
-        ["box", "update", "-i"],
-        ["init", "update"],
-    ):
-        with pytest.raises(KitFlowError):
+def test_upgrade_rejects_project_actions():
+    for arguments in (["upgrade", "-c", "python"], ["upgrade", "-i"]):
+        with pytest.raises(KitFlowError, match="upgrade does not accept project actions"):
             cli.run(cli.parser().parse_args(arguments))
+
+
+def test_old_box_subcommand_is_removed():
+    with pytest.raises(SystemExit) as error:
+        cli.parser().parse_args(["box", "update"])
+    assert error.value.code == 2

@@ -16,10 +16,10 @@ Edit and back up the user box. For example, copy `default/templates/ruff.toml` t
 replace or disable rules. See the
 [catalog reference](https://github.com/Joynik/KitFlow/blob/main/docs/CATALOG.md).
 
-`kitflow box update` downloads and validates a new standard box with your overrides. It replaces
+`kitflow upgrade` downloads and validates a new standard box with your overrides. It replaces
 `default/` and removes obsolete standard files without a prompt or diff. A failed update leaves the
 old box intact. User files and projects stay unchanged. Later bare `kitflow` runs use your local
-box. Legacy flat boxes work offline; their first box update keeps their existing files as overrides.
+box. Legacy flat boxes work offline; their first upgrade keeps their existing files as overrides.
 
 ## Project setup and updates
 
@@ -36,7 +36,7 @@ deselections; new choices can introduce recommendations.
   running `update`. Existing selections work after the removal of profiles; old profile files are
   ignored.
 
-The standard Box has a numbered revision. `kitflow box update` installs the latest stamped revision.
+The standard Box has a numbered revision. `kitflow upgrade` installs the latest stamped revision.
 Each project records its applied revision in `kitflow.toml`. If a migration is needed,
 `kitflow update` prompts for it before showing the update menu. Legacy projects without a revision
 start at Box 0. The temporary transition to Box 1 tracks known Translation keys when Translation is
@@ -205,7 +205,7 @@ nested apps, move the initial files and set `prisma_config`, `prisma_schema_path
 | Command | Purpose |
 | --- | --- |
 | `kitflow` | Prepare the local box |
-| `kitflow box update` | Refresh the standard box |
+| `kitflow upgrade` | Refresh the standard box |
 | `kitflow init` | Choose or change project components |
 | `kitflow update` | Apply updates, review individual edits or change setup |
 | `kitflow status` / `kitflow diff` | List pending changes / show proposed differences |

@@ -1,18 +1,19 @@
 """Plan project migrations before applying a new standard Box."""
 
+from collections.abc import Callable
 from copy import deepcopy
 from pathlib import Path
 
-from kitflow import legacy_box_v1
 from kitflow.catalog import KitFlowError
 from kitflow.engine import CONFIG, Plan, preview_files, read_file
 
-# Remove the legacy module and its registration together after the Box 0 projects migrate.
-MIGRATIONS = {1: legacy_box_v1.migrate}
+# Revision 1 is the baseline after retiring the initial migration.
+BASELINE = 1
+MIGRATIONS: dict[int, Callable[[Plan, str], None]] = {}
 
 
 def require_supported_migration(required: int):
-    if required > max(MIGRATIONS, default=0):
+    if required > max(MIGRATIONS, default=BASELINE):
         raise KitFlowError(f"Box requires migration {required}; upgrade KitFlow first")
 
 
@@ -20,7 +21,7 @@ def plan_migrations(
     root: Path, document: dict, snapshot: bytes | None, required: int
 ) -> Plan | None:
     require_supported_migration(required)
-    migrated = document.get("migrated_box_version", 0)
+    migrated = max(BASELINE, document.get("migrated_box_version", 0))
     pending = [revision for revision in sorted(MIGRATIONS) if migrated < revision <= required]
     if not pending:
         return None

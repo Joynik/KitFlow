@@ -435,7 +435,7 @@ def preview_files(result: Plan) -> dict[str, tuple[bytes | str | None, bytes | s
     """Render the exact selected-file candidates without writing anything."""
     after = {}
     for change in result.changes:
-        if change.operation in {"detach", "forget", "adopt", "track-settings"}:
+        if change.operation in {"detach", "forget", "adopt"}:
             continue
         artifact = change.artifact
         before = after.get(artifact.path, result.snapshots.get(artifact.path))
@@ -458,7 +458,7 @@ def preview_files(result: Plan) -> dict[str, tuple[bytes | str | None, bytes | s
 def update_mise(text: str, change: Change) -> str:
     assert isinstance(change.after, bytes) or change.after is None
     if change.artifact.kind == "defaults":
-        if change.operation in {"remove-settings", "cleanup-settings"}:
+        if change.operation == "cleanup-settings":
             return mise.remove_defaults(text, change.setting_keys)
         assert change.after is not None
         if change.operation == "reset-defaults":
@@ -522,10 +522,10 @@ def _apply(result: Plan, source: dict):
     }
     for change in result.changes:
         artifact = change.artifact
-        if change.decision == "skip" or change.operation == "track-settings":
+        if change.decision == "skip":
             continue
-        if change.operation in {"remove-settings", "cleanup-settings"}:
-            if change.operation == "cleanup-settings" and retained_mise:
+        if change.operation == "cleanup-settings":
+            if retained_mise:
                 if retained_mise - {"skip"}:
                     seeded_keys.difference_update(change.setting_keys)
                 continue

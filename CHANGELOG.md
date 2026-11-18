@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.16.0 — 2026-11-18
+
+### Changed
+
+- Use `kitflow upgrade` to refresh the standard Box.
+
+### Removed
+
+- Retire the initial Box 0 to 1 project migration.
+
 ## 0.15.1 — 2026-11-18
 
 ### Changed

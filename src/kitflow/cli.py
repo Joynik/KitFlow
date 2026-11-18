@@ -26,7 +26,7 @@ def parser() -> argparse.ArgumentParser:
         description="KitFlow — project standards over mise", add_help=False
     )
     result.add_argument("--help", "-h", action="help", help="show this help message and exit")
-    result.add_argument("--version", "-v", action="version", version="KitFlow 0.15.1")
+    result.add_argument("--version", "-v", action="version", version="KitFlow 0.16.0")
     result.add_argument(
         "--instruction",
         "-i",
@@ -36,10 +36,9 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument(
         "command",
         nargs="?",
-        choices=["init", "update", "status", "diff", "config", "check", "box"],
+        choices=["init", "update", "status", "diff", "config", "check", "upgrade"],
         help="Action to perform; omit to prepare your local box",
     )
-    result.add_argument("box_command", nargs="?", choices=["update"], help=argparse.SUPPRESS)
     result.epilog = """Commands:
   init    Choose or change project components and apply the plan
   update  Update project files, review individual changes, or change the project setup
@@ -47,7 +46,7 @@ def parser() -> argparse.ArgumentParser:
   diff    Show proposed file differences without applying them
   config  Show the local box location without creating it
   check   Validate the box and connected project without changing files
-  box update  Download and replace only the standard box in default/
+  upgrade Download and replace only the standard box in default/
 
 Without a command, prepare the local box. User overrides stay in its root directory.
 """
@@ -148,13 +147,9 @@ def show_plan(result):
 
 
 def run(args: argparse.Namespace) -> int:
-    if args.box_command and args.command != "box":
-        raise KitFlowError("Only box accepts a subcommand: kitflow box update")
-    if args.command == "box":
-        if args.box_command != "update":
-            raise KitFlowError("Use kitflow box update to update the standard box")
+    if args.command == "upgrade":
         if args.instruction or args.components is not None or args.manage:
-            raise KitFlowError("box update does not accept project actions")
+            raise KitFlowError("upgrade does not accept project actions")
         destination = args.box.resolve() if args.box else box_path()
 
         count = refresh_box(destination, lambda *_: True)
@@ -204,7 +199,7 @@ def run(args: argparse.Namespace) -> int:
         catalog, _ = load_box(args.box)
         console.print(f"Box ready: {catalog.root} (version {catalog.version})", markup=False)
         console.print(
-            "Edit user overrides in this box. Run kitflow box update to refresh default/. Run kitflow init in a project."
+            "Edit user overrides in this box. Run kitflow upgrade to refresh default/. Run kitflow init in a project."
         )
         return 0
     root = args.project.resolve()
