@@ -1,6 +1,6 @@
 # Agent instructions and local configuration
-AGENTS.md
+**/AGENTS.md
 PROJECT.md
 STANDARDS.md
 TOOLS.md
-.agents/**
+.agents/
