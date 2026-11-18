@@ -10,10 +10,11 @@ from rich.markdown import Markdown
 from rich.syntax import Syntax
 from rich.table import Table
 
+from kitflow.box_migrations import plan_migrations, require_supported_migration
 from kitflow.box_update import refresh_box
-from kitflow.catalog import CURRENT_SCHEMA, KitFlowError
+from kitflow.catalog import CURRENT_SCHEMA, Catalog, KitFlowError
 from kitflow.check import configuration_issues
-from kitflow.engine import CONFIG, apply, load_config, plan
+from kitflow.engine import CONFIG, apply, parse_config, plan, read_file
 from kitflow.settings import box_path, config_directory
 from kitflow.source import load_box, read_instructions
 
@@ -158,6 +159,7 @@ def run(args: argparse.Namespace) -> int:
 
         count = refresh_box(destination, lambda *_: True)
         warn_box_schema(destination)
+        console.print(f"Standard Box version: {Catalog(destination).version}")
         console.print(
             f"Standard box files changed: {count}. User overrides and projects were preserved."
         )
@@ -200,7 +202,7 @@ def run(args: argparse.Namespace) -> int:
         if args.components is not None or args.manage or args.yes:
             raise KitFlowError("Use init to select project components or apply a plan")
         catalog, _ = load_box(args.box)
-        console.print(f"Box ready: {catalog.root}", markup=False)
+        console.print(f"Box ready: {catalog.root} (version {catalog.version})", markup=False)
         console.print(
             "Edit user overrides in this box. Run kitflow box update to refresh default/. Run kitflow init in a project."
         )
@@ -208,7 +210,8 @@ def run(args: argparse.Namespace) -> int:
     root = args.project.resolve()
     if not root.is_dir():
         raise KitFlowError(f"Project directory does not exist: {root}")
-    exists = (root / CONFIG).exists()
+    config_snapshot = read_file(root / CONFIG)
+    exists = config_snapshot is not None
     command = args.command
     if command != "init" and not exists:
         raise KitFlowError("Run kitflow init first")
@@ -223,16 +226,54 @@ def run(args: argparse.Namespace) -> int:
         and (not sys.stdin.isatty() or args.yes)
     ):
         raise KitFlowError("Use --components for non-interactive init")
-    document = load_config(root)
+    document = parse_config(root, config_snapshot)
     catalog, source = load_box(args.box)
+    if command in {"init", "update"}:
+        require_supported_migration(catalog.required_migration)
+    applied_version = document.get("box_version", 0)
+    cancelled = "Cancelled. No files were changed."
     if command == "update":
         warn_box_schema(catalog.root)
+        if catalog.version and catalog.version < applied_version:
+            raise KitFlowError(f"Project uses Box {applied_version}; refresh the local Box first")
+        previous = document.get("migrated_box_version", 0)
+        migration = plan_migrations(root, document, config_snapshot, catalog.required_migration)
+        if migration is not None:
+            target = migration.document["migrated_box_version"]
+            console.print(f"Box migration: {previous} → {target}")
+            if migration.changes:
+                show_plan(migration)
+            if not args.yes:
+                if not sys.stdin.isatty():
+                    raise KitFlowError("Use --yes to confirm a non-interactive Box migration")
+                if (
+                    choose_action(
+                        "Apply Box migration?",
+                        [("apply", "Apply migration"), ("cancel", "Cancel")],
+                        "cancel",
+                    )
+                    != "apply"
+                ):
+                    console.print("Cancelled. No files were changed.")
+                    return 0
+            apply(migration, source)
+            config_snapshot = read_file(root / CONFIG)
+            document = parse_config(root, config_snapshot)
+            console.print("Box migration applied.")
+            cancelled = "Update cancelled. The Box migration remains applied."
+        if catalog.version > applied_version:
+            console.print(f"Project Box: {applied_version} → {catalog.version}")
     action = "files"
     if command == "update" and not args.yes and sys.stdin.isatty():
         action = choose_action(
             "What would you like to do?",
             [
-                ("files", "Update files"),
+                (
+                    "files",
+                    f"Update files to Box {catalog.version}"
+                    if catalog.version > applied_version
+                    else "Update files",
+                ),
                 ("review", "Review and update files"),
                 ("setup", "Change setup"),
                 ("exit", "Exit"),
@@ -240,20 +281,27 @@ def run(args: argparse.Namespace) -> int:
             "files",
         )
         if action in (None, "exit"):
-            console.print("Cancelled. No files were changed.")
+            console.print(cancelled)
             return 0
     if action == "review":
         from kitflow.reset import reset_files, select_reset
         from kitflow.tui import ResetFiles
 
-        result = plan(root, catalog, document["selection"]["components"], document, reset=True)
+        result = plan(
+            root,
+            catalog,
+            document["selection"]["components"],
+            document,
+            reset=True,
+            config_snapshot=config_snapshot,
+        )
         candidates = reset_files(result)
         if not candidates:
             console.print("No file changes to review.")
             return 0
         selected_files = ResetFiles(candidates).run()
         if not selected_files:
-            console.print("Cancelled. No files were changed.")
+            console.print(cancelled)
             return 0
         select_reset(result, candidates, selected_files)
         apply(result, source)
@@ -276,11 +324,13 @@ def run(args: argparse.Namespace) -> int:
 
         chosen = Configurator(catalog, selected, excluded, existing=exists).run()
         if chosen is None:
-            console.print("Cancelled. No files were changed.")
+            console.print(cancelled)
             return 0
         selected, excluded = chosen.components, chosen.excluded
     selection["excluded"] = excluded
-    result = plan(root, catalog, selected, document)
+    result = plan(root, catalog, selected, document, config_snapshot=config_snapshot)
+    if catalog.version and command == "update":
+        result.box_version = catalog.version
     console.print(f"Project: {root}", markup=False)
     console.print(f"Box: {catalog.root}", markup=False)
     show_plan(result)
@@ -326,7 +376,7 @@ def run(args: argparse.Namespace) -> int:
             )
             != "apply"
         ):
-            console.print("Cancelled. No files were changed.")
+            console.print(cancelled)
             return 0
     apply(result, source)
     console.print("Configuration saved.", style="green")

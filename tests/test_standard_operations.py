@@ -12,8 +12,31 @@ from pathlib import Path
 import pytest
 
 from kitflow.catalog import Catalog
+from kitflow.wizard import Wizard
 
 BOX = Path(__file__).parents[1] / "box"
+
+
+def test_vsix_packaging_requires_bundle(tmp_path):
+    catalog = Catalog(BOX)
+    selected = ["javascript", "vscode-extension"]
+    packaging = "vscode-extension-vsix"
+    assert not Wizard(catalog, selected, []).eligible(packaging)
+    artifact = catalog.render([*selected, packaging])["task.package"]
+    assert isinstance(artifact.content, bytes)
+    script = tomllib.loads(artifact.content.decode())["tasks"]["package"]["run"]
+    result = subprocess.run(["/bin/sh", "-c", script], cwd=tmp_path, capture_output=True, text=True)
+    assert result.returncode == 2
+    assert "Select Bun build or esbuild" in result.stderr
+    assert not list(tmp_path.glob("*.vsix"))
+    for bundler in ("vscode-extension-bun", "vscode-extension-esbuild"):
+        components = [*selected, bundler]
+        resolved = catalog.resolve(components)
+        assert Wizard(catalog, resolved, []).eligible(packaging)
+        artifact = catalog.render([*resolved, packaging])["task.package"]
+        assert isinstance(artifact.content, bytes)
+        script = tomllib.loads(artifact.content.decode())["tasks"]["package"]["run"]
+        assert "mise run extension:prepare && npm exec --no -- vsce package" in script
 
 
 @pytest.mark.parametrize("server", ["granian", "gunicorn", "uvicorn"])

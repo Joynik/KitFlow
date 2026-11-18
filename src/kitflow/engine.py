@@ -3,15 +3,17 @@
 import fcntl
 import hashlib
 import os
+import re
 import tempfile
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
+from typing import Literal
 
 import tomlkit
 
-from kitflow import file_blocks, mise
-from kitflow.catalog import Artifact, Catalog, KitFlowError, safe_path
+from kitflow import file_blocks, manifests, mise
+from kitflow.catalog import Artifact, Catalog, KitFlowError, known_fields, safe_path
 
 CONFIG = "kitflow.toml"
 
@@ -37,23 +39,41 @@ def read_entry(path: Path) -> bytes | str | None:
 
 
 def load_config(root: Path) -> dict:
-    content = read_file(root / CONFIG)
+    return parse_config(root, read_file(root / CONFIG))
+
+
+def parse_config(root: Path, content: bytes | None) -> dict:
     if content is None:
         return {"schema": 1, "selection": {"components": [], "excluded": []}, "state": {}}
     try:
         document = tomlkit.parse(content.decode())
-        if document.get("schema") != 1:
+        known_fields(
+            document,
+            {"schema", "box_version", "migrated_box_version", "selection", "source", "state"},
+            "project",
+        )
+        schema = document.get("schema")
+        if not isinstance(schema, int) or isinstance(schema, bool) or schema != 1:
             raise KitFlowError("Unsupported kitflow.toml schema")
+        for name in ("box_version", "migrated_box_version"):
+            version = document.get(name, 0)
+            if not isinstance(version, int) or isinstance(version, bool) or version < 0:
+                raise KitFlowError(f"{name} must be a nonnegative integer")
         selection = document["selection"]
+        known_fields(selection, {"components", "excluded"}, "selection")
         for name in ("components", "excluded"):
             value = selection.get(name, [])
             if not isinstance(value, list) or any(not isinstance(x, str) for x in value):
                 raise KitFlowError(f"selection.{name} must be an array")
+            if len(value) != len(set(value)):
+                raise KitFlowError(f"selection.{name} contains duplicate IDs")
         for section in ("source", "state"):
             if not isinstance(document.get(section, {}), dict):
                 raise KitFlowError(f"{section} must be a table")
-        records = document.get("state", {}).get("artifacts", {})
-        seeded = document.get("state", {}).get("seeded_mise_keys", [])
+        state = document.get("state", {})
+        known_fields(state, {"artifacts", "seeded_mise_keys"}, "state")
+        records = state.get("artifacts", {})
+        seeded = state.get("seeded_mise_keys", [])
         if not isinstance(seeded, list) or any(
             not isinstance(key, list)
             or len(key) < 2
@@ -65,7 +85,10 @@ def load_config(root: Path) -> dict:
         if not isinstance(records, dict):
             raise KitFlowError("state.artifacts must be a table")
         for identity, record in records.items():
-            if not isinstance(record, dict) or not isinstance(record.get("path"), str):
+            known_fields(
+                record, {"path", "kind", "key", "sha256", "once"}, f"state.artifacts.{identity}"
+            )
+            if not isinstance(record.get("path"), str):
                 raise KitFlowError(f"Invalid state record: {identity}")
             kind = record.get("kind", "file")
             if kind not in {"file", "symlink", "block", "task", "env", "defaults"}:
@@ -74,9 +97,14 @@ def load_config(root: Path) -> dict:
                 raise KitFlowError("Task and environment state must target mise.toml")
             if kind in {"file", "symlink", "block"} and record["path"] == "mise.toml":
                 raise KitFlowError("mise.toml cannot be managed as a whole file")
-            for field_name in ("key", "sha256"):
-                if not isinstance(record.get(field_name), str):
-                    raise KitFlowError(f"Invalid {field_name} in state record: {identity}")
+            if not isinstance(record.get("key"), str):
+                raise KitFlowError(f"Invalid key in state record: {identity}")
+            checksum = record.get("sha256")
+            if not isinstance(checksum, str) or not re.fullmatch(r"[0-9a-f]{64}", checksum):
+                raise KitFlowError(f"Invalid sha256 in state record: {identity}")
+            if "once" in record and not isinstance(record["once"], bool):
+                raise KitFlowError(f"Invalid once in state record: {identity}")
+            safe_path(root, record["path"], allow_link=kind in {"file", "symlink", "block"})
         for value in document.get("source", {}).values():
             if not isinstance(value, str):
                 raise KitFlowError("Source settings must be strings")
@@ -105,18 +133,80 @@ class Plan:
     selected: list[str]
     changes: list[Change] = field(default_factory=list)
     snapshots: dict[str, bytes | str | None] = field(default_factory=dict)
+    box_version: int | None = None
+    retiring_mise: set[str] = field(default_factory=set)
+
+
+def resolve_file_directories(
+    root: Path, artifacts: dict[str, Artifact], mise_snapshot: bytes | None
+) -> dict[str, Artifact]:
+    desired = dict(artifacts)
+    variables = mise.parse((mise_snapshot or b"").decode()).get("vars", {})
+    targets = set()
+    for identity, artifact in desired.items():
+        if artifact.directory_var and artifact.directory_var in variables:
+            directory = variables[artifact.directory_var]
+            if not isinstance(directory, str) or "{" in directory:
+                raise KitFlowError(f"{artifact.directory_var} must be a literal project directory")
+            path = root / directory / Path(artifact.path).name
+            if not path.is_relative_to(root):
+                raise KitFlowError(f"{artifact.directory_var} must point inside the project")
+            artifact = desired[identity] = replace(artifact, path=path.relative_to(root).as_posix())
+        if artifact.kind in {"file", "block", "symlink"}:
+            if artifact.path in targets:
+                raise KitFlowError(f"Duplicate file target: {artifact.path}")
+            targets.add(artifact.path)
+    return desired
+
+
+def has_alternative(result: Plan, path: Path, alternatives: tuple[str, ...]) -> bool:
+    for alternative in alternatives:
+        name, _, key = alternative.partition("#")
+        sibling = path.with_name(name)
+        if not key or sibling.is_symlink():
+            if os.path.lexists(sibling):
+                return True
+            continue
+        relative = sibling.relative_to(result.root).as_posix()
+        if relative not in result.snapshots:
+            result.snapshots[relative] = read_file(sibling)
+        content = result.snapshots[relative]
+        if isinstance(content, bytes) and manifests.has_json_key(content, key):
+            return True
+    return False
 
 
 def plan(
-    root: Path, catalog: Catalog, selected: list[str], document: dict, *, reset: bool = False
+    root: Path,
+    catalog: Catalog,
+    selected: list[str],
+    document: dict,
+    *,
+    reset: bool = False,
+    config_snapshot: bytes | None | Literal[False] = False,
 ) -> Plan:
     root = root.resolve()
     selected = catalog.resolve(selected)
     result = Plan(root, deepcopy(document), selected)
-    result.snapshots[CONFIG] = read_file(root / CONFIG)
+    result.snapshots[CONFIG] = (
+        read_file(root / CONFIG) if config_snapshot is False else config_snapshot
+    )
+    if result.snapshots[CONFIG] is None and not reset and catalog.version:
+        result.box_version = catalog.version
+        if catalog.required_migration:
+            result.document["migrated_box_version"] = catalog.required_migration
     records = result.document.get("state", {}).get("artifacts", {})
     excluded = set(document.get("selection", {}).get("excluded", []))
     desired = catalog.render(selected)
+    if any(artifact.directory_var for artifact in desired.values()):
+        snapshot = read_file(root / "mise.toml")
+        result.snapshots["mise.toml"] = snapshot
+        desired = resolve_file_directories(root, desired, snapshot)
+    result.retiring_mise = {
+        identity
+        for identity, record in records.items()
+        if record.get("kind") in {"task", "env"} and identity not in desired
+    }
     creation_only = {
         row["id"]
         for row in getattr(catalog, "data", {}).get("files", [])
@@ -144,14 +234,15 @@ def plan(
                 "block" if identity in block_ids else record.get("kind", "file"),
                 record.get("key", ""),
             )
-        elif record["path"] != candidates[identity].path:
+        elif record["path"] != candidates[identity].path and not candidates[identity].directory_var:
             raise KitFlowError(f"Template path changed for {identity}; detach or remove it first")
     for identity, artifact in candidates.items():
         if identity in excluded and (not reset or artifact.kind in {"task", "env"}):
             continue
         path = safe_path(root, artifact.path, allow_link=artifact.kind in {"file", "symlink"})
-        current_file = read_entry(path)
-        result.snapshots[artifact.path] = current_file
+        if artifact.path not in result.snapshots:
+            result.snapshots[artifact.path] = read_entry(path)
+        current_file = result.snapshots[artifact.path]
         current = current_file
         record = records.get(identity)
         target = desired.get(identity)
@@ -210,8 +301,22 @@ def plan(
                         )
                     )
                     continue
+        if target and current is None and has_alternative(result, path, target.alternatives):
+            continue
+        if target and target.additions is not None:
+            if isinstance(current, str):
+                continue
+            assert isinstance(target.content, bytes)
+            content = target.content if current is None else current
+            if target.additions:
+                content = manifests.render_manifest(target.path, content, target.additions)
+            if current != content:
+                result.changes.append(
+                    Change(artifact, current, content, "create" if current is None else "update")
+                )
+            continue
         if artifact.once and not reset:
-            if current is None and target and not record:
+            if current is None and target and (not record or artifact.directory_var):
                 result.changes.append(Change(artifact, None, target.content, "create"))
             continue
         if target and current == target.content:
@@ -249,7 +354,8 @@ def plan(
                 "pending" if conflict else "apply",
             )
         )
-    if not reset and set(document.get("selection", {}).get("components", [])) - set(selected):
+    removed_components = set(document.get("selection", {}).get("components", [])) - set(selected)
+    if not reset and (removed_components or result.retiring_mise):
         active_keys = set()
         for artifact in desired.values():
             if artifact.kind == "defaults":
@@ -269,15 +375,16 @@ def plan(
             )
         )
         if obsolete:
-            result.snapshots["mise.toml"] = read_file(root / "mise.toml")
+            if "mise.toml" not in result.snapshots:
+                result.snapshots["mise.toml"] = read_file(root / "mise.toml")
             artifact = Artifact("defaults.cleanup", "mise.toml", b"", True, "defaults")
             result.changes.append(
                 Change(
                     artifact,
                     None,
                     None,
-                    "remove-settings",
-                    reason="No selected component needs: "
+                    "cleanup-settings",
+                    reason="Remove if departing mise entries are removed: "
                     + ", ".join(".".join(key) for key in obsolete),
                     setting_keys=obsolete,
                 )
@@ -289,7 +396,7 @@ def preview_files(result: Plan) -> dict[str, tuple[bytes | str | None, bytes | s
     """Render the exact selected-file candidates without writing anything."""
     after = {}
     for change in result.changes:
-        if change.operation in {"detach", "forget", "adopt"}:
+        if change.operation in {"detach", "forget", "adopt", "track-settings"}:
             continue
         artifact = change.artifact
         before = after.get(artifact.path, result.snapshots.get(artifact.path))
@@ -312,7 +419,7 @@ def preview_files(result: Plan) -> dict[str, tuple[bytes | str | None, bytes | s
 def update_mise(text: str, change: Change) -> str:
     assert isinstance(change.after, bytes) or change.after is None
     if change.artifact.kind == "defaults":
-        if change.operation == "remove-settings":
+        if change.operation in {"remove-settings", "cleanup-settings"}:
             return mise.remove_defaults(text, change.setting_keys)
         assert change.after is not None
         if change.operation == "reset-defaults":
@@ -367,11 +474,21 @@ def _apply(result: Plan, source: dict):
     mise_snapshot = result.snapshots.get("mise.toml")
     assert not isinstance(mise_snapshot, str)
     mise_text = (mise_snapshot or b"").decode()
+    retained_mise = {
+        change.decision
+        for change in result.changes
+        if change.artifact.id in result.retiring_mise
+        and (change.decision in {"skip", "keep"} or change.operation == "detach")
+    }
     for change in result.changes:
         artifact = change.artifact
-        if change.decision == "skip":
+        if change.decision == "skip" or change.operation == "track-settings":
             continue
-        if change.operation == "remove-settings":
+        if change.operation in {"remove-settings", "cleanup-settings"}:
+            if change.operation == "cleanup-settings" and retained_mise:
+                if retained_mise - {"skip"}:
+                    seeded_keys.difference_update(change.setting_keys)
+                continue
             updated = update_mise(mise_text, change)
             if updated != mise_text:
                 mise_text = updated
@@ -416,6 +533,10 @@ def _apply(result: Plan, source: dict):
                 "once": artifact.once,
             }
     selection["excluded"] = sorted(excluded)
+    if result.box_version is not None and all(
+        change.decision != "skip" for change in result.changes
+    ):
+        document["box_version"] = result.box_version
     if seeded_keys or "seeded_mise_keys" in state:
         state["seeded_mise_keys"] = [list(key) for key in sorted(seeded_keys)]
     if "mise.toml" in writes:

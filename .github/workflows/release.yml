@@ -22,7 +22,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
+      - run: bash scripts/update_box_version.sh check
       - name: Validate release metadata
         id: version
         env:

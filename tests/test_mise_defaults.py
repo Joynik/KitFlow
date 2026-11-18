@@ -69,6 +69,32 @@ def test_defaults_never_add_tools(catalog_path):
         Catalog(catalog_path)
 
 
+def test_skipped_translation_task_keeps_settings_until_task_is_removed(tmp_path):
+    box = Catalog(Path(__file__).resolve().parents[1] / "box")
+    retained = ["javascript", "bun", "vscode-extension"]
+    apply(plan(tmp_path, box, [*retained, "script-i18n"], load_config(tmp_path)), {})
+    path = tmp_path / "mise.toml"
+    path.write_text(path.read_text().replace("bun run ", "bun run --silent "))
+    result = plan(tmp_path, box, retained, load_config(tmp_path))
+    task = next(change for change in result.changes if change.artifact.id == "task.translations")
+    assert task.conflict
+    task.decision = "skip"
+    apply(result, {})
+    data = mise.parse(path.read_text())
+    assert "translations" in data["tasks"]
+    assert "I18N_SCRIPT" in data["env"]
+    assert "i18n_script" in data["vars"]
+
+    result = plan(tmp_path, box, retained, load_config(tmp_path))
+    for change in result.changes:
+        change.decision = "apply"
+    apply(result, {})
+    data = mise.parse(path.read_text())
+    assert "translations" not in data["tasks"]
+    assert "I18N_SCRIPT" not in data["env"]
+    assert "i18n_script" not in data["vars"]
+
+
 @pytest.mark.parametrize("section", ["vars", "env", "settings.task"])
 @pytest.mark.parametrize("merge", [mise.add_defaults, mise.reset_defaults])
 def test_late_defaults_stay_outside_task_markers(section, merge):

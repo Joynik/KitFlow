@@ -15,6 +15,8 @@ def downloads(monkeypatch, fixture: Path | None = None):
     fixture_root = fixture or Path(__file__).parent / "fixtures/catalog"
 
     def fetch(url):
+        if url.endswith("/commits?sha=main&path=box%2F.version&per_page=1"):
+            return b"[]"
         calls.append(url)
         assert url == f"https://api.github.com/repos/{source.DEFAULT_REPOSITORY}/tarball/main"
         output = io.BytesIO()
@@ -37,6 +39,21 @@ def test_download_skips_finder_metadata(tmp_path, monkeypatch):
     catalog, _ = source.load_box()
     assert not list(catalog.root.rglob(".DS_Store"))
     assert not any(".DS_Store" in url for url in calls)
+
+
+def test_standard_archive_uses_revision_commit(monkeypatch):
+    revision = "a" * 40
+    calls = []
+
+    def fetch(url):
+        calls.append(url)
+        if "/commits?" in url:
+            return f'[{{"sha":"{revision}"}}]'.encode()
+        return b"archive"
+
+    monkeypatch.setattr(source, "fetch", fetch)
+    assert source.standard_box_archive() == b"archive"
+    assert calls[-1].endswith(f"/tarball/{revision}")
 
 
 def test_first_use_downloads_once_and_keeps_user_edits(monkeypatch):
@@ -175,7 +192,9 @@ def test_invalid_download_keeps_initial_box_absent(monkeypatch, name, kind, link
         member.type = kind
         member.linkname = link
         archive.addfile(member)
-    monkeypatch.setattr(source, "fetch", lambda _: output.getvalue())
+    monkeypatch.setattr(
+        source, "fetch", lambda url: b"[]" if "/commits?" in url else output.getvalue()
+    )
     with pytest.raises(KitFlowError):
         source.load_box()
     assert not settings.box_path().exists()

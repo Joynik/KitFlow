@@ -3,9 +3,31 @@ import sys
 import tomllib
 from pathlib import Path
 
+import pytest
+
 from kitflow import cli, settings
+from kitflow.catalog import KitFlowError
 
 CATALOG = Path(__file__).parent / "fixtures/catalog"
+
+
+def test_update_rejects_config_edit_after_loading_selection(tmp_path, monkeypatch):
+    init = ["init", "-b", str(CATALOG), "-p", str(tmp_path), "-c", "python", "-y"]
+    assert cli.run(cli.parser().parse_args(init)) == 0
+    path = tmp_path / "kitflow.toml"
+    updated = path.read_text().replace('"python"', '"agents"', 1)
+    assert updated != path.read_text()
+    load_box = cli.load_box
+
+    def edit_then_load(box):
+        path.write_text(updated)
+        return load_box(box)
+
+    monkeypatch.setattr(cli, "load_box", edit_then_load)
+    args = cli.parser().parse_args(["update", "-b", str(CATALOG), "-p", str(tmp_path), "-y"])
+    with pytest.raises(KitFlowError, match="kitflow.toml changed after planning"):
+        cli.run(args)
+    assert path.read_text() == updated
 
 
 def invoke(project, *arguments):

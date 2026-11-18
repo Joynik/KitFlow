@@ -1,5 +1,8 @@
 # Catalog format
 
+The standard Box stores its content revision in `.version` and its required project migration in
+`.migration`. Change the migration number only when the Box requires a new migration.
+
 A box describes which files and mise entries to generate for a project's components.
 
 ```text
@@ -95,6 +98,21 @@ ignored. Directories are never deleted. `once` applies per child. Special files 
 Relative links, including dangling links and targets containing `..`, are copied as link text.
 KitFlow compares the text during updates and removes only the link. It never reads or writes the
 target through the link. Absolute links and output paths through symlink parents are rejected.
+
+### Manifest additions
+
+For a creation-only JSON or TOML file, list conditional `additions` templates in the same
+format as the target. During init and update, KitFlow fills missing keys without replacing
+existing values. JSON development dependencies go in `devDependencies`. TOML development
+requirements append to `dependency-groups.dev` by normalized package name. Deselecting a
+component leaves the manifest entries in place.
+
+`directory_var` can place a creation-only file in the directory named by a literal
+`[vars]` value in `mise.toml`. The directory must be inside the project. Without that
+value, the catalog path applies. Changing directories leaves the old file in place.
+
+Use `alternatives` to skip creating a default file when a listed sibling file already exists.
+Use `file.json#key` to match an existing top-level JSON setting.
 
 ### Blocks and composed text
 

@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 0.15.0 — 2026-11-18
+
+### Added
+
+- Add optional unused-code and dependency checks with project-local tooling.
+- Create missing JavaScript and Rust manifests and add selected check settings without replacing
+  existing manifest values.
+- Track standard Box revisions and migrate older project settings before updating files.
+
+### Fixed
+
+- Preserve settings for mise tasks kept during an update and detect concurrent file edits.
+- Offer VS Code extension packaging when a supported bundler is selected.
+
 ## 0.14.1 — 2026-11-18
 
 ### Fixed

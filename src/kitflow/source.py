@@ -2,7 +2,9 @@
 
 import fcntl
 import io
+import json
 import os
+import re
 import shutil
 import ssl
 import subprocess
@@ -24,6 +26,20 @@ MAX_FILE_BYTES = 2 * 1024 * 1024
 
 
 DEFAULT_REPOSITORY = "Joynik/KitFlow"
+
+
+def standard_box_archive() -> bytes:
+    repository = f"https://api.github.com/repos/{DEFAULT_REPOSITORY}"
+    revisions = json.loads(fetch(f"{repository}/commits?sha=main&path=box%2F.version&per_page=1"))
+    if not isinstance(revisions, list):
+        raise KitFlowError("Invalid standard Box revision response")
+    if not revisions:
+        return fetch(f"{repository}/tarball/main")
+    latest = revisions[0]
+    revision = latest.get("sha") if isinstance(latest, dict) else None
+    if not isinstance(revision, str) or not re.fullmatch(r"[0-9a-f]{40}", revision):
+        raise KitFlowError("Invalid standard Box revision commit")
+    return fetch(f"{repository}/tarball/{revision}")
 
 
 def read_instructions(local: Path | None = None) -> str:
@@ -136,8 +152,7 @@ def seed_box(destination: Path):
             return
         staging = Path(tempfile.mkdtemp(prefix=".box-download-", dir=destination.parent))
         print("Downloading standard box…", file=sys.stderr, flush=True)
-        archive = fetch(f"https://api.github.com/repos/{DEFAULT_REPOSITORY}/tarball/main")
-        extract_box(archive, staging)
+        extract_box(standard_box_archive(), staging)
         (staging / "INSTRUCTION.md").write_text(read_instructions(staging), encoding="utf-8")
         Catalog(staging)
         staging.rename(destination)

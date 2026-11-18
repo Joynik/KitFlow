@@ -13,6 +13,14 @@ class KitFlowError(Exception):
     """An actionable configuration or safety error."""
 
 
+def known_fields(value, allowed: set[str], location: str):
+    if not isinstance(value, dict):
+        raise KitFlowError(f"{location} must be a table")
+    unknown = set(value) - allowed
+    if unknown:
+        raise KitFlowError(f"Unknown fields in {location}: {', '.join(sorted(unknown))}")
+
+
 def safe_path(root: Path, name: str, *, allow_link: bool = False) -> Path:
     parts = PurePosixPath(name).parts
     if (
@@ -37,6 +45,18 @@ def safe_path(root: Path, name: str, *, allow_link: bool = False) -> Path:
     return path
 
 
+def box_number(root: Path, name: str) -> int:
+    path = safe_path(root, name)
+    if not path.exists():
+        return 0
+    if not path.is_file():
+        raise KitFlowError(f"Box {name} must be a regular file")
+    value = path.read_text(encoding="utf-8").strip()
+    if not re.fullmatch(r"[1-9][0-9]{0,17}", value):
+        raise KitFlowError(f"Box {name} must contain a positive integer")
+    return int(value)
+
+
 @dataclass(frozen=True)
 class Component:
     id: str
@@ -55,6 +75,9 @@ class Artifact:
     once: bool = False
     kind: str = "file"
     key: str = ""
+    additions: tuple[bytes, ...] | None = None
+    directory_var: str = ""
+    alternatives: tuple[str, ...] = ()
 
 
 class Catalog:
@@ -64,6 +87,9 @@ class Catalog:
         self.standard = (
             standard if standard is not None else (default if default.exists() else None)
         )
+        version_root = self.standard or self.root
+        self.version = box_number(version_root, ".version")
+        self.required_migration = box_number(version_root, ".migration")
         try:
             from kitflow.layers import load_data
 
@@ -107,6 +133,12 @@ class Catalog:
                             list(self.file_templates(row))
                         else:
                             self.template(row["template"])
+                    for addition in row.get("additions", []):
+                        self.enabled(addition, set(self.components))
+                        from kitflow.manifests import render_manifest
+
+                        empty = b"{}" if row["path"].endswith(".json") else b""
+                        render_manifest(row["path"], empty, (self.template(addition["template"]),))
             self.render(list(self.components), check_conflicts=False)
         except (KeyError, TypeError, ValueError, OSError) as error:
             raise KitFlowError(f"Invalid catalog: {error}") from error
@@ -141,6 +173,44 @@ class Catalog:
                 }:
                     raise KitFlowError("File mode must be managed, once or block")
                 if section == "files":
+                    alternatives = row.get("alternatives", [])
+                    if (
+                        not isinstance(alternatives, list)
+                        or any(
+                            not isinstance(name, str)
+                            or not re.fullmatch(r"[a-zA-Z0-9_.-]+(?:#[a-zA-Z0-9_-]+)?", name)
+                            or name.partition("#")[0] in {".", ".."}
+                            for name in alternatives
+                        )
+                        or (alternatives and row.get("mode") != "once")
+                    ):
+                        raise KitFlowError("File alternatives require creation-only sibling names")
+                    if "directory_var" in row and (
+                        not isinstance(row["directory_var"], str)
+                        or not re.fullmatch(r"[a-z][a-z0-9_]*", row["directory_var"])
+                        or row.get("mode") != "once"
+                        or "template" not in row
+                    ):
+                        raise KitFlowError(
+                            "directory_var requires a named variable and a creation-only template"
+                        )
+                    if "additions" in row:
+                        additions = row["additions"]
+                        if (
+                            row.get("mode") != "once"
+                            or not row["path"].endswith((".json", ".toml"))
+                            or "template" not in row
+                            or not isinstance(additions, list)
+                            or any(
+                                not isinstance(entry, dict)
+                                or set(entry) - {"template", "when", "when_any", "when_not"}
+                                or not isinstance(entry.get("template"), str)
+                                for entry in additions
+                            )
+                        ):
+                            raise KitFlowError(
+                                "Manifest additions require a creation-only JSON or TOML template and conditional templates"
+                            )
                     sources = sum(key in row for key in ("template", "empty", "fragments"))
                     if sources != 1:
                         raise KitFlowError(
@@ -366,12 +436,30 @@ class Catalog:
                     content = content.rstrip(b"\r\n") + b"\n" if content else b""
                     file_blocks.wrap(content)
                     kind = "block"
+                if ("directory_var" in row or row.get("alternatives")) and (
+                    is_link or file_id != identity
+                ):
+                    raise KitFlowError(
+                        "Directory variables and alternatives require one regular file"
+                    )
+                additions = None
+                if "additions" in row:
+                    if is_link or file_id != identity:
+                        raise KitFlowError("Manifest additions require one regular file")
+                    additions = tuple(
+                        self.template(entry["template"])
+                        for entry in row["additions"]
+                        if self.enabled(entry, chosen)
+                    )
                 result[file_id] = Artifact(
                     file_id,
                     target,
                     content,
                     row.get("mode") == "once",
                     kind=kind,
+                    additions=additions,
+                    directory_var=row.get("directory_var", ""),
+                    alternatives=tuple(row.get("alternatives", [])),
                 )
         for row in self.data.get("defaults", []):
             if self.enabled(row, chosen):

@@ -1,0 +1,5 @@
+[dependency-groups]
+dev = ["deptry>=0.25.1"]
+
+[tool.deptry]
+ignore_notebooks = true

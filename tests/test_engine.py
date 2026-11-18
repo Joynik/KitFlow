@@ -9,6 +9,7 @@ from kitflow.engine import apply, load_config, plan
 class FakeCatalog(Catalog):
     def __init__(self, artifacts):
         self.artifacts = artifacts
+        self.version = 0
 
     def resolve(self, selected, *, check_conflicts=True):
         return selected

@@ -36,6 +36,12 @@ deselections; new choices can introduce recommendations.
   running `update`. Existing selections work after the removal of profiles; old profile files are
   ignored.
 
+The standard Box has a numbered revision. `kitflow box update` installs the latest stamped revision.
+Each project records its applied revision in `kitflow.toml`. If a migration is needed,
+`kitflow update` prompts for it before showing the update menu. Legacy projects without a revision
+start at Box 0. The temporary transition to Box 1 tracks known Translation keys when Translation is
+enabled, or offers to remove them when it is disabled. It preserves other keys.
+
 `kitflow update` offers:
 
 | Action | Result |
@@ -65,7 +71,9 @@ require a decision. Choose **Replace** to accept the proposed write or removal, 
 files are adopted and skipping an untracked file leaves it user-owned.
 
 - **Creation-only files** such as `README.md`, `PROJECT.md` and `pyproject.toml` are created when
-  absent. Ordinary updates preserve them.
+  absent. Ordinary updates preserve them. Language manifests also accept missing dependency and
+  configuration entries for selected tools. KitFlow keeps existing values and leaves these entries
+  in place if you later deselect the tool.
 - **Ignore files** (`.gitignore`, `.dockerignore`, `.vscodeignore`) update only inside `# <kitflow>`
   / `# </kitflow>`. Put personal rules inside `# <user>` / `# </user>`. Missing or damaged KitFlow
   markers leave the file untouched. To opt in an existing file, add an empty KitFlow block above
@@ -75,7 +83,8 @@ files are adopted and skipping an untracked file leaves it user-owned.
 - **`mise.toml`** uses marked tasks and environment entries. Remove both markers to take ownership
   of an entry. Ordinary updates preserve vars, env and settings. Deselecting a component removes
   keys KitFlow added for it, even after edits, unless another selected component needs them. Keys
-  added by older KitFlow versions without ownership records stay in place.
+  without ownership records stay in place unless a confirmed migration covers them. If you skip
+  removing a departing mise task, its settings stay until you remove the task.
 - **`.env`** stays user-owned. `mise run env:local` creates it from `.env.example` when absent. Edit
   generated ignore and env fragments in your box under `templates/gitignore/`,
   `templates/dockerignore/`, `templates/vscodeignore/` or `templates/env/`.
@@ -88,6 +97,7 @@ the selected components.
 | Task | Purpose |
 | --- | --- |
 | `check` | Run lint, format, type and configured migration or schema checks without fixes |
+| `check-unused`, `check-deps` | Report potentially unused code or dependency issues for selected tools |
 | `lint`, `lint-fix` | Report lint problems or apply supported fixes |
 | `format-check`, `format` | Check formatting or rewrite files |
 | `typecheck`, `test` | Check types or run selected test runners |
@@ -100,6 +110,11 @@ Aggregate checks call the existing tasks, including user overrides. Tool prerequ
 Clippy fixes require a clean working tree. Django and djLint use uv, which may sync the environment.
 djLint scans `templates/` by default. Initial `[settings]` sets `task.quiet = true` to hide command
 echoes while keeping tool output. Add it manually to an older project if desired.
+
+Install the project's development dependencies before running its optional code and dependency
+checks. For a uv project, run `uv sync`; for a Bun project, run `bun install`. For Cargo Machete,
+run `mise run install-cargo-machete` once to install its executable under the Rust project's
+`target/` directory. These checks report findings without applying fixes.
 
 Change runtime defaults in `mise.toml` and keep secrets or local overrides in `.env`. User settings
 are seeded once. For nested apps, set `javascript_directory`, `rust_directory` or `swift_directory`
@@ -202,7 +217,7 @@ nested apps, move the initial files and set `prisma_config`, `prisma_schema_path
   `kitflow-box.toml` for one command. Pass it each time you want that box.
 - `init --components/-c IDS` supplies the complete comma-separated selection. Dependencies are added
   and omitted components are removed. Example: `kitflow init -c python,ruff,ty -y`.
-- `--yes/-y` confirms safe changes. `update -y` skips the menu and keeps the saved selection.
+- `--yes/-y` confirms the plan, including pending migrations. `update -y` keeps the saved selection.
   Conflicts stop unattended updates.
 - `init --manage/-m ID` restores management of an excluded artifact with conflict review. Repeat it
   for multiple IDs. Use file rule IDs, `task.NAME` or `env.NAME`.

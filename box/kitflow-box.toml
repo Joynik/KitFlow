@@ -121,6 +121,38 @@ requires = ["django"]
 conflicts = []
 recommended = true
 
+[[components]]
+id = "knip"
+label = "Knip"
+category = "Checks"
+description = "Find unused files and exports, and check package declarations."
+requires = ["javascript"]
+when = ["javascript"]
+
+[[components]]
+id = "vulture"
+label = "Vulture"
+category = "Checks"
+description = "Find potentially unused Python code."
+requires = ["python"]
+when = ["python"]
+
+[[components]]
+id = "deptry"
+label = "deptry"
+category = "Checks"
+description = "Compare Python imports with declared dependencies."
+requires = ["python"]
+when = ["python"]
+
+[[components]]
+id = "cargo-machete"
+label = "Cargo Machete"
+category = "Checks"
+description = "Find unused Cargo dependencies."
+requires = ["rust"]
+when = ["rust"]
+
 # Components: build tools — Python
 
 [[components]]
@@ -181,8 +213,9 @@ conflicts = ["vscode-extension-bun"]
 id = "vscode-extension-vsix"
 label = "VS Code Extension — VSIX packaging"
 category = "Build tools"
-description = "Create a local VSIX. Install @vscode/vsce as a dev dependency."
+description = "Create a local VSIX with Bun build or esbuild. Install @vscode/vsce as a dev dependency."
 requires = ["vscode-extension"]
+when_any = ["vscode-extension-bun", "vscode-extension-esbuild"]
 
 # Components: tools — Swift
 
@@ -583,6 +616,11 @@ path = "pyproject.toml"
 template = "templates/pyproject.toml"
 when = ["python"]
 mode = "once"
+directory_var = "project_root"
+additions = [
+  { template = "templates/manifests/vulture.toml", when = ["vulture"] },
+  { template = "templates/manifests/deptry.toml", when = ["deptry"] },
+]
 
 [[files]]
 id = "python-version"
@@ -638,11 +676,58 @@ mode = "managed"
 # Files: VS Code desktop extension
 
 [[files]]
+id = "javascript-manifest"
+path = "package.json"
+template = "templates/package.json"
+when = ["javascript"]
+mode = "once"
+directory_var = "javascript_directory"
+when_not = ["vscode-extension"]
+additions = [
+  { template = "templates/manifests/knip.json", when = ["knip"] },
+]
+
+[[files]]
+id = "rust-manifest"
+path = "Cargo.toml"
+template = "templates/Cargo.toml"
+when = ["rust"]
+mode = "once"
+directory_var = "rust_directory"
+when_not = ["tauri"]
+additions = [
+  { template = "templates/manifests/cargo-machete.toml", when = ["cargo-machete"] },
+]
+
+[[files]]
+id = "tauri-rust-manifest"
+path = "src-tauri/Cargo.toml"
+template = "templates/Cargo.toml"
+when = ["tauri"]
+mode = "once"
+directory_var = "rust_directory"
+additions = [
+  { template = "templates/manifests/cargo-machete.toml", when = ["cargo-machete"] },
+]
+
+[[files]]
+id = "knip-config"
+path = "knip.json"
+template = "templates/knip.json"
+when = ["knip"]
+mode = "once"
+directory_var = "javascript_directory"
+alternatives = [".knip.json", ".knip.jsonc", "knip.jsonc", "knip.ts", "knip.js", "knip.config.ts", "knip.config.js", "package.json#knip"]
+
+[[files]]
 id = "vscode-extension-manifest"
 path = "package.json"
 template = "templates/vscode-extension/package.json"
 when = ["vscode-extension"]
 mode = "once"
+additions = [
+  { template = "templates/manifests/knip.json", when = ["knip"] },
+]
 
 [[files]]
 id = "vscode-extension-javascript"
@@ -900,6 +985,54 @@ when = ["rumdl"]
 description = "Lint selected project components"
 
 [[tasks]]
+id = "knip-unused"
+name = "check-unused"
+template = "tasks/knip-unused.sh"
+when = ["knip"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Find potentially unused code and files"
+
+[[tasks]]
+id = "python-vulture"
+name = "check-unused"
+template = "tasks/python-vulture.sh"
+when = ["vulture"]
+directory_env = "PROJECT_ROOT"
+description = "Find potentially unused code and files"
+
+[[tasks]]
+id = "knip-deps"
+name = "check-deps"
+template = "tasks/knip-deps.sh"
+when = ["knip"]
+directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
+description = "Check declared dependencies"
+
+[[tasks]]
+id = "python-deptry"
+name = "check-deps"
+template = "tasks/python-deptry.sh"
+when = ["deptry"]
+directory_env = "PROJECT_ROOT"
+description = "Check declared dependencies"
+
+[[tasks]]
+id = "rust-machete"
+name = "check-deps"
+template = "tasks/rust-machete.sh"
+when = ["cargo-machete"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Check declared dependencies"
+
+[[tasks]]
+id = "cargo-machete-install"
+name = "install-cargo-machete"
+template = "tasks/cargo-machete-install.sh"
+when = ["cargo-machete"]
+directory_env = "PROJECT_RUST_DIRECTORY"
+description = "Install Cargo Machete in the project"
+
+[[tasks]]
 id = "rust-lint"
 name = "lint"
 template = "tasks/rust-lint.sh"
@@ -1131,6 +1264,15 @@ id = "vscode-extension-package"
 name = "package"
 template = "tasks/vscode-extension-package.sh"
 when = ["vscode-extension-vsix"]
+when_any = ["vscode-extension-bun", "vscode-extension-esbuild"]
+description = "Package the extension as a local VSIX"
+
+[[tasks]]
+id = "vscode-extension-package-missing-bundler"
+name = "package"
+template = "tasks/vscode-extension-package-missing-bundler.sh"
+when = ["vscode-extension-vsix"]
+when_not = ["vscode-extension-bun", "vscode-extension-esbuild"]
 description = "Package the extension as a local VSIX"
 
 # Tasks: types and native checks
@@ -1751,6 +1893,11 @@ when = ["python"]
 id = "javascript"
 template = "settings/javascript.toml"
 when = ["javascript"]
+
+[[defaults]]
+id = "rust-tauri"
+template = "settings/rust-tauri.toml"
+when = ["tauri"]
 
 [[defaults]]
 id = "rust"

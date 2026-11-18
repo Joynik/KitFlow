@@ -2,13 +2,12 @@
 
 import itertools
 import json
-import re
 import tomllib
 from pathlib import Path
 
 from kitflow import mise
-from kitflow.catalog import Artifact, Catalog, KitFlowError, safe_path
-from kitflow.engine import CONFIG, load_config, plan, read_file
+from kitflow.catalog import Artifact, Catalog, KitFlowError, known_fields, safe_path
+from kitflow.engine import CONFIG, load_config, plan, read_file, resolve_file_directories
 
 BOX_FIELDS = {
     "steps": {"id", "label", "categories", "description", "order", "when", "when_any"},
@@ -33,6 +32,9 @@ BOX_FIELDS = {
         "mode",
         "empty",
         "fragments",
+        "additions",
+        "directory_var",
+        "alternatives",
         "format",
     },
     "tasks": {
@@ -52,14 +54,6 @@ BOX_FIELDS = {
     "env": {"id", "name", "value", "when", "when_any"},
     "defaults": {"id", "template", "when", "when_any"},
 }
-
-
-def known_fields(value, allowed: set[str], location: str):
-    if not isinstance(value, dict):
-        raise KitFlowError(f"{location} must be a table")
-    unknown = set(value) - allowed
-    if unknown:
-        raise KitFlowError(f"Unknown fields in {location}: {', '.join(sorted(unknown))}")
 
 
 def validate_box(root: Path, *, standard: Path | None = None) -> Catalog:
@@ -82,42 +76,6 @@ def validate_box(root: Path, *, standard: Path | None = None) -> Catalog:
                 if "empty" in row and type(row["empty"]) is not bool:
                     raise KitFlowError(f"{location}.empty must be a boolean")
     return Catalog(root, standard=standard)
-
-
-def validate_project(root: Path) -> dict:
-    content = read_file(root / CONFIG)
-    if content is None:
-        raise KitFlowError("Project configuration is missing")
-    data = tomllib.loads(content.decode("utf-8"))
-    known_fields(data, {"schema", "selection", "source", "state"}, "project")
-    if type(data.get("schema")) is not int:
-        raise KitFlowError("schema must be an integer")
-    known_fields(data.get("selection", {}), {"components", "excluded"}, "selection")
-    state = data.get("state", {})
-    known_fields(state, {"artifacts", "seeded_mise_keys"}, "state")
-    records = state.get("artifacts", {})
-    if not isinstance(records, dict):
-        raise KitFlowError("state.artifacts must be a table")
-    for identity, record in records.items():
-        location = f"state.artifacts.{identity}"
-        known_fields(record, {"path", "kind", "key", "sha256", "once"}, location)
-        if isinstance(record.get("path"), str):
-            safe_path(
-                root, record["path"], allow_link=record.get("kind", "file") in {"file", "symlink"}
-            )
-        if "once" in record and type(record["once"]) is not bool:
-            raise KitFlowError(f"{location}.once must be a boolean")
-        checksum = record.get("sha256")
-        if not isinstance(checksum, str) or not re.fullmatch(r"[0-9a-f]{64}", checksum):
-            raise KitFlowError(
-                f"{location}.sha256 must contain 64 lowercase hexadecimal characters"
-            )
-    document = load_config(root)
-    for field in ("components", "excluded"):
-        values = document["selection"].get(field, [])
-        if len(values) != len(set(values)):
-            raise KitFlowError(f"selection.{field} contains duplicate IDs")
-    return document
 
 
 def validate_syntax(path: Path, suffix: str | None = None):
@@ -197,7 +155,7 @@ def configuration_issues(
         return issues
     document = None
     try:
-        document = validate_project(project)
+        document = load_config(project)
         if catalog is not None:
             plan(project, catalog, document["selection"].get("components", []), document)
     except errors as error:
@@ -205,6 +163,10 @@ def configuration_issues(
     if document is not None and catalog is not None:
         try:
             artifacts = catalog.render(document["selection"].get("components", []))
+            if any(artifact.directory_var for artifact in artifacts.values()):
+                artifacts = resolve_file_directories(
+                    project.resolve(), artifacts, read_file(project / "mise.toml")
+                )
         except errors:
             artifacts = {}
         excluded = document["selection"].get("excluded", [])

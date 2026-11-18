@@ -1,6 +1,7 @@
 """Build selectable reset edits and translate the selection into the guarded plan."""
 
 import difflib
+import json
 import tomllib
 from collections import defaultdict
 from dataclasses import dataclass, replace
@@ -213,8 +214,22 @@ def select_reset(result: Plan, files: dict[str, ResetFile], selected: dict[str, 
         for change in file.selected_changes(selected.get(name, set()))
     ]
     chosen = replace(result, changes=changes)
+    json_manifests = {
+        change.artifact.path
+        for change in changes
+        if change.artifact.additions is not None and change.artifact.path.endswith(".json")
+    }
     for name, (_, content) in preview_files(chosen).items():
-        if PurePosixPath(name).suffix == ".toml" and isinstance(content, bytes):
+        if not isinstance(content, bytes):
+            continue
+        if name in json_manifests:
+            try:
+                json.loads(content)
+            except ValueError as error:
+                raise KitFlowError(
+                    f"Selected changes would produce invalid JSON in {name}: {error}"
+                ) from error
+        elif PurePosixPath(name).suffix == ".toml":
             try:
                 tomllib.loads(content.decode())
                 if name == "mise.toml":
