@@ -53,6 +53,15 @@ def load_config(root: Path) -> dict:
             if not isinstance(document.get(section, {}), dict):
                 raise KitFlowError(f"{section} must be a table")
         records = document.get("state", {}).get("artifacts", {})
+        seeded = document.get("state", {}).get("seeded_mise_keys", [])
+        if not isinstance(seeded, list) or any(
+            not isinstance(key, list)
+            or len(key) < 2
+            or key[0] not in ("vars", "env", "settings")
+            or any(not isinstance(part, str) for part in key)
+            for key in seeded
+        ):
+            raise KitFlowError("Invalid state.seeded_mise_keys")
         if not isinstance(records, dict):
             raise KitFlowError("state.artifacts must be a table")
         for identity, record in records.items():
@@ -86,6 +95,7 @@ class Change:
     reason: str = ""
     decision: str = "apply"
     state_baseline: bytes | str | None = None
+    setting_keys: tuple[tuple[str, ...], ...] = ()
 
 
 @dataclass
@@ -176,6 +186,8 @@ def plan(
                         reason="Seed missing user settings",
                     )
                 )
+            elif not target and record:
+                result.changes.append(Change(artifact, None, None, "forget"))
             continue
         if artifact.kind in {"task", "env"}:
             assert not isinstance(current_file, str)
@@ -237,6 +249,39 @@ def plan(
                 "pending" if conflict else "apply",
             )
         )
+    if not reset and set(document.get("selection", {}).get("components", [])) - set(selected):
+        active_keys = set()
+        for artifact in desired.values():
+            if artifact.kind == "defaults":
+                assert isinstance(artifact.content, bytes)
+                active_keys.update(mise.setting_keys(mise.parse(artifact.content.decode())))
+            elif artifact.kind == "env":
+                active_keys.add(("env", artifact.key))
+        seeded_keys = map(tuple, document.get("state", {}).get("seeded_mise_keys", []))
+        obsolete = tuple(
+            sorted(
+                key
+                for key in seeded_keys
+                if not any(
+                    key[: len(active)] == active or active[: len(key)] == key
+                    for active in active_keys
+                )
+            )
+        )
+        if obsolete:
+            result.snapshots["mise.toml"] = read_file(root / "mise.toml")
+            artifact = Artifact("defaults.cleanup", "mise.toml", b"", True, "defaults")
+            result.changes.append(
+                Change(
+                    artifact,
+                    None,
+                    None,
+                    "remove-settings",
+                    reason="No selected component needs: "
+                    + ", ".join(".".join(key) for key in obsolete),
+                    setting_keys=obsolete,
+                )
+            )
     return result
 
 
@@ -267,6 +312,8 @@ def preview_files(result: Plan) -> dict[str, tuple[bytes | str | None, bytes | s
 def update_mise(text: str, change: Change) -> str:
     assert isinstance(change.after, bytes) or change.after is None
     if change.artifact.kind == "defaults":
+        if change.operation == "remove-settings":
+            return mise.remove_defaults(text, change.setting_keys)
         assert change.after is not None
         if change.operation == "reset-defaults":
             return mise.reset_defaults(text, change.after)
@@ -313,6 +360,7 @@ def _apply(result: Plan, source: dict):
     selection["components"] = result.selected
     excluded = set(selection.get("excluded", []))
     state = document.setdefault("state", {})
+    seeded_keys = set(map(tuple, state.get("seeded_mise_keys", [])))
     records = state.setdefault("artifacts", {})
     document["source"] = source
     writes: dict[str, bytes | str | None] = {}
@@ -322,6 +370,13 @@ def _apply(result: Plan, source: dict):
     for change in result.changes:
         artifact = change.artifact
         if change.decision == "skip":
+            continue
+        if change.operation == "remove-settings":
+            updated = update_mise(mise_text, change)
+            if updated != mise_text:
+                mise_text = updated
+                writes["mise.toml"] = updated.encode()
+            seeded_keys.difference_update(change.setting_keys)
             continue
         if change.decision == "keep" or change.operation == "detach":
             excluded.add(artifact.id)
@@ -340,7 +395,12 @@ def _apply(result: Plan, source: dict):
             if change.operation != "adopt":
                 writes[artifact.path] = change.after
         else:
+            before_keys = (
+                mise.setting_keys(mise.parse(mise_text)) if artifact.kind == "defaults" else set()
+            )
             mise_text = update_mise(mise_text, change)
+            if artifact.kind == "defaults":
+                seeded_keys.update(mise.setting_keys(mise.parse(mise_text)) - before_keys)
             writes["mise.toml"] = mise_text.encode()
         excluded.discard(artifact.id)
         if change.after is None:
@@ -356,6 +416,8 @@ def _apply(result: Plan, source: dict):
                 "once": artifact.once,
             }
     selection["excluded"] = sorted(excluded)
+    if seeded_keys or "seeded_mise_keys" in state:
+        state["seeded_mise_keys"] = [list(key) for key in sorted(seeded_keys)]
     if "mise.toml" in writes:
         mise.parse(mise_text)
     writes[CONFIG] = tomlkit.dumps(document).encode()

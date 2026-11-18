@@ -119,6 +119,47 @@ def add_defaults(text: str, content: bytes) -> str:
     return reset_defaults(text, missing_defaults(text, content))
 
 
+def setting_keys(data: dict) -> set[tuple[str, ...]]:
+    def leaves(table, prefix):
+        for name, value in table.items():
+            path = (*prefix, name)
+            if isinstance(value, dict):
+                yield from leaves(value, path)
+            else:
+                yield path
+
+    return {
+        path
+        for section in ("vars", "env", "settings")
+        if isinstance(data.get(section), dict)
+        for path in leaves(data[section], (section,))
+    }
+
+
+def remove_defaults(text: str, keys: tuple[tuple[str, ...], ...]) -> str:
+    import tomlkit
+
+    document = tomlkit.parse(text)
+    present = setting_keys(document)
+    for *parents, name in keys:
+        if (*parents, name) not in present:
+            continue
+        table = document
+        for parent in parents:
+            table = table[parent]
+        del table[name]
+    result = tomlkit.dumps(document)
+    protect_blocks(text, result)
+    return result
+
+
+def protect_blocks(before: str, after: str):
+    if {key: span[2] for key, span in blocks(before).items()} != {
+        key: span[2] for key, span in blocks(after).items()
+    }:
+        raise KitFlowError("Mise defaults cannot change managed task or environment blocks")
+
+
 def reset_defaults(text: str, content: bytes) -> str:
     """Reset only keys defined by the current box, retaining other user settings."""
     import tomlkit
@@ -151,8 +192,5 @@ def reset_defaults(text: str, content: bytes) -> str:
     result = tomlkit.dumps(document)
     for header in headers:
         result = result.replace(header, "")
-    if {key: span[2] for key, span in blocks(result).items()} != {
-        key: span[2] for key, span in owned.items()
-    }:
-        raise KitFlowError("Mise defaults cannot change managed task or environment blocks")
+    protect_blocks(text, result)
     return result

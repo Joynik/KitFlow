@@ -22,7 +22,7 @@ def catalog_path(tmp_path):
     return root
 
 
-def test_defaults_are_user_owned_across_updates_and_component_removal(catalog_path, tmp_path):
+def test_deselect_removes_seeded_defaults_even_after_edit(catalog_path, tmp_path):
     project = tmp_path / "project"
     project.mkdir()
     path = project / "mise.toml"
@@ -38,8 +38,29 @@ def test_defaults_are_user_owned_across_updates_and_component_removal(catalog_pa
     catalog = Catalog(catalog_path)
     assert not plan(project, catalog, ["python", "ruff"], load_config(project)).changes
     apply(plan(project, catalog, [], load_config(project)), {})
-    assert tomllib.loads(path.read_text())["vars"]["python_source"] == "backend"
-    assert tomllib.loads(path.read_text())["vars"]["port"] == 9000
+    data = tomllib.loads(path.read_text())
+    assert data["vars"] == {"port": 9000}
+    assert "PYTHON_SOURCE" not in data["env"]
+    apply(plan(project, catalog, ["python"], load_config(project)), {})
+    assert tomllib.loads(path.read_text())["vars"]["python_source"] == "changed"
+
+
+def test_deselect_preserves_shared_defaults_and_untracked_keys(catalog_path, tmp_path):
+    project = tmp_path / "project"
+    project.mkdir()
+    path = project / "mise.toml"
+    (catalog_path / "shared.toml").write_text('[vars]\npython_source="."\n')
+    with (catalog_path / "kitflow-box.toml").open("a") as stream:
+        stream.write('[[defaults]]\nid="shared"\ntemplate="shared.toml"\nwhen=["agents"]\n')
+    catalog = Catalog(catalog_path)
+    apply(plan(project, catalog, ["python", "agents"], load_config(project)), {})
+    apply(plan(project, catalog, ["agents"], load_config(project)), {})
+    assert tomllib.loads(path.read_text())["vars"] == {"python_source": "."}
+
+    legacy = load_config(project)
+    del legacy["state"]["seeded_mise_keys"]
+    apply(plan(project, catalog, [], legacy), {})
+    assert tomllib.loads(path.read_text())["vars"] == {"python_source": "."}
 
 
 def test_defaults_never_add_tools(catalog_path):

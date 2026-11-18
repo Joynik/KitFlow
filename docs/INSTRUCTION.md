@@ -73,7 +73,9 @@ files are adopted and skipping an untracked file leaves it user-owned.
   has a `files` list, remove it before packaging with `.vscodeignore`. Move any packaging rules you
   still need into the user block.
 - **`mise.toml`** uses marked tasks and environment entries. Remove both markers to take ownership
-  of an entry. Ordinary updates preserve user-owned vars, env and settings.
+  of an entry. Ordinary updates preserve vars, env and settings. Deselecting a component removes
+  keys KitFlow added for it, even after edits, unless another selected component needs them. Keys
+  added by older KitFlow versions without ownership records stay in place.
 - **`.env`** stays user-owned. `mise run env:local` creates it from `.env.example` when absent. Edit
   generated ignore and env fragments in your box under `templates/gitignore/`,
   `templates/dockerignore/`, `templates/vscodeignore/` or `templates/env/`.

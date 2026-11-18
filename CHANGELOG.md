@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.14.0 — 2026-11-18
+
+### Changed
+
+- Remove tracked mise settings when deselecting the last component that needs them.
+
 ### Fixed
 
 - Exclude Node dependencies, Bun lockfiles and rumdl files from VS Code extension packages.

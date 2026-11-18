@@ -159,9 +159,10 @@ when = ["python"]
   Fragments of the same task must agree where they declare metadata. For example,
   `usage = 'arg "[name]" help="Migration name"'` exposes `usage_name` to the shell.
 - **Defaults.** Template TOML may contain only `vars`, `env` and `settings`. Each rule seeds missing
-  keys once. Existing values and comments stay intact. Defaults have no ownership markers. Ordinary
-  updates and component removal preserve them, including keys you deleted. New rules can seed other
-  missing keys. The standard box gives `.env` overrides priority.
+  keys once. KitFlow records the keys it adds in `kitflow.toml`. Changing values does not change
+  ownership. Deselecting a component removes its tracked keys unless another selected component
+  still needs them. Pre-existing and untracked keys stay intact. The standard box gives `.env`
+  overrides priority.
 - **Environment.** Use shell variable names and literal string values. Each entry has its own
   markers in `[env]` and an artifact ID such as `env.PYTHONUNBUFFERED`.
 
