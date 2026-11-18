@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.13.2 — 2026-11-18
+
+### Fixed
+
+- Generate `.vscodeignore` for VS Code extensions. Preserve personal rules in marked `.vscodeignore`
+  and `.dockerignore` files during updates.
+- Show checks before build tools so Bun-based VS Code extension builds appear on the first pass.
+
 ## 0.13.1 — 2026-11-18
 
 ### Fixed
