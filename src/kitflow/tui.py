@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from difflib import SequenceMatcher
+from pathlib import PurePosixPath
 
 from rich.text import Text
 from textual import on
@@ -13,6 +14,7 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.events import Resize
 from textual.theme import Theme
 from textual.widgets import Button, Footer, Label, ListItem, ListView, SelectionList, Static
+from textual.widgets.selection_list import Selection as Choice
 
 from kitflow.catalog import Catalog, KitFlowError
 from kitflow.reset import Edit, ResetFile
@@ -188,10 +190,7 @@ class Configurator(KitFlowApp[Selection | None]):
             with choices.prevent(SelectionList.SelectionToggled, SelectionList.SelectedChanged):
                 choices.clear_options()
                 if self.step.id == "ownership":
-                    choices.add_options(
-                        (Text(f"Manage again: {x}"), f"restore:{x}", False)
-                        for x in sorted(self.model.excluded)
-                    )
+                    choices.add_options(self.ownership_choices())
                 else:
                     choices.add_options(
                         (
@@ -209,7 +208,10 @@ class Configurator(KitFlowApp[Selection | None]):
                         for x in self.model.choices(self.step)
                     )
             if choices.option_count:
-                choices.highlighted = min(highlighted, choices.option_count - 1)
+                index = min(highlighted, choices.option_count - 1)
+                if choices.get_option_at_index(index).disabled:
+                    index += 1
+                choices.highlighted = index
             reviewing = self.step.id == "review"
             choices.display = not reviewing
             self.query_one("#review").display = reviewing
@@ -232,6 +234,42 @@ class Configurator(KitFlowApp[Selection | None]):
             self.query_one("#details", Static).update("")
         finally:
             self.refreshing = False
+
+    def ownership_choices(self) -> list[Choice[str]]:
+        excluded = self.model.excluded
+        file_ids = {identity.split("/", 1)[0] for identity in excluded}
+        file_paths = {
+            identity: path
+            for row in self.catalog.data.get("files", [])
+            if row["id"] in file_ids
+            for identity, path, _ in self.catalog.file_templates(row)
+        }
+        groups: dict[str, list[tuple[str, str]]] = {
+            "Files": [],
+            "Mise tasks": [],
+            "Mise environment variables": [],
+        }
+        for identity in excluded:
+            if identity in file_paths:
+                groups["Files"].append((PurePosixPath(file_paths[identity]).name, identity))
+            elif identity.startswith("task."):
+                groups["Mise tasks"].append((identity, identity))
+            elif identity.startswith("env."):
+                groups["Mise environment variables"].append((identity, identity))
+            else:
+                groups["Files"].append((PurePosixPath(identity).name, identity))
+        return [
+            choice
+            for group, entries in groups.items()
+            if entries
+            for choice in [
+                Choice(Text(group, style="bold"), f"heading:{group}", disabled=True),
+                *(
+                    Choice(Text(label), f"restore:{identity}")
+                    for label, identity in sorted(entries)
+                ),
+            ]
+        ]
 
     def selection_summary(self) -> str:
         groups: dict[str, list[str]] = {}
@@ -265,6 +303,8 @@ class Configurator(KitFlowApp[Selection | None]):
         if self.refreshing:
             return
         identity = event.selection.value
+        if identity.startswith("heading:"):
+            return
         if identity.startswith("restore:"):
             description = "Return this artifact to KitFlow. Review differences before applying."
         else:

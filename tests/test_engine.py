@@ -43,9 +43,11 @@ def test_file_lifecycle_manual_config_edit_and_once(tmp_path):
     assert (tmp_path / "PROJECT.md").read_text() == "My project"
 
 
-def test_conflicts_and_persistent_exclusion(tmp_path):
-    (tmp_path / "ruff.toml").write_text("custom")
-    artifacts = {"ruff": Artifact("ruff", "ruff.toml", b"standard")}
+@pytest.mark.parametrize("path", ["ruff.toml", "nested/ruff.toml"])
+def test_conflicts_and_persistent_exclusion(tmp_path, path):
+    (tmp_path / path).parent.mkdir(exist_ok=True)
+    (tmp_path / path).write_text("custom")
+    artifacts = {"ruff": Artifact("ruff", path, b"standard")}
     result = make_plan(tmp_path, artifacts)
     assert result.changes[0].conflict
     with pytest.raises(KitFlowError, match="Resolve conflicts"):
@@ -54,7 +56,8 @@ def test_conflicts_and_persistent_exclusion(tmp_path):
     result.changes[0].decision = "keep"
     apply(result, {})
     assert not make_plan(tmp_path, artifacts).changes
-    assert (tmp_path / "ruff.toml").read_text() == "custom"
+    assert (tmp_path / path).read_text() == "custom"
+    assert load_config(tmp_path)["selection"]["excluded"] == ["ruff.toml"]
 
 
 def test_local_modification_update_and_delete_protected(tmp_path):
@@ -247,3 +250,27 @@ def test_managed_file_becomes_creation_only_before_update_or_removal(tmp_path, s
         c.artifact.id == "pyproject"
         for c in plan(project, Catalog(box), ["python"], load_config(project)).changes
     )
+
+
+def test_exclusion_uses_internal_path_for_files_with_the_same_name(tmp_path):
+    (tmp_path / "one").mkdir()
+    local = tmp_path / "one/settings.toml"
+    local.write_text("custom")
+    artifacts = {
+        "one": Artifact("one", "one/settings.toml", b"standard"),
+        "two": Artifact("two", "two/settings.toml", b"standard"),
+    }
+    result = make_plan(tmp_path, artifacts)
+    assert result.changes[0].conflict
+    result.changes[0].decision = "keep"
+    apply(result, {})
+    document = load_config(tmp_path)
+    assert document["selection"]["excluded"] == ["settings.toml"]
+    assert document["state"]["excluded_paths"] == ["one/settings.toml"]
+
+    artifacts["two"] = Artifact("two", "two/settings.toml", b"updated")
+    result = make_plan(tmp_path, artifacts)
+    assert [change.artifact.path for change in result.changes] == ["two/settings.toml"]
+    apply(result, {})
+    assert local.read_text() == "custom"
+    assert (tmp_path / "two/settings.toml").read_text() == "updated"

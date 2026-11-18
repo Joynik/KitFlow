@@ -106,6 +106,25 @@ def test_short_options_configure_another_project_and_restore_management(tmp_path
     assert tomllib.loads(config.read_text())["selection"]["excluded"] == []
 
 
+def test_update_migrates_file_exclusions_and_accepts_the_path_to_restore(tmp_path):
+    assert invoke(tmp_path, "init", "-c", "ruff", "-y").returncode == 0
+    config = tmp_path / "kitflow.toml"
+    config.write_text(config.read_text().replace("excluded = []", 'excluded = ["ruff"]'))
+    ruff = tmp_path / "ruff.toml"
+    custom = "line-length = 79\n"
+    ruff.write_text(custom)
+
+    result = invoke(tmp_path, "update", "-y")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert tomllib.loads(config.read_text())["selection"]["excluded"] == ["ruff.toml"]
+    assert ruff.read_text() == custom
+
+    result = invoke(tmp_path, "init", "-m", "ruff.toml", "-y")
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "Conflicts remain" in result.stdout
+    assert ruff.read_text() == custom
+
+
 def test_instruction_is_available_offline_without_creating_the_box():
     result = subprocess.run([sys.executable, "-m", "kitflow", "-i"], capture_output=True, text=True)
     assert result.returncode == 0, result.stdout + result.stderr

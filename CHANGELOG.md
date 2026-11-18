@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 0.15.1 — 2026-11-18
+
+### Changed
+
+- Record excluded files by full file name and keep mise block names for excluded tasks.
+- Group user-owned files, mise tasks and environment variables in the setup wizard.
+
+### Fixed
+
+- Report the correct CLI version.
+- Correct dependency declarations for the KitFlow project.
+
 ## 0.15.0 — 2026-11-18
 
 ### Added

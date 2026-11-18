@@ -101,7 +101,7 @@ def test_missing_or_damaged_markers_detach_without_writing(box, tmp_path, damage
     assert result.changes[0].operation == "detach"
     apply(result, {})
     assert path.read_bytes() == original
-    assert "ignore" in load_config(project)["selection"]["excluded"]
+    assert ".gitignore" in load_config(project)["selection"]["excluded"]
     assert not update(project, box).changes
 
 

@@ -77,7 +77,7 @@ files are adopted and skipping an untracked file leaves it user-owned.
 - **Ignore files** (`.gitignore`, `.dockerignore`, `.vscodeignore`) update only inside `# <kitflow>`
   / `# </kitflow>`. Put personal rules inside `# <user>` / `# </user>`. Missing or damaged KitFlow
   markers leave the file untouched. To opt in an existing file, add an empty KitFlow block above
-  your rules, then restore management with `init -m` if excluded. If an existing extension manifest
+  your rules, then restore management with `init -m .gitignore` if excluded. If an existing extension manifest
   has a `files` list, remove it before packaging with `.vscodeignore`. Move any packaging rules you
   still need into the user block.
 - **`mise.toml`** uses marked tasks and environment entries. Remove both markers to take ownership
@@ -219,8 +219,10 @@ nested apps, move the initial files and set `prisma_config`, `prisma_schema_path
   and omitted components are removed. Example: `kitflow init -c python,ruff,ty -y`.
 - `--yes/-y` confirms the plan, including pending migrations. `update -y` keeps the saved selection.
   Conflicts stop unattended updates.
-- `init --manage/-m ID` restores management of an excluded artifact with conflict review. Repeat it
-  for multiple IDs. Use file rule IDs, `task.NAME` or `env.NAME`.
+- In **User-owned files and blocks**, the setup wizard groups files, mise tasks and environment
+  variables. File names omit directories. KitFlow tracks the paths internally.
+- `init --manage/-m ID` restores management with conflict review. Use the full file name
+  without directories or the mise block ID, such as `task.lint`. Repeat it for multiple entries.
 
 `kitflow check -b /path/to/box -p /path/to/project` validates definitions, dependencies, paths,
 templates, wizard steps, TOML/JSON syntax and mise ownership blocks. It reports paths and reasons,

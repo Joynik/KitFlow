@@ -7,7 +7,14 @@ from pathlib import Path
 
 from kitflow import mise
 from kitflow.catalog import Artifact, Catalog, KitFlowError, known_fields, safe_path
-from kitflow.engine import CONFIG, load_config, plan, read_file, resolve_file_directories
+from kitflow.engine import (
+    CONFIG,
+    is_excluded,
+    load_config,
+    plan,
+    read_file,
+    resolve_file_directories,
+)
 
 BOX_FIELDS = {
     "steps": {"id", "label", "categories", "description", "order", "when", "when_any"},
@@ -169,14 +176,15 @@ def configuration_issues(
                 )
         except errors:
             artifacts = {}
-        excluded = document["selection"].get("excluded", [])
+        excluded = set(document["selection"].get("excluded", []))
+        excluded_paths = set(document.get("state", {}).get("excluded_paths", []))
         formats = {
             identity: source.suffix.lower() if source is not None else ""
             for row in catalog.data.get("files", [])
             for identity, _, source in catalog.file_templates(row)
         }
         for identity, artifact in artifacts.items():
-            if artifact.kind != "file" or identity in excluded:
+            if artifact.kind != "file" or is_excluded(artifact, excluded, excluded_paths):
                 continue
             try:
                 suffix = formats.get(identity)

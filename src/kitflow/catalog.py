@@ -79,6 +79,12 @@ class Artifact:
     directory_var: str = ""
     alternatives: tuple[str, ...] = ()
 
+    @property
+    def exclusion_key(self) -> str:
+        return (
+            PurePosixPath(self.path).name if self.kind in {"file", "symlink", "block"} else self.id
+        )
+
 
 class Catalog:
     def __init__(self, root: Path, *, standard: Path | None = None):

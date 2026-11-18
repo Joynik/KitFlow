@@ -49,6 +49,38 @@ async def test_navigator_mouse_and_dependency_removal_preserve_exclusions():
 
 
 @pytest.mark.asyncio
+async def test_ownership_groups_display_file_names_without_paths():
+    catalog = Catalog(Path(__file__).parent / "fixtures/catalog")
+    app = Configurator(
+        catalog, [], ["ruff", "nested/pytest.ini", "task.lint", "env.EXAMPLE"], existing=True
+    )
+    async with app.run_test(size=(100, 32)) as pilot:
+        while app.step.id != "ownership":
+            await pilot.press("right")
+        choices = app.ownership_choices()
+        assert [str(choice.prompt) for choice in choices] == [
+            "Files",
+            "pytest.ini",
+            "ruff.toml",
+            "Mise tasks",
+            "task.lint",
+            "Mise environment variables",
+            "env.EXAMPLE",
+        ]
+        assert [choice.disabled for choice in choices] == [
+            True,
+            False,
+            False,
+            True,
+            False,
+            True,
+            False,
+        ]
+        await pilot.press("enter", "down", "enter")
+        assert app.model.excluded == {"ruff", "env.EXAMPLE"}
+
+
+@pytest.mark.asyncio
 async def test_navigator_cancel_and_button_navigation():
     app = Configurator(Catalog(Path(__file__).parent / "fixtures/catalog"), [], [])
     async with app.run_test(size=(80, 24)) as pilot:

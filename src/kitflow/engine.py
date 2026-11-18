@@ -7,7 +7,7 @@ import re
 import tempfile
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Literal
 
 import tomlkit
@@ -71,7 +71,14 @@ def parse_config(root: Path, content: bytes | None) -> dict:
             if not isinstance(document.get(section, {}), dict):
                 raise KitFlowError(f"{section} must be a table")
         state = document.get("state", {})
-        known_fields(state, {"artifacts", "seeded_mise_keys"}, "state")
+        known_fields(state, {"artifacts", "seeded_mise_keys", "excluded_paths"}, "state")
+        excluded_paths = state.get("excluded_paths", [])
+        if not isinstance(excluded_paths, list) or any(
+            not isinstance(path, str) for path in excluded_paths
+        ):
+            raise KitFlowError("Invalid state.excluded_paths")
+        for path in excluded_paths:
+            safe_path(root, path, allow_link=True)
         records = state.get("artifacts", {})
         seeded = state.get("seeded_mise_keys", [])
         if not isinstance(seeded, list) or any(
@@ -176,6 +183,17 @@ def has_alternative(result: Plan, path: Path, alternatives: tuple[str, ...]) -> 
     return False
 
 
+def is_excluded(artifact: Artifact, excluded: set[str], paths: set[str]) -> bool:
+    name = artifact.exclusion_key
+    if artifact.kind not in {"file", "symlink", "block"}:
+        return name in excluded
+    if ({artifact.id, artifact.path} - {name}).intersection(excluded):
+        return True
+    if name not in excluded:
+        return False
+    return artifact.path in paths or not any(PurePosixPath(path).name == name for path in paths)
+
+
 def plan(
     root: Path,
     catalog: Catalog,
@@ -236,8 +254,29 @@ def plan(
             )
         elif record["path"] != candidates[identity].path and not candidates[identity].directory_var:
             raise KitFlowError(f"Template path changed for {identity}; detach or remove it first")
+    state = result.document.setdefault("state", {})
+    excluded_paths = {
+        path for path in state.get("excluded_paths", []) if PurePosixPath(path).name in excluded
+    }
+    scoped_names = {PurePosixPath(path).name for path in excluded_paths}
+    for artifact in candidates.values():
+        if artifact.kind not in {"file", "symlink", "block"}:
+            continue
+        name = artifact.exclusion_key
+        legacy = {artifact.id, artifact.path} - {name}
+        if legacy.intersection(excluded) or (name in excluded and name not in scoped_names):
+            excluded_paths.add(artifact.path)
+    for artifact in candidates.values():
+        if artifact.path in excluded_paths and artifact.kind in {"file", "symlink", "block"}:
+            excluded.difference_update({artifact.id, artifact.path} - {artifact.exclusion_key})
+            excluded.add(artifact.exclusion_key)
+    if excluded_paths or "excluded_paths" in state:
+        state["excluded_paths"] = sorted(excluded_paths)
+    result.document.setdefault("selection", {})["excluded"] = sorted(excluded)
     for identity, artifact in candidates.items():
-        if identity in excluded and (not reset or artifact.kind in {"task", "env"}):
+        if is_excluded(artifact, excluded, excluded_paths) and (
+            not reset or artifact.kind in {"task", "env"}
+        ):
             continue
         path = safe_path(root, artifact.path, allow_link=artifact.kind in {"file", "symlink"})
         if artifact.path not in result.snapshots:
@@ -467,6 +506,7 @@ def _apply(result: Plan, source: dict):
     selection["components"] = result.selected
     excluded = set(selection.get("excluded", []))
     state = document.setdefault("state", {})
+    excluded_paths = set(state.get("excluded_paths", []))
     seeded_keys = set(map(tuple, state.get("seeded_mise_keys", [])))
     records = state.setdefault("artifacts", {})
     document["source"] = source
@@ -496,7 +536,9 @@ def _apply(result: Plan, source: dict):
             seeded_keys.difference_update(change.setting_keys)
             continue
         if change.decision == "keep" or change.operation == "detach":
-            excluded.add(artifact.id)
+            excluded.add(artifact.exclusion_key)
+            if artifact.kind in {"file", "symlink", "block"}:
+                excluded_paths.add(artifact.path)
             records.pop(artifact.id, None)
             continue
         if change.operation == "forget":
@@ -519,7 +561,9 @@ def _apply(result: Plan, source: dict):
             if artifact.kind == "defaults":
                 seeded_keys.update(mise.setting_keys(mise.parse(mise_text)) - before_keys)
             writes["mise.toml"] = mise_text.encode()
-        excluded.discard(artifact.id)
+        excluded_paths.discard(artifact.path)
+        if not any(PurePosixPath(path).name == artifact.exclusion_key for path in excluded_paths):
+            excluded.discard(artifact.exclusion_key)
         if change.after is None:
             records.pop(artifact.id, None)
         else:
@@ -533,6 +577,8 @@ def _apply(result: Plan, source: dict):
                 "once": artifact.once,
             }
     selection["excluded"] = sorted(excluded)
+    if excluded_paths or "excluded_paths" in state:
+        state["excluded_paths"] = sorted(excluded_paths)
     if result.box_version is not None and all(
         change.decision != "skip" for change in result.changes
     ):

@@ -89,7 +89,14 @@ class Wizard:
             if self.catalog.enabled(row, self.chosen) and self.choices(step):
                 result.append(step)
         if self.excluded:
-            result.append(Step("ownership", "User-owned files", ()))
+            result.append(
+                Step(
+                    "ownership",
+                    "User-owned files and blocks",
+                    (),
+                    "Select an entry to return it to KitFlow management.",
+                )
+            )
         result.append(Step("review", "Review plan", ()))
         return result
 
