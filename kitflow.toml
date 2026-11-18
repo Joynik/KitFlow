@@ -1,9 +1,9 @@
 schema = 1
 migrated_box_version = 1
-box_version = 5
+box_version = 6
 
 [selection]
-components = ["python", "ruff", "ty", "vulture", "deptry", "nuitka", "rumdl", "pytest", "agents"]
+components = ["python", "ruff", "ty", "vulture", "deptry", "nuitka", "rumdl", "pytest", "env-example", "agents"]
 excluded = []
 
 [state.artifacts.readme]
@@ -214,6 +214,20 @@ path = "mise.toml"
 kind = "task"
 key = "check-deps"
 sha256 = "ad110c543fd1a1a1308d574f10537f217cf4fb571c363783645d60c79f1e5b71"
+once = false
+
+[state.artifacts.env-example]
+path = ".env.example"
+kind = "file"
+key = ""
+sha256 = "7ce9e6603e4c5a9096ccbbca74b4738fcf85f86241b0561f93fd3205c63df984"
+once = false
+
+[state.artifacts."task.env:local"]
+path = "mise.toml"
+kind = "task"
+key = "env:local"
+sha256 = "bb3be6a1ff16beca762a86612a74a11adb3dd66e084c7b791cdc776c2b97a7e7"
 once = false
 [source]
 kind = "user-box"
