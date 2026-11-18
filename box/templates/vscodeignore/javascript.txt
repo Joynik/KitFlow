@@ -1,0 +1,5 @@
+# JavaScript tooling and reports
+bunfig.toml
+coverage/**
+npm-debug.log*
+yarn-error.log*

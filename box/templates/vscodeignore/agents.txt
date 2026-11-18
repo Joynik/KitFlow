@@ -1,0 +1,6 @@
+# Agent instructions and local configuration
+AGENTS.md
+PROJECT.md
+STANDARDS.md
+TOOLS.md
+.agents/**

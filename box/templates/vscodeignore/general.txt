@@ -1,19 +1,11 @@
 # Editor and local configuration
 .vscode/**
-.vscode-test/**
-.vscode-test.mjs
 .gitignore
 .dockerignore
 .env
 .env.*
 kitflow.toml
 mise.toml
-
-# Tests and build inputs
-test/**
-tests/**
-tsconfig.json
-**/*.tsbuildinfo
 
 # Package output
 *.vsix

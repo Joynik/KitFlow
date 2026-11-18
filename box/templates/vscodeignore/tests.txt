@@ -1,0 +1,5 @@
+# Extension test runner and test sources
+.vscode-test/**
+.vscode-test.mjs
+test/**
+tests/**

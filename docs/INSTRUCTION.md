@@ -76,7 +76,7 @@ files are adopted and skipping an untracked file leaves it user-owned.
   of an entry. Ordinary updates preserve user-owned vars, env and settings.
 - **`.env`** stays user-owned. `mise run env:local` creates it from `.env.example` when absent. Edit
   generated ignore and env fragments in your box under `templates/gitignore/`,
-  `templates/dockerignore/` or `templates/env/`.
+  `templates/dockerignore/`, `templates/vscodeignore/` or `templates/env/`.
 
 ## Run and configure mise tasks
 

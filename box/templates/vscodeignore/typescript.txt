@@ -1,0 +1,4 @@
+# TypeScript build inputs
+tsconfig.json
+tsconfig.*.json
+**/*.tsbuildinfo

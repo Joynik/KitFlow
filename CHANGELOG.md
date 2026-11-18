@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Compose `.vscodeignore` from the selected components, including agent instructions and tests.
+
 ## 0.13.2 — 2026-11-18
 
 ### Fixed

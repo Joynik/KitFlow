@@ -564,8 +564,14 @@ fragments = [
 id = "vscodeignore"
 path = ".vscodeignore"
 mode = "block"
-template = "templates/vscode-extension/vscodeignore.txt"
 when = ["vscode-extension"]
+fragments = [
+  { template = "templates/vscodeignore/general.txt" },
+  { template = "templates/vscodeignore/javascript.txt", when = ["javascript"] },
+  { template = "templates/vscodeignore/typescript.txt", when = ["typescript"] },
+  { template = "templates/vscodeignore/agents.txt", when = ["agents"] },
+  { template = "templates/vscodeignore/tests.txt", when = ["vscode-extension-tests"] },
+]
 
 # Files: Python configuration
 
