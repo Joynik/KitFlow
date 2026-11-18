@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.14.1 — 2026-11-18
+
+### Fixed
+
+- Accept tracked mise keys when checking a project created by KitFlow.
+
 ## 0.14.0 — 2026-11-18
 
 ### Changed

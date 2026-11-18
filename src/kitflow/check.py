@@ -94,7 +94,7 @@ def validate_project(root: Path) -> dict:
         raise KitFlowError("schema must be an integer")
     known_fields(data.get("selection", {}), {"components", "excluded"}, "selection")
     state = data.get("state", {})
-    known_fields(state, {"artifacts"}, "state")
+    known_fields(state, {"artifacts", "seeded_mise_keys"}, "state")
     records = state.get("artifacts", {})
     if not isinstance(records, dict):
         raise KitFlowError("state.artifacts must be a table")

@@ -16,6 +16,9 @@ from kitflow.settings import box_path
 def configurations(tmp_path):
     box = tmp_path / "box"
     shutil.copytree(Path(__file__).parent / "fixtures/catalog", box)
+    (box / "defaults.toml").write_text('[vars]\nsource_dir = "src"\n')
+    with (box / "kitflow-box.toml").open("a") as stream:
+        stream.write('\n[[defaults]]\nid="python"\ntemplate="defaults.toml"\nwhen=["python"]\n')
     project = tmp_path / "project"
     project.mkdir()
     catalog = Catalog(box)
@@ -78,6 +81,7 @@ def test_template_and_project_syntax_errors_are_reported_together(configurations
         'schema=1\n[selection]\ncomponent=["python"]\n',
         'schema=1\nselection="python"\n',
         "schema=true\n[selection]\ncomponents=[]\n",
+        'schema=1\n[selection]\ncomponents=[]\n[state]\nseeded_mise_keys=[["tasks","test"]]\n',
     ],
 )
 def test_invalid_project_configuration_is_reported(configurations, contents):
