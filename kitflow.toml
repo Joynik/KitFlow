@@ -1,6 +1,6 @@
 schema = 1
 migrated_box_version = 1
-box_version = 1
+box_version = 3
 
 [selection]
 components = ["python", "ruff", "ty", "vulture", "deptry", "nuitka", "rumdl", "pytest", "agents"]
@@ -24,7 +24,7 @@ once = true
 path = ".gitignore"
 kind = "block"
 key = ""
-sha256 = "080d1295d1361f5b74fdc753d407a4d8c7c78a241a8c7113d55e0ac5b0db3335"
+sha256 = "6087c254f2bf6bc55e1bcbaa0590b9834fc853ad269c184cfeb85e493019ed66"
 once = false
 
 [state.artifacts.env-example]
