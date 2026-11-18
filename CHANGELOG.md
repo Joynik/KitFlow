@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.13.1 — 2026-11-18
+
+### Fixed
+
+- Use green focus borders, row highlights and selection markers throughout the setup and update
+  menus.
+
 ## 0.13.0 — 2026-11-18
 
 ### Added

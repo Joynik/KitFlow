@@ -11,6 +11,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.events import Resize
+from textual.theme import Theme
 from textual.widgets import Button, Footer, Label, ListItem, ListView, SelectionList, Static
 
 from kitflow.catalog import Catalog, KitFlowError
@@ -54,7 +55,33 @@ Button:disabled, Button:disabled:hover {
     text-style: none;
 }
 Footer { background: #1b241e; }
+Components > .selection-list--button-selected,
+Components > .selection-list--button-selected-highlighted {
+    color: #111714; background: #50fa7b; text-style: bold;
+}
 """
+
+
+class KitFlowApp[Result](App[Result]):
+    def __init__(self):
+        super().__init__()
+        self.register_theme(
+            Theme(
+                name="kitflow",
+                primary="#699778",
+                secondary="#456953",
+                accent="#9cddb2",
+                foreground="#e4eee6",
+                background="#111714",
+                surface="#19251d",
+                panel="#456953",
+                variables={
+                    "block-cursor-background": "#294536",
+                    "block-cursor-blurred-background": "#22342a",
+                },
+            )
+        )
+        self.theme = "kitflow"
 
 
 @dataclass
@@ -67,7 +94,7 @@ class Components(SelectionList[str]):
     BINDINGS = [Binding("enter", "select", "Select", show=False)]
 
 
-class Configurator(App[Selection | None]):
+class Configurator(KitFlowApp[Selection | None]):
     """Navigator: one conditional step at a time, with a persistent step list."""
 
     TITLE = "KitFlow"
@@ -85,11 +112,6 @@ class Configurator(App[Selection | None]):
     #question { height: 2; text-style: bold; }
     #hint { height: auto; max-height: 4; margin-bottom: 1; color: #a5b8aa; }
     #components { height: 1fr; border: none; background: transparent; padding: 0; }
-    #components > .option-list--option-highlighted { background: #22342a; color: #e4eee6; }
-    #components > .selection-list--button-selected,
-    #components > .selection-list--button-selected-highlighted {
-        color: #111714; background: #50fa7b; text-style: bold;
-    }
     #details { height: 4; padding: 1 0; color: #a5b8aa; }
     #review { height: 1fr; overflow-y: auto; }
     #summary { height: 2; padding: 0 3; color: #a5b8aa; }
@@ -314,7 +336,7 @@ class Configurator(App[Selection | None]):
         self.exit(None)
 
 
-class ActionMenu(App[str | None]):
+class ActionMenu(KitFlowApp[str | None]):
     """Choose an action with arrows, Enter or the mouse."""
 
     ENABLE_COMMAND_PALETTE = False
@@ -358,7 +380,7 @@ class ActionMenu(App[str | None]):
         self.exit(None)
 
 
-class ResetFiles(App[dict[str, set[int]] | None]):
+class ResetFiles(KitFlowApp[dict[str, set[int]] | None]):
     """Review current and proposed changes and confirm an explicit selection."""
 
     ENABLE_COMMAND_PALETTE = False
