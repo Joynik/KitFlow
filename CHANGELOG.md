@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Exclude Node dependencies, Bun lockfiles and rumdl files from VS Code extension packages.
+
 ## 0.13.3 — 2026-11-18
 
 ### Fixed
