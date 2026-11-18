@@ -103,7 +103,7 @@ kitflow init
 4. Select **Review files**, inspect the proposed changes and confirm. Escape cancels without writes.
 
 ```text
-Languages → Frameworks → Server → Databases → Infrastructure → Tools → Review
+Languages → Frameworks and Platform → Server → Databases → Infrastructure → Tools → Review
 ```
 
 Recommended tools are selected when their step opens. You can disable any recommendation.

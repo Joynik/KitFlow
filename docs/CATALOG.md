@@ -259,7 +259,8 @@ language-specific path guessing.
 inside the fragment. For example: `usage = 'arg "[name]" help="Migration name"'`.
 
 All artifact sections support `when` and `when_any`. Every ID in `when` must be selected. At least
-one ID in a nonempty `when_any` must be selected. Both conditions apply when both are present.
+one ID in a nonempty `when_any` must be selected. Both conditions apply when both are present. File
+and task rules also accept `when_not`. Skip the rule when any listed component is selected.
 
 ## Initial user settings
 

@@ -159,6 +159,31 @@ requires = ["javascript", "bun"]
 conflicts = ["nextjs", "nuxt", "sveltekit", "astro"]
 when_any = ["javascript", "typescript"]
 
+[[components]]
+id = "vscode-extension-bun"
+label = "VS Code Extension — Bun build"
+category = "Build tools"
+description = "Bundle the extension for the desktop host with Bun."
+requires = ["vscode-extension", "bun"]
+when = ["vscode-extension", "bun"]
+conflicts = ["vscode-extension-esbuild"]
+recommended = true
+
+[[components]]
+id = "vscode-extension-esbuild"
+label = "VS Code Extension — esbuild"
+category = "Build tools"
+description = "Bundle the extension for the desktop host. Install esbuild as a dev dependency."
+requires = ["vscode-extension"]
+conflicts = ["vscode-extension-bun"]
+
+[[components]]
+id = "vscode-extension-vsix"
+label = "VS Code Extension — VSIX packaging"
+category = "Build tools"
+description = "Create a local VSIX. Install @vscode/vsce as a dev dependency."
+requires = ["vscode-extension"]
+
 # Components: tools — Swift
 
 [[components]]
@@ -269,6 +294,14 @@ description = "Content-oriented website. Uses the project dev, build and preview
 when_any = ["javascript", "typescript"]
 conflicts = ["nextjs", "nuxt", "sveltekit", "vite"]
 
+[[components]]
+id = "vscode-extension"
+label = "VS Code Extension (Desktop)"
+category = "Desktop platforms"
+description = "Add a starter and F5 debugging. For TypeScript, install typescript and @types/vscode as dev dependencies."
+requires = ["javascript"]
+when = ["javascript"]
+
 # Components: frameworks — Rust
 
 [[components]]
@@ -348,6 +381,13 @@ category = "Tests"
 description = ""
 requires = ["django"]
 conflicts = []
+
+[[components]]
+id = "vscode-extension-tests"
+label = "VS Code Extension — integration tests"
+category = "Tests"
+description = "Test inside VS Code Desktop. Install @vscode/test-cli and @vscode/test-electron as dev dependencies."
+requires = ["vscode-extension"]
 
 [[components]]
 id = "bun-tests"
@@ -451,6 +491,7 @@ fragments = [
   { template = "templates/gitignore/prisma.txt", when = ["prisma"] },
   { template = "templates/gitignore/python.txt", when = ["python"] },
   { template = "templates/gitignore/javascript.txt", when = ["javascript"] },
+  { template = "templates/gitignore/vscode-extension.txt", when = ["vscode-extension"] },
   { template = "templates/gitignore/rust.txt", when = ["rust"] },
   { template = "templates/gitignore/swift.txt", when = ["swift"] },
   { template = "templates/gitignore/django.txt", when = ["django"] },
@@ -576,6 +617,65 @@ path = "bunfig.toml"
 template = "templates/bunfig.toml"
 when = ["bun"]
 mode = "managed"
+
+# Files: VS Code desktop extension
+
+[[files]]
+id = "vscode-extension-manifest"
+path = "package.json"
+template = "templates/vscode-extension/package.json"
+when = ["vscode-extension"]
+mode = "once"
+
+[[files]]
+id = "vscode-extension-javascript"
+path = "src/extension.js"
+template = "templates/vscode-extension/extension.js"
+when = ["vscode-extension"]
+mode = "once"
+when_not = ["typescript"]
+
+[[files]]
+id = "vscode-extension-typescript"
+path = "src/extension.ts"
+template = "templates/vscode-extension/extension.ts"
+when = ["vscode-extension", "typescript"]
+mode = "once"
+
+[[files]]
+id = "vscode-extension-tsconfig"
+path = "tsconfig.json"
+template = "templates/vscode-extension/tsconfig.json"
+when = ["vscode-extension", "typescript"]
+mode = "once"
+
+[[files]]
+id = "vscode-extension-launch"
+path = ".vscode/launch.json"
+template = "templates/vscode-extension/launch.json"
+when = ["vscode-extension"]
+mode = "once"
+
+[[files]]
+id = "vscode-extension-editor-tasks"
+path = ".vscode/tasks.json"
+template = "templates/vscode-extension/tasks.json"
+when = ["vscode-extension"]
+mode = "once"
+
+[[files]]
+id = "vscode-extension-test-config"
+path = ".vscode-test.mjs"
+template = "templates/vscode-extension/test-config.mjs"
+when = ["vscode-extension-tests"]
+mode = "once"
+
+[[files]]
+id = "vscode-extension-test"
+path = "tests/vscode/extension.test.cjs"
+template = "templates/vscode-extension/extension.test.cjs"
+when = ["vscode-extension-tests"]
+mode = "once"
 
 # Files: Rust configuration
 
@@ -707,6 +807,14 @@ id = "check-typescript"
 name = "check"
 template = "tasks/check-typecheck.sh"
 when = ["typescript", "bun"]
+description = "Check code, formatting, types and migrations"
+
+[[tasks]]
+id = "check-vscode-extension-typescript"
+name = "check"
+template = "tasks/check-typecheck.sh"
+when = ["vscode-extension", "typescript"]
+when_not = ["bun"]
 description = "Check code, formatting, types and migrations"
 
 [[tasks]]
@@ -933,6 +1041,81 @@ when = ["swift"]
 directory_env = "PROJECT_SWIFT_DIRECTORY"
 description = "Check formatting without applying fixes"
 
+# Tasks: VS Code desktop extension
+
+[[tasks]]
+id = "vscode-extension-prepare-js"
+name = "extension:prepare"
+template = "tasks/vscode-extension-js.sh"
+when = ["vscode-extension"]
+description = "Prepare the desktop extension for debugging"
+when_not = ["typescript", "vscode-extension-bun", "vscode-extension-esbuild"]
+
+[[tasks]]
+id = "vscode-extension-prepare-ts"
+name = "extension:prepare"
+template = "tasks/vscode-extension-ts.sh"
+when = ["vscode-extension", "typescript"]
+description = "Prepare the desktop extension for debugging"
+when_not = ["vscode-extension-bun", "vscode-extension-esbuild"]
+
+[[tasks]]
+id = "vscode-extension-bundle-entry-js"
+name = "extension:prepare"
+template = "tasks/vscode-extension-entry-js.sh"
+when_any = ["vscode-extension-bun", "vscode-extension-esbuild"]
+when_not = ["typescript"]
+
+[[tasks]]
+id = "vscode-extension-bundle-entry-ts"
+name = "extension:prepare"
+template = "tasks/vscode-extension-entry-ts.sh"
+when = ["typescript"]
+when_any = ["vscode-extension-bun", "vscode-extension-esbuild"]
+
+[[tasks]]
+id = "vscode-extension-prepare-bun"
+name = "extension:prepare"
+template = "tasks/vscode-extension-bun.sh"
+when = ["vscode-extension-bun"]
+description = "Prepare the desktop extension for debugging"
+
+[[tasks]]
+id = "vscode-extension-prepare-esbuild"
+name = "extension:prepare"
+template = "tasks/vscode-extension-esbuild.sh"
+when = ["vscode-extension-esbuild"]
+description = "Prepare the desktop extension for debugging"
+
+[[tasks]]
+id = "vscode-extension-build"
+name = "build"
+template = "tasks/vscode-extension-prepare.sh"
+when = ["vscode-extension"]
+description = "Build selected project components"
+when_any = ["vscode-extension-bun", "vscode-extension-esbuild"]
+
+[[tasks]]
+id = "vscode-extension-types"
+name = "typecheck"
+template = "tasks/vscode-extension-typecheck.sh"
+when = ["vscode-extension", "typescript"]
+description = "Check selected project types and native builds"
+
+[[tasks]]
+id = "vscode-extension-test"
+name = "test"
+template = "tasks/vscode-extension-test.sh"
+when = ["vscode-extension-tests"]
+description = "Run selected test runners"
+
+[[tasks]]
+id = "vscode-extension-package"
+name = "package"
+template = "tasks/vscode-extension-package.sh"
+when = ["vscode-extension-vsix"]
+description = "Package the extension as a local VSIX"
+
 # Tasks: types and native checks
 
 [[tasks]]
@@ -964,6 +1147,7 @@ id = "bun-check"
 name = "typecheck"
 template = "tasks/bun-check.sh"
 when = ["typescript", "bun"]
+when_not = ["vscode-extension"]
 directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
 description = "Check selected project types and native builds"
 
@@ -1062,6 +1246,7 @@ id = "javascript-build"
 name = "build"
 template = "tasks/javascript-build.sh"
 when = ["javascript", "bun"]
+when_not = ["vscode-extension"]
 directory_env = "PROJECT_JAVASCRIPT_DIRECTORY"
 description = "Build selected project components"
 
@@ -1651,9 +1836,9 @@ order = 10
 
 [[steps]]
 id = "frameworks"
-label = "Frameworks"
-categories = ["Frameworks", "Desktop frameworks"]
-description = "Choose frameworks. Dependencies are added automatically; conflicting alternatives are replaced."
+label = "Frameworks and Platform"
+categories = ["Frameworks", "Desktop frameworks", "Desktop platforms"]
+description = "Choose frameworks and platforms. Dependencies are added automatically; conflicting alternatives are replaced."
 order = 20
 
 [[steps]]

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.12.0 — 2026-11-18
+
+### Added
+
+- Set up a desktop VS Code extension from the Frameworks and Platform step. Choose Bun or esbuild
+  for bundling, with optional extension tests and local VSIX packaging. Upgrade KitFlow to 0.12.0
+  before refreshing the standard box to use these templates.
+
 ## 0.11.0 — 2026-11-17
 
 ### Added

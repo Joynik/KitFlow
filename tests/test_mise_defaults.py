@@ -104,6 +104,20 @@ def test_alternative_conditions_are_combined_with_required_components(catalog_pa
     assert "task.conditional" in catalog.render(["ruff"])
 
 
+def test_exclusions_disable_matching_files_and_tasks(catalog_path):
+    with (catalog_path / "kitflow-box.toml").open("a") as stream:
+        stream.write(
+            '[[files]]\nid="starter"\npath="starter.txt"\ntemplate="example.sh"\n'
+            'when=["python"]\nwhen_not=["ruff"]\n'
+            '[[tasks]]\nid="starter"\nname="starter"\ntemplate="example.sh"\n'
+            'when=["python"]\nwhen_not=["ruff"]\n'
+        )
+    (catalog_path / "example.sh").write_text("echo example")
+    catalog = Catalog(catalog_path)
+    assert {"starter", "task.starter"} <= catalog.render(["python"]).keys()
+    assert not {"starter", "task.starter"}.intersection(catalog.render(["ruff"]))
+
+
 @pytest.mark.parametrize("absolute_paths", [False, True])
 def test_generated_python_paths_are_normalized(tmp_path, absolute_paths):
     import json

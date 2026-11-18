@@ -43,6 +43,7 @@ def test_standard_check_runs_only_checks_and_preserves_failure_status(tmp_path):
         "mypy",
         "bun",
         "bunx",
+        "npm",
         "cargo",
         "uv",
         "djlint",

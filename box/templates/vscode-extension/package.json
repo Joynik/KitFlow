@@ -1,0 +1,20 @@
+{
+  "name": "my-vscode-extension",
+  "displayName": "My VS Code Extension",
+  "description": "A desktop extension for Visual Studio Code.",
+  "publisher": "your-publisher",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "main": "./dist/extension.js",
+  "files": ["dist", "src"],
+  "contributes": {
+    "commands": [
+      {
+        "command": "my-vscode-extension.hello",
+        "title": "My Extension: Hello"
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Prepare VS Code Extension",
+      "type": "process",
+      "command": "mise",
+      "args": ["run", "extension:prepare"],
+      "problemMatcher": []
+    }
+  ]
+}

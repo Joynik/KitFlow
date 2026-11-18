@@ -99,6 +99,14 @@ class Catalog:
             from kitflow.wizard import validate_wizard
 
             validate_wizard(self)
+            for section in ("files", "tasks"):
+                for row in self.data.get(section, []):
+                    self.enabled(row, set(self.components))
+                    if "when_not" in row:
+                        if section == "files":
+                            list(self.file_templates(row))
+                        else:
+                            self.template(row["template"])
             self.render(list(self.components), check_conflicts=False)
         except (KeyError, TypeError, ValueError, OSError) as error:
             raise KitFlowError(f"Invalid catalog: {error}") from error
@@ -122,7 +130,7 @@ class Catalog:
                     raise KitFlowError(
                         f"{section} entries require string fields: {', '.join(fields)}"
                     )
-                for name in ("requires", "conflicts", "when", "when_any"):
+                for name in ("requires", "conflicts", "when", "when_any", "when_not"):
                     value = row.get(name, [])
                     if not isinstance(value, list) or any(not isinstance(x, str) for x in value):
                         raise KitFlowError(f"{section}.{name} must be an array of component IDs")
@@ -207,8 +215,13 @@ class Catalog:
             x not in self.components for x in alternatives
         ):
             raise KitFlowError("Artifact alternatives must reference known components")
-        return set(required).issubset(selected) and (
-            not alternatives or bool(set(alternatives) & selected)
+        excluded = row.get("when_not", [])
+        if not isinstance(excluded, list) or any(x not in self.components for x in excluded):
+            raise KitFlowError("Artifact exclusions must reference known components")
+        return (
+            set(required).issubset(selected)
+            and (not alternatives or bool(set(alternatives) & selected))
+            and not selected.intersection(excluded)
         )
 
     def source_path(self, name: str, *, allow_link: bool = False) -> Path:
