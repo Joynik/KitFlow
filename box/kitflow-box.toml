@@ -534,7 +534,7 @@ fragments = [
 [[files]]
 id = "dockerignore"
 path = ".dockerignore"
-mode = "managed"
+mode = "block"
 when = ["docker"]
 fragments = [
   { template = "templates/dockerignore/general.txt" },
@@ -557,6 +557,15 @@ fragments = [
   { template = "templates/dockerignore/sqlite.txt", when = ["sqlite"] },
   { template = "templates/dockerignore/tests.txt", when_any = ["pytest", "unittest", "django-tests"] },
 ]
+
+# Files: VS Code extension package
+
+[[files]]
+id = "vscodeignore"
+path = ".vscodeignore"
+mode = "block"
+template = "templates/vscode-extension/vscodeignore.txt"
+when = ["vscode-extension"]
 
 # Files: Python configuration
 
@@ -1870,17 +1879,17 @@ description = "Choose container and infrastructure tools."
 order = 50
 
 [[steps]]
-id = "build-tools"
-label = "Build tools"
-categories = ["Build tools"]
-description = "Choose build tools separately from frameworks. Leave Python build tools unselected for no Python build."
-order = 60
-
-[[steps]]
 id = "checks"
 label = "Checks and formatting"
 categories = ["Checks"]
 description = "Recommendations are selected for new choices. You can disable any recommendation."
+order = 60
+
+[[steps]]
+id = "build-tools"
+label = "Build tools"
+categories = ["Build tools"]
+description = "Choose build tools separately from frameworks. Leave Python build tools unselected for no Python build."
 order = 70
 
 [[steps]]

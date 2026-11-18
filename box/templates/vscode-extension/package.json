@@ -8,7 +8,6 @@
     "vscode": "^1.100.0"
   },
   "main": "./dist/extension.js",
-  "files": ["dist", "src"],
   "contributes": {
     "commands": [
       {

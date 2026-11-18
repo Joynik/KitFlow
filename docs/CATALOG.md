@@ -124,8 +124,8 @@ has one artifact ID and checksum. Removing a component removes its parts at the 
 Use `format = "dotenv"` for environment examples. Active duplicate names, including `export`
 assignments, fail validation. Comments do not count. `kitflow check` checks compatible fragment
 combinations. Keep common names in a shared fragment and actual secrets in the local `.env`. The
-standard box composes `.gitignore` as a block and `.env.example` as a whole file. `.dockerignore`
-uses whole-file management and requires Docker.
+standard box uses block management for ignore files and whole-file management for `.env.example`.
+Docker enables `.dockerignore`, and VS Code Extension enables `.vscodeignore`.
 
 ## Mise rules
 

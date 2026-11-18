@@ -66,14 +66,17 @@ files are adopted and skipping an untracked file leaves it user-owned.
 
 - **Creation-only files** such as `README.md`, `PROJECT.md` and `pyproject.toml` are created when
   absent. Ordinary updates preserve them.
-- **`.gitignore`** updates only inside `# <kitflow>` / `# </kitflow>`, without conflict prompts or
-  diff output. Put personal rules outside this block. Missing or damaged markers leave the file
-  untouched. Add markers manually to opt in, then restore management with `init -m` if excluded.
+- **Ignore files** (`.gitignore`, `.dockerignore`, `.vscodeignore`) update only inside `# <kitflow>`
+  / `# </kitflow>`. Put personal rules inside `# <user>` / `# </user>`. Missing or damaged KitFlow
+  markers leave the file untouched. To opt in an existing file, add an empty KitFlow block above
+  your rules, then restore management with `init -m` if excluded. If an existing extension manifest
+  has a `files` list, remove it before packaging with `.vscodeignore`. Move any packaging rules you
+  still need into the user block.
 - **`mise.toml`** uses marked tasks and environment entries. Remove both markers to take ownership
   of an entry. Ordinary updates preserve user-owned vars, env and settings.
 - **`.env`** stays user-owned. `mise run env:local` creates it from `.env.example` when absent. Edit
   generated ignore and env fragments in your box under `templates/gitignore/`,
-  `templates/dockerignore/` or `templates/env/`. Docker selection enables `.dockerignore`.
+  `templates/dockerignore/` or `templates/env/`.
 
 ## Run and configure mise tasks
 
