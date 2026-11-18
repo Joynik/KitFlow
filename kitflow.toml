@@ -1,7 +1,9 @@
 schema = 1
+migrated_box_version = 1
+box_version = 1
 
 [selection]
-components = ["python", "ruff", "ty", "nuitka", "rumdl", "pytest", "agents"]
+components = ["python", "ruff", "ty", "vulture", "deptry", "nuitka", "rumdl", "pytest", "agents"]
 excluded = []
 
 [state.artifacts.readme]
@@ -36,7 +38,7 @@ once = false
 path = "pyproject.toml"
 kind = "file"
 key = ""
-sha256 = "eac83c28d48261307bbeb2f2bc2e56d93af6f63c41474d955fb976851e6a56cd"
+sha256 = "d425382edd6716eb58ae5afce774f8ac963c767f24cd7ce772f34e21a6b6e303"
 once = true
 
 [state.artifacts.python-version]
@@ -92,7 +94,7 @@ once = false
 path = "TOOLS.md"
 kind = "file"
 key = ""
-sha256 = "590bd05dea7d0c759c23eeeb5c6929a4bca584a2ed32d8ec5685adcf7d3bf216"
+sha256 = "9d0a5634d47d8259f50e1c6194b0747cc7f144fd7bd22ba13ee1f369d5bfc2e2"
 once = false
 
 [state.artifacts."defaults.base"]
@@ -214,5 +216,18 @@ key = "PYTHONUNBUFFERED"
 sha256 = "4a9f2ca64c8cf6432c1be8b7d2b5aa5523f457a776841a8793e89c949c41dc83"
 once = false
 
+[state.artifacts."task.check-unused"]
+path = "mise.toml"
+kind = "task"
+key = "check-unused"
+sha256 = "2c331b9be255bb5955c2a9662839072470af66365ebfe7d981d3c12df45fdb9e"
+once = false
+
+[state.artifacts."task.check-deps"]
+path = "mise.toml"
+kind = "task"
+key = "check-deps"
+sha256 = "ad110c543fd1a1a1308d574f10537f217cf4fb571c363783645d60c79f1e5b71"
+once = false
 [source]
 kind = "user-box"

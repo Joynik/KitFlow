@@ -169,3 +169,40 @@ uv run --no-sync python -m nuitka --mode=standalone \
 )
 '''
 # kitflow:end task.build
+
+# kitflow:begin task.check-unused
+[tasks."check-unused"]
+description = "Find potentially unused code and files"
+run = '''
+set -eu
+(
+cd "${PROJECT_ROOT:?Set PROJECT_ROOT in mise.toml}"
+source_dir="${PYTHON_SOURCE:-.}"
+tests_dir="${PYTHON_TESTS:-tests}"
+set -- "$source_dir"
+if [ "$source_dir" != "." ] && [ "$source_dir" != "$PWD" ] && [ -d "$tests_dir" ]; then
+  set -- "$@" "$tests_dir"
+fi
+uv run --no-sync vulture "$@" --config pyproject.toml
+)
+'''
+# kitflow:end task.check-unused
+
+# kitflow:begin task.check-deps
+[tasks."check-deps"]
+description = "Check declared dependencies"
+run = '''
+set -eu
+(
+cd "${PROJECT_ROOT:?Set PROJECT_ROOT in mise.toml}"
+status=0
+output=$(uv run --no-sync deptry --no-ansi . 2>&1) || status=$?
+printf '%s\n' "$output" | awk '
+  /^Scanning [0-9]+ files?\.\.\.$/ { next }
+  /^For more information, see the documentation: https:\/\/deptry\.com\/$/ { next }
+  NF
+'
+(exit "$status")
+)
+'''
+# kitflow:end task.check-deps
