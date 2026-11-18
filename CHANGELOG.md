@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixed
+
+- Exclude `knip.json` from VS Code extension packages when Knip is selected.
+
 ## 0.16.0 — 2026-11-18
 
 ### Changed
