@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.17.0 — 2026-11-18
+
+### Changed
+
+- Make `.env.example` and `.env` independent opt-in choices in the setup wizard.
+
 ### Fixed
 
 - Exclude `knip.json` from VS Code extension packages when Knip is selected.

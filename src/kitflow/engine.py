@@ -274,6 +274,8 @@ def plan(
         state["excluded_paths"] = sorted(excluded_paths)
     result.document.setdefault("selection", {})["excluded"] = sorted(excluded)
     for identity, artifact in candidates.items():
+        if reset and artifact.path == ".env":
+            continue
         if is_excluded(artifact, excluded, excluded_paths) and (
             not reset or artifact.kind in {"task", "env"}
         ):

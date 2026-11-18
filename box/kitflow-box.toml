@@ -485,6 +485,20 @@ description = ""
 requires = ["bun"]
 conflicts = []
 
+# Components: environment files
+
+[[components]]
+id = "env-example"
+label = "Create .env.example"
+category = "Environments"
+description = "Generate example variables for the selected components."
+
+[[components]]
+id = "env-local"
+label = "Create .env"
+category = "Environments"
+description = "Create an empty local environment file if it does not exist."
+
 # Components: instructions
 
 [[components]]
@@ -545,6 +559,7 @@ fragments = [
 id = "env-example"
 path = ".env.example"
 mode = "managed"
+when = ["env-example"]
 format = "dotenv"
 fragments = [
   { template = "templates/env/general.env" },
@@ -561,6 +576,13 @@ fragments = [
   { template = "templates/env/rust.env", when_any = ["axum", "actix-web"] },
   { template = "templates/env/prisma.env", when = ["prisma"] },
 ]
+
+[[files]]
+id = "env-local"
+path = ".env"
+mode = "once"
+when = ["env-local"]
+empty = true
 
 # Files: Docker build context
 
@@ -876,7 +898,7 @@ description = "List project tasks and descriptions"
 id = "env-local"
 name = "env:local"
 template = "tasks/env-local.sh"
-when = []
+when = ["env-example"]
 description = "Create .env from the example without replacing an existing file"
 
 # Tasks: combined checks
@@ -2068,6 +2090,13 @@ label = "Translations"
 categories = ["Translations"]
 description = "Choose translation tasks only when needed."
 order = 100
+
+[[steps]]
+id = "environments"
+label = "Environments"
+categories = ["Environments"]
+description = "Choose which environment files KitFlow should create."
+order = 105
 
 [[steps]]
 id = "instructions"

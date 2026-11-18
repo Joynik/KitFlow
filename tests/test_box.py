@@ -15,6 +15,37 @@ def test_example_box_builds_basic_python_project(tmp_path):
     assert not plan(tmp_path, catalog, selected, load_config(tmp_path)).changes
 
 
+def test_environment_files_are_optional_and_local_values_are_preserved(tmp_path):
+    root = Path(__file__).parents[1] / "box"
+    catalog = Catalog(root)
+    example = tmp_path / ".env.example"
+    local = tmp_path / ".env"
+
+    def configure(selected):
+        result = plan(tmp_path, catalog, selected, load_config(tmp_path))
+        apply(result, {"local": str(root)})
+
+    configure(["python"])
+    configure(["python"])
+    assert not example.exists()
+    assert not local.exists()
+
+    configure(["python", "env-local"])
+    assert local.read_bytes() == b""
+    assert not example.exists()
+    local.write_text("LOCAL_VALUE=custom\n")
+
+    configure(["python", "env-example"])
+    assert example.is_file()
+    assert local.read_text() == "LOCAL_VALUE=custom\n"
+    review = plan(tmp_path, catalog, ["python", "env-local"], load_config(tmp_path), reset=True)
+    assert all(change.artifact.path != ".env" for change in review.changes)
+
+    configure(["python"])
+    assert not example.exists()
+    assert local.read_text() == "LOCAL_VALUE=custom\n"
+
+
 def test_standard_check_runs_only_checks_and_preserves_failure_status(tmp_path):
     import os
     import subprocess

@@ -85,9 +85,11 @@ files are adopted and skipping an untracked file leaves it user-owned.
   keys KitFlow added for it, even after edits, unless another selected component needs them. Keys
   without ownership records stay in place unless a confirmed migration covers them. If you skip
   removing a departing mise task, its settings stay until you remove the task.
-- **`.env`** stays user-owned. `mise run env:local` creates it from `.env.example` when absent. Edit
-  generated ignore and env fragments in your box under `templates/gitignore/`,
-  `templates/dockerignore/`, `templates/vscodeignore/` or `templates/env/`.
+- **Environment files** are optional. In **Environments**, select **Create .env.example** to
+  generate an example for the selected components. Select **Create .env** to start with an empty
+  local file. KitFlow preserves an existing `.env`. With only the example selected, you can run
+  `mise run env:local` to copy it to a missing `.env`. Edit generated fragments in your box under
+  `templates/gitignore/`, `templates/dockerignore/`, `templates/vscodeignore/` or `templates/env/`.
 
 ## Run and configure mise tasks
 
