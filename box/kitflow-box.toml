@@ -603,6 +603,7 @@ fragments = [
   { template = "templates/vscodeignore/javascript.txt", when = ["javascript"] },
   { template = "templates/vscodeignore/typescript.txt", when = ["typescript"] },
   { template = "templates/vscodeignore/bun.txt", when = ["bun"] },
+  { template = "templates/vscodeignore/knip.txt", when = ["knip"] },
   { template = "templates/vscodeignore/rumdl.txt", when = ["rumdl"] },
   { template = "templates/vscodeignore/agents.txt", when = ["agents"] },
   { template = "templates/vscodeignore/tests.txt", when = ["vscode-extension-tests"] },
