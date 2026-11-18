@@ -31,19 +31,6 @@ mise tasks ls
 '''
 # kitflow:end task.help
 
-# kitflow:begin task.env:local
-[tasks."env:local"]
-description = "Create .env from the example without replacing an existing file"
-run = '''
-set -eu
-if [ -e .env ] || [ -L .env ]; then
-    echo ".env already exists; edit it manually" >&2
-    exit 2
-fi
-(set -C; cat .env.example > .env)
-'''
-# kitflow:end task.env:local
-
 # kitflow:begin task.check
 [tasks."check"]
 description = "Check code, formatting, types and migrations"

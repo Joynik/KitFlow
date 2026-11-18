@@ -1,6 +1,6 @@
 schema = 1
 migrated_box_version = 1
-box_version = 4
+box_version = 5
 
 [selection]
 components = ["python", "ruff", "ty", "vulture", "deptry", "nuitka", "rumdl", "pytest", "agents"]
@@ -25,13 +25,6 @@ path = ".gitignore"
 kind = "block"
 key = ""
 sha256 = "6087c254f2bf6bc55e1bcbaa0590b9834fc853ad269c184cfeb85e493019ed66"
-once = false
-
-[state.artifacts.env-example]
-path = ".env.example"
-kind = "file"
-key = ""
-sha256 = "970d5d48bdfc85b006d512837d74304cdbcebd4346e84233711a56f3acf6cb4e"
 once = false
 
 [state.artifacts.pyproject]
@@ -137,13 +130,6 @@ path = "mise.toml"
 kind = "task"
 key = "help"
 sha256 = "5a976415c57aa16ecef2ca94edfaebdb201a17d2c0a86f439a735bf7f112ecc8"
-once = false
-
-[state.artifacts."task.env:local"]
-path = "mise.toml"
-kind = "task"
-key = "env:local"
-sha256 = "bb3be6a1ff16beca762a86612a74a11adb3dd66e084c7b791cdc776c2b97a7e7"
 once = false
 
 [state.artifacts."task.check"]
