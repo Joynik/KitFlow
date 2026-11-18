@@ -1,0 +1,4 @@
+# Bun configuration and lockfiles
+bunfig.toml
+bun.lock
+bun.lockb
