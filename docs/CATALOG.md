@@ -1,183 +1,71 @@
 # Catalog format
 
-A box is a local declarative catalog stored in your KitFlow configuration directory. Adding a
-component does not require application code when existing rules suffice. All conditions reference
-component IDs. An empty condition applies to every project.
+A box describes which files and mise entries to generate for a project's components.
 
 ```text
-box/
-├── kitflow-box.toml       Components, conditions and output paths
-├── settings/          Creation-only mise defaults
-├── templates/         File, directory and text fragment templates
-└── tasks/             Shell fragments, without mise table headers
+kitflow-box.toml   Components, wizard steps and rules
+settings/          Initial mise settings
+templates/         Files, directories and text fragments
+tasks/             Shell fragments
 ```
 
-## Standard and user layers
+## Layers and schema
 
-The configuration directory contains the standard box in `default/` and user definitions at its
-root. The standard box uses `schema = 4` for conditional file fragments. KitFlow still reads legacy
-schema 1, 2 and 3 boxes; a user overlay may contain only a schema declaration. Older KitFlow
-versions reject the new standard schema instead of silently generating incomplete tasks.
+The user box root overlays `default/`. Use `schema = 4` for new catalogs. KitFlow reads schemas 1–3
+and warns on older user schemas during updates. Migrate them by hand. Upgrade KitFlow before
+downloading a standard box that requires a newer schema or catalog feature.
 
-New user catalogs use the current schema (4). Update commands warn if your user catalog declares an
-older supported schema. Review this reference and update the declaration manually; KitFlow never
-rewrites the schema of an existing user catalog.
+- Sections `components`, `steps`, `files`, `tasks`, `defaults` and `env` merge by ID. A replacement
+  takes the original position and replaces the entire entry. New IDs append. IDs must be unique
+  within a section and layer. Legacy task IDs use the template stem; legacy env IDs use `name`.
+- A user template overrides the same relative path in `default/`. Directories merge file by file. An
+  empty override supplies an empty file. Remove an override to restore the standard version.
+- To omit a standard entry, list its ID under `[disabled]` in the corresponding section. For
+  example, `tasks = ["ruff-lint"]`. Unknown or duplicate IDs fail validation. Fix references to
+  disabled components. Disabling a directory rule also disables its children.
 
-KitFlow merges `components`, `files`, `tasks`, `env`, `defaults` and `steps` by stable `id`. A user
-entry replaces the whole standard entry; omitted fields do not inherit values. New IDs append
-entries. Replacements keep their standard position. The effective catalog must have valid
-dependencies and conditions.
-
-Templates use relative paths as their identity. User files replace standard files at the same path.
-Directories merge file by file. An empty file is an explicit override. Removing an override restores
-the standard definition or file.
-
-Use explicit IDs for task fragments and environment entries. Legacy tasks without `id` use the
-template filename stem; legacy environment entries use their `name`. Duplicate IDs within one
-section and layer are errors. The same ID may exist in different sections.
-
-Disable entries without supplying replacements:
+## Components and wizard steps
 
 ```toml
-schema = 1
-
-[disabled]
-components = []
-files = ["tools"]
-tasks = ["ruff-lint"]
-env = []
-defaults = []
-steps = []
-```
-
-Lists contain IDs from the corresponding merged section. Unknown or duplicate IDs are errors.
-Disabling a component also requires updating or disabling entries that reference it. Disabling a
-file rule disables all its directory-template children.
-
-`kitflow box update` validates the incoming standard box and its combination with user definitions
-before replacing `default/`. `kitflow check` reads the local layers and checks their combined
-configuration without downloading, writing files or running tasks.
-
-## Components
-
-```toml
-schema = 1
+schema = 4
 
 [[components]]
-id = "python"
-label = "Python"
-category = "Languages"
-description = "Base Python project files."
-requires = []
-conflicts = []
-
-[[components]]
-id = "django"
-label = "Django"
-category = "Frameworks"
+id = "quality"
+label = "Quality checks"
+category = "Checks"
+description = "Check Python code."
 requires = ["python"]
-```
-
-Component IDs are stable lowercase identifiers. Declaration order determines display order.
-Dependencies are recursive. Unknown dependencies and dependency cycles are rejected. Conflicts are
-checked against the resolved selection. Category labels and component descriptions come from the
-catalog.
-
-## Navigator wizard
-
-Define ordered steps in the same catalog. Each category belongs to at most one step:
-
-```toml
-schema = 3
+recommended = true
 
 [[steps]]
 id = "checks"
 label = "Checks and formatting"
 categories = ["Checks"]
 order = 60
-description = "Disable any recommendation you do not need."
-
-[[components]]
-id = "quality"
-label = "Quality checks"
-category = "Checks"
-recommended = true
-requires = ["python"]
+description = "Choose the checks to run."
 ```
 
-Steps merge by ID, just like components. `order` sorts them; declaration order breaks ties.
-Unassigned categories receive automatic steps, including in legacy boxes. Empty steps are hidden.
-The final review and user-owned-file steps are supplied by KitFlow. Their IDs `review` and
-`ownership` are reserved.
+Use stable lowercase component IDs. Components appear in declaration order. `requires` adds
+dependencies recursively. Unknown dependencies and cycles fail validation. `conflicts` applies to
+the resolved selection. In the wizard, choosing a conflicting alternative removes the previous
+selection and its dependents.
 
-A component is available when its required components are selected. To show an option before all its
-dependencies are selected, supply `when` and/or `when_any`. They control wizard visibility;
-selecting the option still adds every mandatory `requires` dependency. For example, a web framework
-can use `when_any = ["javascript", "typescript"]` and require its UI library. The wizard adds that
-library automatically. `when` requires every listed ID; `when_any` requires at least one. Both
-conditions apply when both are present. These conditions may also hide whole steps.
+| Condition | Matches when |
+| --- | --- |
+| `when` | All listed components are selected |
+| `when_any` | At least one listed component is selected, or the list is empty |
+| `when_not` | None are selected. Available on file and task rules |
 
-`recommended = true` selects a newly available option when its step opens. Recommendations never
-replace conflicting choices. Users can deselect them; returning to a step does not select them
-again. Existing projects keep their saved selection. Selecting a conflicting alternative removes the
-previous alternative and dependent components, with a notification.
+Conditions combine. All IDs must exist. `when` and `when_any` apply to steps, components and
+artifact rules. A component without visibility conditions appears when its dependencies are
+selected. Explicit conditions can show it sooner; selecting it still adds its dependencies.
 
-The wizard supports multiple languages and a project without a framework. It does not create
-application source code or install dependencies. Profiles and `--profile/-r` have been removed.
-Existing projects already store resolved components, so they need no selection migration. Old local
-profile files remain on disk but are no longer read.
+`recommended = true` selects an eligible option when its step first opens, without replacing
+conflicts. Deselections and existing project choices are preserved. Steps sort by `order`, then
+declaration order. A category belongs to one step at most. Unassigned categories get automatic
+steps. Empty steps are hidden. KitFlow reserves `review` and `ownership`.
 
-## Whole files
-
-```toml
-[[files]]
-id = "ruff"
-path = "ruff.toml"
-template = "templates/ruff.toml"
-when = ["python", "ruff"]
-mode = "managed"
-```
-
-Every component listed in `when` must be selected. File IDs must be unique. Output paths must also
-be unique. Use `mode = "once"` for files that must never be updated or deleted after creation. Files
-are copied as bytes. Parameter substitution is not implemented. Nested paths and relative symbolic
-links are supported. Paths outside the project are rejected. `.git`, `.beads`, `.venv` and
-`kitflow.toml` are reserved targets. `mise.toml` is reserved for block management.
-
-Keep output paths stable for an existing artifact ID. A path migration requires explicitly retiring
-the old artifact before adopting the new path. Empty directories and recursive directory deletion
-are not supported.
-
-## Managed text block
-
-Use `mode = "block"` to update only a marked region of a text file. It accepts one UTF-8 file or
-conditional `fragments`, not directories, symbolic links or empty-file declarations. The standard
-`.gitignore` uses this mode. New files contain:
-
-```gitignore
-# <kitflow>
-# Generated rules and component sections
-# </kitflow>
-
-# <user>
-# Rules here are preserved during KitFlow updates.
-# Rules in the kitflow block are replaced automatically during updates.
-# </user>
-```
-
-Updates replace only the content between the KitFlow markers, without local-edit conflict prompts or
-diff output. Everything outside that region, including the user block and its comments, stays
-byte-for-byte unchanged. Do not put ownership markers in templates or fragments.
-
-Missing, duplicate, reversed or incomplete KitFlow markers leave the entire file unchanged and
-exclude it from management. Existing unmarked files, including files managed by older versions, are
-also preserved. To opt in, add one valid KitFlow marker pair manually, put personal rules outside
-it, then use `kitflow init -m FILE_ID` if the file was excluded. Updates do not insert missing
-markers. Removing the file rule removes only its marked block, leaving the user content.
-
-## Directory templates
-
-A `template` may point to a directory. Its contents are copied recursively under `path`:
+## File rules
 
 ```toml
 [[files]]
@@ -185,106 +73,76 @@ id = "editor-settings"
 path = ".vscode"
 template = "templates/vscode"
 when = ["python"]
+mode = "managed"
 ```
 
-Hidden files and directories are included, such as `.env.example` and `.nested/settings.json`. Each
-file is managed independently. Its ID combines the rule ID and relative path, for example
-`editor-settings/settings.json`. Use this ID with `--manage` to restore management of an excluded
-file. Keep rule IDs and output paths stable.
+Use exactly one source: `template`, `fragments` or `empty = true`. File IDs and output paths must be
+unique. Keep paths stable for each ID. Retire the old artifact before changing its path. Paths must
+stay within the project. `.git`, `.beads`, `.venv` and `kitflow.toml` are reserved. KitFlow manages
+`mise.toml` through mise rules. It copies bytes without substitution or executable permissions.
 
-Updates include new files and remove unchanged managed files missing from the template. Modified
-files require a conflict decision. Personal files are preserved. Empty directories are ignored;
-existing directories are not deleted. Special files and absolute symbolic links are rejected.
-`mode = "once"` applies separately to each file. Files are copied as bytes; executable permissions
-are not copied. `kitflow check` also checks TOML and JSON files inside directory templates.
+| Mode | Behavior |
+| --- | --- |
+| `managed` (default) | Replace a whole file, with conflict review for local edits |
+| `once` | Create when absent. Ordinary updates never replace or delete it. Required for `empty = true` |
+| `block` | Replace only a marked region. Requires UTF-8 text or fragments |
 
-## Symbolic links
+A directory template includes nested and hidden files. Each child has its own ID, such as
+`editor-settings/settings.json`. Use this ID with `init -m`. Updates add new children and remove
+obsolete unchanged ones. They preserve personal files and review modified files. Empty folders are
+ignored. Directories are never deleted. `once` applies per child. Special files are rejected.
 
-Relative symbolic links are copied as links, including links to directories. The link target text is
-preserved exactly. KitFlow does not traverse links, copy their target contents or validate those
-contents. A target may be missing; KitFlow preserves the link so the target can be supplied later.
-Relative targets may contain `..`; the destination is interpreted from the link's new location.
-Absolute link targets are rejected.
+Relative links, including dangling links and targets containing `..`, are copied as link text.
+KitFlow compares the text during updates and removes only the link. It never reads or writes the
+target through the link. Absolute links and output paths through symlink parents are rejected.
 
-A `template` can itself be a relative link, or a directory can contain relative links. Updates
-compare link target text, detect manual changes and use the usual conflict decisions. Removal
-deletes only the link. KitFlow never writes through it. Output parent directories must be real
-directories; KitFlow rejects paths that traverse a symbolic link.
+### Blocks and composed text
 
-## Composed tasks
+For `mode = "block"`, keep ownership markers out of templates. KitFlow adds a `# <kitflow>` /
+`# </kitflow>` pair and a separate user block on creation. Ordinary updates replace the marked
+region automatically, without conflict prompts or diff output. Surrounding bytes stay intact.
+Removing the rule removes only the marked block. Missing or invalid markers leave the file untouched
+and excluded. To opt in, add a valid pair around the managed rules, then run
+`kitflow init -m FILE_ID` if excluded.
+
+```toml
+[[files]]
+id = "ignore"
+path = ".gitignore"
+mode = "block"
+fragments = [
+  { template = "templates/gitignore/general.txt" },
+  { template = "templates/gitignore/python.txt", when = ["python"] },
+]
+```
+
+Fragments are regular UTF-8 files. Both the file and fragment conditions must match. A fragment
+accepts `template`, `when` and `when_any`. KitFlow trims edge line breaks, joins nonempty parts with
+one blank line and adds a final newline. Put section comments in the fragments. The assembled file
+has one artifact ID and checksum. Removing a component removes its parts at the next update.
+
+Use `format = "dotenv"` for environment examples. Active duplicate names, including `export`
+assignments, fail validation. Comments do not count. `kitflow check` checks compatible fragment
+combinations. Keep common names in a shared fragment and actual secrets in the local `.env`. The
+standard box composes `.gitignore` as a block and `.env.example` as a whole file. `.dockerignore`
+uses whole-file management and requires Docker.
+
+## Mise rules
 
 ```toml
 [[tasks]]
-id = "python-lint"
-name = "lint"
-template = "tasks/python-lint.sh"
-when = ["python"]
-
-[[tasks]]
-id = "django-lint"
-name = "lint"
-template = "tasks/django-lint.sh"
-when = ["django"]
-```
-
-The first fragment could contain `ruff check .`. The second fragment could contain
-`python manage.py check`. KitFlow combines matching fragments into a single marked task named
-`lint`. The artifact ID becomes `task.lint`. Task names allow letters, digits, underscores, hyphens
-and colons. Fragments run in catalog order and stop on a failed command. Each command must work from
-the project root with tools already available. Fragments must not contain a triple single quote
-delimiter.
-
-## Task metadata and working directories
-
-Task fragments may define `description`, `alias`, `usage`, `hide` and `quiet`. String fields use
-mise's native meanings; `hide` and `quiet` are booleans. Metadata declared by multiple fragments of
-one task must agree. Shell fragments still compose in catalog order.
-
-```toml
-[[tasks]]
-id = "application-test"
+id = "python-test"
 name = "test"
-template = "tasks/application-test.sh"
+template = "tasks/python-test.sh"
 when = ["python"]
 directory_env = "PROJECT_ROOT"
 description = "Run selected test runners"
-```
 
-`directory_env` names an exported variable containing the fragment's working directory. KitFlow
-wraps that fragment in a subshell, so other fragments keep their own directories. Missing values and
-invalid directories fail explicitly. Paths with spaces are supported. The core contains no
-language-specific path guessing.
-
-`usage` declares native mise arguments, available as `usage_name`, `usage_file` and other variables
-inside the fragment. For example: `usage = 'arg "[name]" help="Migration name"'`.
-
-All artifact sections support `when` and `when_any`. Every ID in `when` must be selected. At least
-one ID in a nonempty `when_any` must be selected. Both conditions apply when both are present. File
-and task rules also accept `when_not`. Skip the rule when any listed component is selected.
-
-## Initial user settings
-
-```toml
 [[defaults]]
 id = "python"
 template = "settings/python.toml"
 when = ["python"]
-```
 
-A defaults template is TOML containing only `[vars]`, `[env]` and `[settings]`. KitFlow adds missing
-keys to `mise.toml` without replacing existing values or comments. It records the seed once. Later
-updates and component removal do not alter or remove these settings, even if a user deletes a key.
-Newly selected defaults entries may supply additional missing keys. Defaults have no management
-markers; they become user-owned immediately. Do not put secrets in defaults templates.
-
-The standard box loads `.env` and uses `env.NAME | default(value=vars.name)` for fallbacks. Values
-from `.env` therefore take priority over initial variable values. Runtime configuration belongs in
-mise, not in the project's `kitflow.toml`. After changing project paths, update the corresponding
-mise variables; no KitFlow reconfiguration is needed.
-
-## Environment entries
-
-```toml
 [[env]]
 id = "PYTHONUNBUFFERED"
 name = "PYTHONUNBUFFERED"
@@ -292,74 +150,25 @@ value = "1"
 when = ["python"]
 ```
 
-Values are literal strings. Environment names must be valid shell variable names. Each entry
-receives its own markers inside `[env]`. The artifact ID becomes `env.PYTHONUNBUFFERED`. Do not
-place secrets in the catalog.
+- **Tasks.** Matching fragments with the same `name` form one marked task, such as `task.test`.
+  Names allow letters, digits, underscores, hyphens and colons. Fragments run in catalog order and
+  stop on failure. Use shell commands without table headers or triple single quotes. Run from the
+  project root by default. `directory_env` names an exported path and isolates the directory change
+  in a subshell. Paths with spaces work. Missing or invalid directories fail.
+- **Metadata.** `description`, `alias` and `usage` are strings; `hide` and `quiet` are booleans.
+  Fragments of the same task must agree where they declare metadata. For example,
+  `usage = 'arg "[name]" help="Migration name"'` exposes `usage_name` to the shell.
+- **Defaults.** Template TOML may contain only `vars`, `env` and `settings`. Each rule seeds missing
+  keys once. Existing values and comments stay intact. Defaults have no ownership markers. Ordinary
+  updates and component removal preserve them, including keys you deleted. New rules can seed other
+  missing keys. The standard box gives `.env` overrides priority.
+- **Environment.** Use shell variable names and literal string values. Each entry has its own
+  markers in `[env]` and an artifact ID such as `env.PYTHONUNBUFFERED`.
 
-## Extending and checking
+## Check your box
 
-1. Add a component and its dependency rules to `kitflow-box.toml`.
-2. Add templates and shell fragments in the catalog repository.
-3. Declare the output files and task conditions.
-4. Run `kitflow init --box ./box --project /tmp/example` in an empty test directory.
-5. Run `kitflow diff --box ./box --project /tmp/example` after changing templates or the selection.
-
-KitFlow downloads the standard example into `default/` on first use. Run `kitflow box update` to
-replace that standard snapshot explicitly. User overrides remain outside `default/`. Project
-commands read your local box. Edit and back up that directory directly. Project state stores
-installed artifact checksums to detect local edits and obsolete files. See
-[the user instructions](INSTRUCTION.md) for the setup and update workflow.
-
-## Empty initial documents
-
-Use a creation rule instead of an empty template file:
-
-```toml
-[[files]]
-id = "project"
-path = "PROJECT.md"
-empty = true
-mode = "once"
-```
-
-An empty file rule requires `mode = "once"` and must not specify `template`. Existing files are
-preserved. Created files are never updated or deleted afterward.
-
-## Composed text files
-
-Use `fragments` instead of `template` to assemble one UTF-8 file from ordered parts:
-
-```toml
-[[files]]
-id = "ignore"
-path = ".gitignore"
-mode = "managed"
-fragments = [
-  { template = "templates/gitignore/general.txt" },
-  { template = "templates/gitignore/python.txt", when = ["python"] },
-  { template = "templates/gitignore/web.txt", when_any = ["javascript", "typescript"] },
-]
-```
-
-A file rule accepts exactly one source: `template`, `fragments` or `empty`. A fragment accepts
-`template`, `when` and `when_any`. Both file and fragment conditions must match. Paths use the same
-user-over-standard lookup as other templates. Fragments must be regular UTF-8 files, not folders or
-symbolic links. Leading and trailing line breaks are removed from each part; nonempty parts are
-joined with one blank line, followed by a final newline. Other whitespace and comments are
-preserved.
-
-Put section comments inside the fragments. The generated content has one artifact ID and checksum.
-With `mode = "managed"`, updates replace the whole file after conflict review. With
-`mode = "block"`, updates replace only the marked KitFlow region automatically. Neither mode merges
-local edits into individual parts. Removing a component removes its parts on the next project
-update.
-
-For environment examples, set `format = "dotenv"`. Duplicate assignment names, including `export`
-assignments, are rejected when their fragments are selected together. `kitflow check` also checks
-compatible fragment combinations. Commented examples do not count as assignments. Put shared
-variables in one general fragment. Keep actual secrets in the user-owned `.env`.
-
-The standard `.gitignore` and `.env.example` always exist. `.dockerignore` requires the Docker
-component. All three use only matching fragments. `.gitignore` uses block management; `.env.example`
-and `.dockerignore` use whole-file management. `.env` remains user-owned. Upgrade KitFlow before
-downloading schema 4 standard boxes.
+Create an empty test directory, run `kitflow check -b ./box -p /tmp/example`, then try
+`kitflow init -b ./box -p /tmp/example`. After editing a template, run
+`kitflow diff -b ./box -p /tmp/example`. Checks validate TOML and JSON templates, including files in
+directory templates. They do not download, write or execute tasks. See
+[INSTRUCTION.md](INSTRUCTION.md) for project usage and ownership rules.
