@@ -85,6 +85,7 @@ class Change:
     conflict: bool = False
     reason: str = ""
     decision: str = "apply"
+    state_baseline: bytes | str | None = None
 
 
 @dataclass
@@ -349,7 +350,9 @@ def _apply(result: Plan, source: dict):
                 "path": artifact.path,
                 "kind": artifact.kind,
                 "key": artifact.key,
-                "sha256": digest(change.after),
+                "sha256": digest(
+                    change.after if change.state_baseline is None else change.state_baseline
+                ),
                 "once": artifact.once,
             }
     selection["excluded"] = sorted(excluded)

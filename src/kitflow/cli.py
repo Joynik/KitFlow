@@ -13,7 +13,7 @@ from rich.table import Table
 from kitflow.box_update import refresh_box
 from kitflow.catalog import CURRENT_SCHEMA, KitFlowError
 from kitflow.check import configuration_issues
-from kitflow.engine import CONFIG, apply, load_config, plan, preview_files
+from kitflow.engine import CONFIG, apply, load_config, plan
 from kitflow.settings import box_path, config_directory
 from kitflow.source import load_box, read_instructions
 
@@ -41,7 +41,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("box_command", nargs="?", choices=["update"], help=argparse.SUPPRESS)
     result.epilog = """Commands:
   init    Choose or change project components and apply the plan
-  update  Update project files or change components through the wizard
+  update  Update project files, review individual changes, or change the project setup
   status  List pending changes without applying them
   diff    Show proposed file differences without applying them
   config  Show the local box location without creating it
@@ -78,11 +78,6 @@ Without a command, prepare the local box. User overrides stay in its root direct
     )
     result.add_argument(
         "--yes", "-y", action="store_true", help="Confirm plan; never overwrite conflicts"
-    )
-    result.add_argument(
-        "--reset",
-        action="store_true",
-        help="Select files to reset from the box, including creation-only files (update only)",
     )
     return result
 
@@ -152,12 +147,6 @@ def show_plan(result):
 
 
 def run(args: argparse.Namespace) -> int:
-    if args.reset and (
-        args.command != "update" or args.yes or args.manage or args.components is not None
-    ):
-        raise KitFlowError("Use update --reset interactively, without --yes or selection options")
-    if args.reset and not sys.stdin.isatty():
-        raise KitFlowError("update --reset requires an interactive terminal")
     if args.box_command and args.command != "box":
         raise KitFlowError("Only box accepts a subcommand: kitflow box update")
     if args.command == "box":
@@ -238,23 +227,37 @@ def run(args: argparse.Namespace) -> int:
     catalog, source = load_box(args.box)
     if command == "update":
         warn_box_schema(catalog.root)
-    if args.reset:
+    action = "files"
+    if command == "update" and not args.yes and sys.stdin.isatty():
+        action = choose_action(
+            "What would you like to do?",
+            [
+                ("files", "Update files"),
+                ("review", "Review and update files"),
+                ("setup", "Change setup"),
+                ("exit", "Exit"),
+            ],
+            "files",
+        )
+        if action in (None, "exit"):
+            console.print("Cancelled. No files were changed.")
+            return 0
+    if action == "review":
+        from kitflow.reset import reset_files, select_reset
         from kitflow.tui import ResetFiles
 
         result = plan(root, catalog, document["selection"]["components"], document, reset=True)
-        candidates = preview_files(result)
+        candidates = reset_files(result)
         if not candidates:
-            console.print("No files need resetting.")
+            console.print("No file changes to review.")
             return 0
         selected_files = ResetFiles(candidates).run()
         if not selected_files:
             console.print("Cancelled. No files were changed.")
             return 0
-        for change in result.changes:
-            if change.artifact.path not in selected_files or change.operation == "detach":
-                change.decision = "skip"
+        select_reset(result, candidates, selected_files)
         apply(result, source)
-        console.print(f"Files reset: {len(selected_files)}.")
+        console.print(f"Files updated: {len(selected_files)}.")
         return 0
     selection = document["selection"]
     selected = list(selection.get("components", []))
@@ -265,16 +268,7 @@ def run(args: argparse.Namespace) -> int:
             raise KitFlowError(f"Not excluded: {', '.join(sorted(unknown))}")
         excluded = [x for x in excluded if x not in args.manage]
     configure = command == "init" and args.components is None and not args.manage
-    if command == "update" and not args.yes and sys.stdin.isatty():
-        action = choose_action(
-            "What would you like to do?",
-            [("files", "Update files"), ("setup", "Change setup"), ("exit", "Exit")],
-            "files",
-        )
-        if action in (None, "exit"):
-            console.print("Cancelled. No files were changed.")
-            return 0
-        configure = action == "setup"
+    configure = configure or action == "setup"
     if command == "init" and args.components is not None:
         selected = [x.strip() for x in args.components.split(",") if x.strip()]
     if configure:
