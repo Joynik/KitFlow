@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.13.0 — 2026-11-18
+
+### Added
+
+- Review file changes side by side from the update menu and select individual text changes, mise
+  tasks or settings.
+
+### Changed
+
+- Match terminal buttons and scrollbars to the green palette.
+
+### Removed
+
+- Use the update menu to review changes. The `update --reset` shortcut has been removed.
+
 ## 0.12.0 — 2026-11-18
 
 ### Added
