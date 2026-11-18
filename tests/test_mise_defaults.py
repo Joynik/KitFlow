@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from kitflow import mise
 from kitflow.catalog import Catalog, KitFlowError
 from kitflow.engine import apply, load_config, plan
 
@@ -45,6 +46,24 @@ def test_defaults_never_add_tools(catalog_path):
     (catalog_path / "settings.toml").write_text('[tools]\npython="latest"\n')
     with pytest.raises(KitFlowError, match="only vars, env and settings"):
         Catalog(catalog_path)
+
+
+@pytest.mark.parametrize("section", ["vars", "env", "settings.task"])
+@pytest.mark.parametrize("merge", [mise.add_defaults, mise.reset_defaults])
+def test_late_defaults_stay_outside_task_markers(section, merge):
+    original = (
+        f"[{section}]\nexisting = 1\n\n"
+        '# kitflow:begin task.help\n[tasks.help]\nrun = "true"\n# kitflow:end task.help\n'
+        '\n# kitflow:begin task.test\n[tasks.test]\nrun = "true"\n# kitflow:end task.test\n'
+    )
+    result = merge(original, f"[{section}]\nnew = 2\n".encode())
+    settings = tomllib.loads(result)
+    for key in section.split("."):
+        settings = settings[key]
+    assert settings == {"existing": 1, "new": 2}
+    assert (
+        result[result.index("# kitflow:begin") :] == original[original.index("# kitflow:begin") :]
+    )
 
 
 def test_fragment_directory_and_task_metadata(catalog_path, tmp_path):

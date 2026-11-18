@@ -2,7 +2,11 @@
 
 ## Unreleased
 
+## 0.13.3 — 2026-11-18
+
 ### Fixed
+
+- Keep new mise settings outside managed task blocks when changing project setup.
 
 - Compose `.vscodeignore` from the selected components, including agent instructions and tests.
 

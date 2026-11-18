@@ -116,28 +116,29 @@ def missing_defaults(text: str, content: bytes) -> bytes:
 
 
 def add_defaults(text: str, content: bytes) -> str:
-    import tomlkit
-
-    document = tomlkit.parse(text)
-    incoming = tomlkit.parse(missing_defaults(text, content).decode())
-
-    def merge(target, source):
-        for name, value in source.items():
-            if name not in target:
-                target[name] = value
-            else:
-                merge(target[name], value)
-
-    merge(document, incoming)
-    return tomlkit.dumps(document)
+    return reset_defaults(text, missing_defaults(text, content))
 
 
 def reset_defaults(text: str, content: bytes) -> str:
     """Reset only keys defined by the current box, retaining other user settings."""
     import tomlkit
 
-    document = tomlkit.parse(text)
-    incoming = tomlkit.parse(content.decode())
+    source = content.decode()
+    owned = blocks(text)
+    separator = "_kitflow_task_boundary"
+    while separator in text or separator in source:
+        separator += "_"
+    # TOMLKit attaches comments before a task header to the preceding table.
+    # A temporary header keeps the task's opening marker out of that table.
+    protected = text
+    headers = []
+    for identity, (start, _, _) in reversed(list(owned.items())):
+        if identity.startswith("task."):
+            header = f"[{separator}_{len(headers)}]\n"
+            headers.append(header)
+            protected = protected[:start] + header + protected[start:]
+    document = tomlkit.parse(protected)
+    incoming = tomlkit.parse(source)
 
     def merge(target, source):
         for name, value in source.items():
@@ -147,4 +148,11 @@ def reset_defaults(text: str, content: bytes) -> str:
                 target[name] = value
 
     merge(document, incoming)
-    return tomlkit.dumps(document)
+    result = tomlkit.dumps(document)
+    for header in headers:
+        result = result.replace(header, "")
+    if {key: span[2] for key, span in blocks(result).items()} != {
+        key: span[2] for key, span in owned.items()
+    }:
+        raise KitFlowError("Mise defaults cannot change managed task or environment blocks")
+    return result
