@@ -86,9 +86,10 @@ files are adopted and skipping an untracked file leaves it user-owned.
   without ownership records stay in place unless a confirmed migration covers them. If you skip
   removing a departing mise task, its settings stay until you remove the task.
 - **Environment files** are optional. In **Environments**, select **Create .env.example** to
-  generate an example for the selected components. Select **Create .env** to start with an empty
-  local file. KitFlow preserves an existing `.env`. With only the example selected, you can run
-  `mise run env:local` to copy it to a missing `.env`. Edit generated fragments in your box under
+  generate an example from the selected mise defaults and application fragments. To configure the
+  project through `.env`, run `mise run env:local` once and edit the copy. Leave **Create .env**
+  unchecked for this workflow. Select it to start with an empty local file instead. KitFlow preserves
+  an existing `.env`. Edit custom fragments in your box under
   `templates/gitignore/`, `templates/dockerignore/`, `templates/vscodeignore/` or `templates/env/`.
 
 ## Run and configure mise tasks
@@ -144,10 +145,16 @@ entry point. Leave both build options unchecked to omit Python builds.
 
 ### Application servers and builds
 
-- **Python servers.** Choose Granian, Gunicorn or Uvicorn. Set `python_app` to `module:object`. Use
-  a worker or interface compatible with WSGI or ASGI. FastAPI with Gunicorn defaults to the native
-  `asgi` worker; adjust `gunicorn_worker` for other releases or workers. Granian reload needs its
-  `reload` extra.
+- **Python servers.** The wizard offers Granian, Gunicorn, Uvicorn or Gunicorn + Uvicorn for Django,
+  Granian or Uvicorn for FastAPI, and Granian or Gunicorn for Flask. Set `python_app` to
+  `module:object` using the interface your server expects. In the combined Django mode, use the
+  ASGI entry point. `dev` uses Uvicorn and `run` uses Gunicorn with the `uvicorn-worker` package.
+- **Reload exclusions.** For Granian and Uvicorn-based development, set
+  `server_reload_ignore_dirs` and `server_reload_ignore_patterns` in mise `[vars]`, one entry per
+  line. Override them in `.env` with `SERVER_RELOAD_IGNORE_DIRS` and `SERVER_RELOAD_IGNORE_PATTERNS`.
+  Granian needs `granian[reload]` and takes directory names and regular expressions. Uvicorn needs
+  `watchfiles` (included in `uvicorn[standard]`) and takes existing directories relative to
+  `python_source` or absolute paths, plus glob patterns. Gunicorn's built-in reload has no exclusions.
 - **Run modes.** `dev` enables reload; `run` does not. Set `build_before_run = "true"` to build
   first. Use `server_host_default` and `server_port_default`, or override them with `SERVER_HOST`
   and `SERVER_PORT`. Django also has `django:runserver`. FastAPI's `app-check` imports the app and

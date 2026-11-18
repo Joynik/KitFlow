@@ -368,7 +368,7 @@ label = "Granian"
 category = "Python servers"
 description = "Python server with development reload and normal run modes."
 requires = ["python"]
-conflicts = ["gunicorn", "uvicorn"]
+conflicts = ["gunicorn", "uvicorn", "gunicorn-uvicorn"]
 when_any = ["django", "fastapi", "flask"]
 
 [[components]]
@@ -377,8 +377,8 @@ label = "Gunicorn"
 category = "Python servers"
 description = "Python server with configurable workers and reload."
 requires = ["python"]
-conflicts = ["granian", "uvicorn"]
-when_any = ["django", "fastapi", "flask"]
+conflicts = ["granian", "uvicorn", "gunicorn-uvicorn"]
+when_any = ["django", "flask"]
 
 [[components]]
 id = "uvicorn"
@@ -386,8 +386,17 @@ label = "Uvicorn"
 category = "Python servers"
 description = "ASGI server for Django or FastAPI."
 requires = ["python"]
-conflicts = ["granian", "gunicorn", "flask"]
+conflicts = ["granian", "gunicorn", "gunicorn-uvicorn", "flask"]
 when_any = ["django", "fastapi"]
+
+[[components]]
+id = "gunicorn-uvicorn"
+label = "Gunicorn + Uvicorn"
+category = "Python servers"
+description = "Django ASGI: Uvicorn for development and Gunicorn with Uvicorn workers for run."
+requires = ["django"]
+conflicts = ["granian", "gunicorn", "uvicorn"]
+when = ["django"]
 
 # Components: tests
 
@@ -561,19 +570,13 @@ path = ".env.example"
 mode = "managed"
 when = ["env-example"]
 format = "dotenv"
+mise_defaults = true
 fragments = [
   { template = "templates/env/general.env" },
-  { template = "templates/env/python-application.env", when_any = ["django", "fastapi", "flask"] },
   { template = "templates/env/django.env", when = ["django"] },
   { template = "templates/env/fastapi.env", when = ["fastapi"] },
   { template = "templates/env/flask.env", when = ["flask"] },
-  { template = "templates/env/server.env", when_any = ["granian", "gunicorn", "uvicorn"] },
-  { template = "templates/env/gunicorn.env", when = ["gunicorn"] },
-  { template = "templates/env/granian.env", when = ["granian"] },
-  { template = "templates/env/database-operations.env", when_any = ["sqlite", "postgresql"] },
   { template = "templates/env/postgresql.env", when = ["postgresql"] },
-  { template = "templates/env/sqlite.env", when = ["sqlite"] },
-  { template = "templates/env/rust.env", when_any = ["axum", "actix-web"] },
   { template = "templates/env/prisma.env", when = ["prisma"] },
 ]
 
@@ -1510,7 +1513,7 @@ description = "Run the selected Python server with reload"
 id = "uvicorn-dev"
 name = "dev"
 template = "tasks/uvicorn-dev.sh"
-when = ["uvicorn"]
+when_any = ["uvicorn", "gunicorn-uvicorn"]
 directory_env = "PYTHON_SOURCE"
 description = "Run the selected Python server with reload"
 
@@ -1535,6 +1538,14 @@ id = "uvicorn-run"
 name = "run"
 template = "tasks/uvicorn-run.sh"
 when = ["uvicorn"]
+directory_env = "PYTHON_SOURCE"
+description = "Run the selected Python server without reload"
+
+[[tasks]]
+id = "gunicorn-uvicorn-run"
+name = "run"
+template = "tasks/gunicorn-uvicorn-run.sh"
+when = ["gunicorn-uvicorn"]
 directory_env = "PYTHON_SOURCE"
 description = "Run the selected Python server without reload"
 
@@ -1904,26 +1915,31 @@ when = []
 
 [[defaults]]
 id = "python-project"
+example_section = "Python project paths"
 template = "settings/python-project.toml"
 when = ["python"]
 
 [[defaults]]
 id = "python"
+example_section = "Python source"
 template = "settings/python.toml"
 when = ["python"]
 
 [[defaults]]
 id = "javascript"
+example_section = "JavaScript and TypeScript"
 template = "settings/javascript.toml"
 when = ["javascript"]
 
 [[defaults]]
 id = "rust-tauri"
+example_section = "Rust"
 template = "settings/rust-tauri.toml"
 when = ["tauri"]
 
 [[defaults]]
 id = "rust"
+example_section = "Rust"
 template = "settings/rust.toml"
 when = ["rust"]
 
@@ -1934,16 +1950,19 @@ when = ["swift"]
 
 [[defaults]]
 id = "javascript-build"
+example_section = "JavaScript and TypeScript"
 template = "settings/javascript-build.toml"
 when = ["javascript"]
 
 [[defaults]]
 id = "migration"
+example_section = "Alembic migrations"
 template = "settings/migration.toml"
 when = ["alembic"]
 
 [[defaults]]
 id = "docker"
+example_section = "Docker Compose"
 template = "settings/docker.toml"
 when = ["docker"]
 
@@ -1958,57 +1977,74 @@ template = "settings/granian-django.toml"
 when = ["django", "granian"]
 
 [[defaults]]
+id = "server-reload"
+example_section = "Development reload exclusions"
+template = "settings/server-reload.toml"
+when_any = ["granian", "uvicorn", "gunicorn-uvicorn"]
+
+[[defaults]]
 id = "server"
+example_section = "Python server"
 template = "settings/server.toml"
-when_any = ["granian", "gunicorn", "uvicorn"]
+when_any = ["granian", "gunicorn", "uvicorn", "gunicorn-uvicorn"]
 
 [[defaults]]
 id = "translations"
+example_section = "Translations"
 template = "settings/translations.toml"
 when_any = ["django-i18n", "babel-i18n", "script-i18n"]
 
 [[defaults]]
 id = "database"
+example_section = "Database backup and restore"
 template = "settings/database.toml"
 when_any = ["sqlite", "postgresql"]
 
 [[defaults]]
 id = "postgresql"
+example_section = "PostgreSQL connection"
 template = "settings/postgresql.toml"
 when = ["postgresql"]
 
 [[defaults]]
 id = "python-application"
+example_section = "Python application entry point"
 template = "settings/python-application.toml"
 when_any = ["django", "fastapi", "flask"]
 
 [[defaults]]
 id = "python-tests"
+example_section = "Python tests"
 template = "settings/python-tests.toml"
 when_any = ["pytest", "unittest"]
 
 [[defaults]]
 id = "frontend-runtime"
+example_section = "JavaScript and TypeScript"
 template = "settings/javascript-runtime.toml"
 when_any = ["nextjs", "nuxt", "sveltekit", "astro"]
 
 [[defaults]]
 id = "rust-runtime"
+example_section = "Rust"
 template = "settings/rust-runtime.toml"
 when_any = ["axum", "actix-web"]
 
 [[defaults]]
 id = "sqlite"
+example_section = "SQLite paths"
 template = "settings/sqlite.toml"
 when = ["sqlite"]
 
 [[defaults]]
 id = "prisma"
+example_section = "Prisma ORM"
 template = "settings/prisma.toml"
 when = ["prisma"]
 
 [[defaults]]
 id = "nuitka"
+example_section = "Nuitka build"
 template = "settings/nuitka.toml"
 when = ["nuitka"]
 

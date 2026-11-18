@@ -145,6 +145,12 @@ combinations. Keep common names in a shared fragment and actual secrets in the l
 standard box uses block management for ignore files and whole-file management for `.env.example`.
 Docker enables `.dockerignore`, and VS Code Extension enables `.vscodeignore`.
 
+Set `mise_defaults = true` on a dotenv file to include the selected mise settings. Give a
+`[[defaults]]` entry an `example_section` title to group its variables in the example.
+Map environment keys to literal `vars` defaults in the settings template. Read the matching
+environment key in the expression so `.env` can override it. Use fragments for application
+variables that have no mise setting. The example uses Box defaults and skips `PYTHONUNBUFFERED`.
+
 ## Mise rules
 
 ```toml

@@ -39,7 +39,21 @@ def test_vsix_packaging_requires_bundle(tmp_path):
         assert "mise run extension:prepare && npm exec --no -- vsce package" in script
 
 
-@pytest.mark.parametrize("server", ["granian", "gunicorn", "uvicorn"])
+@pytest.mark.parametrize(
+    ("framework", "servers"),
+    [
+        ("django", {"granian", "gunicorn", "uvicorn", "gunicorn-uvicorn"}),
+        ("fastapi", {"granian", "uvicorn"}),
+        ("flask", {"granian", "gunicorn"}),
+    ],
+)
+def test_python_server_choices_follow_the_framework(framework, servers):
+    wizard = Wizard(Catalog(BOX), [framework], [])
+    step = next(step for step in wizard.steps() if "Python servers" in step.categories)
+    assert set(wizard.choices(step)) == servers
+
+
+@pytest.mark.parametrize("server", ["granian", "gunicorn", "uvicorn", "gunicorn-uvicorn"])
 def test_server_modes_use_the_selected_runtime_and_directory(tmp_path, server):
     binary = tmp_path / "bin"
     binary.mkdir()
@@ -51,6 +65,9 @@ def test_server_modes_use_the_selected_runtime_and_directory(tmp_path, server):
     uv.chmod(0o755)
     project = tmp_path / "python directory"
     project.mkdir()
+    (project / "media files").mkdir()
+    (project / "cache").mkdir()
+    patterns = [r"\.tmp$", r"\.bak$"] if server == "granian" else ["*.tmp", "*.bak"]
     env = {
         **os.environ,
         "PATH": f"{binary}:{os.environ['PATH']}",
@@ -58,6 +75,8 @@ def test_server_modes_use_the_selected_runtime_and_directory(tmp_path, server):
         "PYTHON_SOURCE": str(project),
         "PYTHON_APP": "sample:app",
         "SERVER_PORT": "9001",
+        "SERVER_RELOAD_IGNORE_DIRS": "media files\ncache",
+        "SERVER_RELOAD_IGNORE_PATTERNS": "\n".join(patterns),
         "BUILD_BEFORE_RUN": "false",
     }
     artifacts = Catalog(BOX).render([server])
@@ -69,10 +88,29 @@ def test_server_modes_use_the_selected_runtime_and_directory(tmp_path, server):
         assert result.returncode == 0
         directory, arguments = json.loads(log.read_text())
         assert Path(directory) == project.resolve()
-        assert arguments[:2] == ["run", server]
+        runtime = (
+            {"dev": "uvicorn", "run": "gunicorn"}[mode] if server == "gunicorn-uvicorn" else server
+        )
+        assert arguments[:2] == ["run", runtime]
         assert "sample:app" in arguments
         assert ("--reload" in arguments) == (mode == "dev")
         assert "9001" in " ".join(arguments)
+        if mode == "dev" and runtime == "granian":
+            assert arguments[-4:] == [
+                "--reload-ignore-dirs=media files",
+                "--reload-ignore-dirs=cache",
+                *[f"--reload-ignore-patterns={pattern}" for pattern in patterns],
+            ]
+        elif mode == "dev" and runtime == "uvicorn":
+            assert arguments[-4:] == [
+                f"--reload-exclude={project.resolve() / 'media files'}",
+                f"--reload-exclude={project.resolve() / 'cache'}",
+                *[f"--reload-exclude={pattern}" for pattern in patterns],
+            ]
+        else:
+            assert not any(arg.startswith("--reload-") for arg in arguments)
+        if server == "gunicorn-uvicorn" and mode == "run":
+            assert "uvicorn_worker.UvicornWorker" in arguments
 
 
 @pytest.mark.skipif(shutil.which("sqlite3") is None, reason="SQLite CLI not installed")
@@ -164,7 +202,7 @@ def test_generated_environment_uses_dotenv_before_fallbacks(tmp_path):
     project.mkdir()
     apply(plan(project, Catalog(BOX), ["granian", "babel-i18n", "rust"], load_config(project)), {})
     (project / ".env").write_text(
-        'SERVER_PORT=9876\nPYTHON_APP=sample:app\nI18N_LANGUAGES="fr uk"\nPROJECT_RUST_DIRECTORY="rust directory"\n'
+        'SERVER_PORT=9876\nPYTHON_APP=sample:app\nI18N_LANGUAGES="fr uk"\nSERVER_RELOAD_IGNORE_DIRS="media\ncache"\nPROJECT_RUST_DIRECTORY="rust directory"\n'
     )
     result = subprocess.run(
         ["mise", "env", "--json"],
@@ -181,6 +219,8 @@ def test_generated_environment_uses_dotenv_before_fallbacks(tmp_path):
     assert result.returncode == 0, result.stderr
     environment = json.loads(result.stdout)
     assert environment["SERVER_PORT"] == "9876"
+    assert environment["SERVER_RELOAD_IGNORE_DIRS"] == "media\ncache"
+    assert environment["SERVER_RELOAD_IGNORE_PATTERNS"] == ""
     assert environment["PYTHON_APP"] == "sample:app"
     assert environment["I18N_LANGUAGES"] == "fr uk"
     assert environment["PROJECT_RUST_DIRECTORY"] == "rust directory"

@@ -172,6 +172,17 @@ class Catalog:
                     value = row.get(name, [])
                     if not isinstance(value, list) or any(not isinstance(x, str) for x in value):
                         raise KitFlowError(f"{section}.{name} must be an array of component IDs")
+                if (
+                    section == "defaults"
+                    and "example_section" in row
+                    and (
+                        not isinstance(row["example_section"], str)
+                        or not row["example_section"].strip()
+                        or len(row["example_section"].splitlines()) != 1
+                        or row["example_section"] != row["example_section"].strip()
+                    )
+                ):
+                    raise KitFlowError("example_section requires a single-line title")
                 if section == "files" and row.get("mode", "managed") not in {
                     "managed",
                     "once",
@@ -179,6 +190,12 @@ class Catalog:
                 }:
                     raise KitFlowError("File mode must be managed, once or block")
                 if section == "files":
+                    if "mise_defaults" in row and (
+                        not isinstance(row["mise_defaults"], bool)
+                        or row.get("format") != "dotenv"
+                        or "fragments" not in row
+                    ):
+                        raise KitFlowError("mise_defaults requires dotenv fragments")
                     alternatives = row.get("alternatives", [])
                     if (
                         not isinstance(alternatives, list)
@@ -370,14 +387,20 @@ class Catalog:
         visit(row["template"])
         return result
 
-    def compose_file(self, row: dict, chosen: set[str], *, check_duplicates=True) -> bytes:
+    def compose_file(
+        self, row: dict, chosen: set[str], *, examples: tuple[str, ...] = (), check_duplicates=True
+    ) -> bytes:
         parts = []
-        variables = set()
         for fragment in row["fragments"]:
             if not self.enabled(fragment, chosen):
                 continue
             text = self.template(fragment["template"]).decode("utf-8").strip("\r\n")
-            if row.get("format") == "dotenv" and check_duplicates:
+            if text:
+                parts.append(text)
+        parts.extend(examples)
+        if row.get("format") == "dotenv" and check_duplicates:
+            variables = set()
+            for text in parts:
                 for line in text.splitlines():
                     match = re.match(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=", line)
                     if match:
@@ -387,12 +410,18 @@ class Catalog:
                                 f"Duplicate environment variable {name} in {row['path']}"
                             )
                         variables.add(name)
-            if text:
-                parts.append(text)
         return ("\n\n".join(parts) + "\n" if parts else "").encode("utf-8")
 
     def render(self, selected: list[str], *, check_conflicts: bool = True) -> dict[str, Artifact]:
+        from kitflow.mise import dotenv_examples, missing_defaults
+
         chosen = set(self.resolve(selected, check_conflicts=check_conflicts))
+        defaults = [
+            (row, self.template(row["template"]))
+            for row in self.data.get("defaults", [])
+            if self.enabled(row, chosen)
+        ]
+        env_rows = [row for row in self.data.get("env", []) if self.enabled(row, chosen)]
         result = {}
         paths = set()
         file_ids = set()
@@ -425,7 +454,14 @@ class Catalog:
                 is_link = source is not None and source.is_symlink()
                 kind = "symlink" if is_link else "file"
                 content = (
-                    self.compose_file(row, chosen, check_duplicates=check_conflicts)
+                    self.compose_file(
+                        row,
+                        chosen,
+                        examples=dotenv_examples(defaults, env_rows)
+                        if row.get("mise_defaults")
+                        else (),
+                        check_duplicates=check_conflicts,
+                    )
                     if "fragments" in row
                     else b""
                 )
@@ -467,14 +503,10 @@ class Catalog:
                     directory_var=row.get("directory_var", ""),
                     alternatives=tuple(row.get("alternatives", [])),
                 )
-        for row in self.data.get("defaults", []):
-            if self.enabled(row, chosen):
-                from kitflow.mise import missing_defaults
-
-                content = self.template(row["template"])
-                missing_defaults("", content)
-                identity = f"defaults.{row['id']}"
-                result[identity] = Artifact(identity, "mise.toml", content, True, "defaults")
+        for row, content in defaults:
+            missing_defaults("", content)
+            identity = f"defaults.{row['id']}"
+            result[identity] = Artifact(identity, "mise.toml", content, True, "defaults")
         tasks: dict[str, list[str]] = {}
         metadata: dict[str, dict] = {}
         for row in self.data.get("tasks", []):
@@ -515,19 +547,18 @@ class Catalog:
             result[identity] = Artifact(
                 identity, "mise.toml", content.encode(), kind="task", key=name
             )
-        for row in self.data.get("env", []):
-            if self.enabled(row, chosen):
-                name = row["name"]
-                if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
-                    raise KitFlowError(f"Invalid environment key: {name}")
-                identity = f"env.{name}"
-                if identity in result:
-                    raise KitFlowError(f"Duplicate environment key: {name}")
-                result[identity] = Artifact(
-                    identity,
-                    "mise.toml",
-                    f"{name} = {json.dumps(row['value'])}\n".encode(),
-                    kind="env",
-                    key=name,
-                )
+        for row in env_rows:
+            name = row["name"]
+            if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
+                raise KitFlowError(f"Invalid environment key: {name}")
+            identity = f"env.{name}"
+            if identity in result:
+                raise KitFlowError(f"Duplicate environment key: {name}")
+            result[identity] = Artifact(
+                identity,
+                "mise.toml",
+                f"{name} = {json.dumps(row['value'])}\n".encode(),
+                kind="env",
+                key=name,
+            )
         return result

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 0.18.0 — 2026-11-19
+
+### Added
+
+- Offer Gunicorn with Uvicorn workers for Django ASGI.
+- Configure development reload exclusions for Granian and Uvicorn.
+
+### Changed
+
+- Filter Python server choices by framework in the setup wizard.
+- Generate `.env.example` from selected mise defaults and application-specific fragments.
+
 ## 0.17.0 — 2026-11-18
 
 ### Changed

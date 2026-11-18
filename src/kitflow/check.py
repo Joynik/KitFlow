@@ -43,6 +43,7 @@ BOX_FIELDS = {
         "directory_var",
         "alternatives",
         "format",
+        "mise_defaults",
     },
     "tasks": {
         "id",
@@ -59,7 +60,7 @@ BOX_FIELDS = {
         "quiet",
     },
     "env": {"id", "name", "value", "when", "when_any"},
-    "defaults": {"id", "template", "when", "when_any"},
+    "defaults": {"id", "template", "when", "when_any", "example_section"},
 }
 
 

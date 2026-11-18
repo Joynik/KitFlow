@@ -1,0 +1,8 @@
+[vars]
+# Use one entry per line. Granian takes directory names and regex; Uvicorn takes directory paths and globs.
+server_reload_ignore_dirs = ""
+server_reload_ignore_patterns = ""
+
+[env]
+SERVER_RELOAD_IGNORE_DIRS = "{{ env.SERVER_RELOAD_IGNORE_DIRS | default(value=vars.server_reload_ignore_dirs) }}"
+SERVER_RELOAD_IGNORE_PATTERNS = "{{ env.SERVER_RELOAD_IGNORE_PATTERNS | default(value=vars.server_reload_ignore_patterns) }}"

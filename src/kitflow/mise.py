@@ -1,5 +1,6 @@
 """Replace explicitly owned TOML spans without reformatting user content."""
 
+import json
 import re
 import tomllib
 
@@ -38,6 +39,45 @@ def parse(text: str) -> dict:
         return tomllib.loads(text)
     except tomllib.TOMLDecodeError as error:
         raise KitFlowError(f"Invalid mise.toml: {error}") from error
+
+
+def dotenv_examples(defaults: list[tuple[dict, bytes]], env_rows: list[dict]) -> tuple[str, ...]:
+    """Render public Box defaults in the same order used to seed mise."""
+    documents = [(row, parse(content.decode())) for row, content in defaults]
+    variables = {}
+    for _, document in documents:
+        for name, value in document.get("vars", {}).items():
+            variables.setdefault(name, value)
+
+    groups: dict[str, list[str]] = {}
+    seen = {"PYTHONUNBUFFERED"}
+
+    def add(section: str, name: str, value: object):
+        if name in seen or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
+            return
+        seen.add(name)
+        if isinstance(value, bool):
+            value = str(value).lower()
+        if not isinstance(value, (str, int, float)):
+            return
+        text = str(value)
+        if not re.fullmatch(r"[A-Za-z0-9_./:-]*", text):
+            text = json.dumps(text, ensure_ascii=False).replace("$", r"\$")
+        groups.setdefault(section, []).append(f"{name}={text}")
+
+    for row, document in documents:
+        section = row.get("example_section", row["id"].replace("-", " ").capitalize())
+        for name, value in document.get("env", {}).items():
+            if isinstance(value, str) and ("{{" in value or "{%" in value):
+                # Export the configured fallback, without evaluating paths or the local environment.
+                match = re.search(r"\bvars\.([A-Za-z_][A-Za-z0-9_]*)", value)
+                if not match or match[1] not in variables:
+                    continue
+                value = variables[match[1]]
+            add(section, name, value)
+    for row in env_rows:
+        add("Environment", row["name"], row["value"])
+    return tuple("\n".join([f"# {section}", *entries]) for section, entries in groups.items())
 
 
 def validate_span(text: str, artifact: Artifact, span: tuple[int, int, str]):

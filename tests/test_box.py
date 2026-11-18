@@ -46,6 +46,37 @@ def test_environment_files_are_optional_and_local_values_are_preserved(tmp_path)
     assert local.read_text() == "LOCAL_VALUE=custom\n"
 
 
+def test_environment_example_uses_selected_mise_defaults():
+    catalog = Catalog(Path(__file__).parents[1] / "box")
+    artifacts = catalog.render(
+        ["django", "granian", "django-i18n", "javascript", "docker", "env-example"]
+    )
+    example = artifacts["env-example"].content
+    assert isinstance(example, bytes)
+    text = example.decode()
+    for expected in (
+        "# Django:",
+        "# Python server",
+        "SERVER_INTERFACE=asginl",
+        "SERVER_RELOAD_IGNORE_PATTERNS=",
+        "# Translations",
+        "I18N_SOURCE_LANGUAGE=en",
+        "# JavaScript and TypeScript",
+        "JAVASCRIPT_BUILD_SCRIPT=build",
+        "# Docker Compose",
+        "COMPOSE_FILE=compose.yml",
+    ):
+        assert expected in text
+    assert text.count("PYTHON_APP=") == 1
+    assert "PYTHONUNBUFFERED" not in text
+    assert "PGHOST" not in text
+
+    flask = catalog.render(["flask", "granian", "env-example"])["env-example"].content
+    assert isinstance(flask, bytes)
+    assert b"SERVER_INTERFACE=wsgi\n" in flask
+    assert b"JAVASCRIPT_BUILD_SCRIPT" not in flask
+
+
 def test_standard_check_runs_only_checks_and_preserves_failure_status(tmp_path):
     import os
     import subprocess
