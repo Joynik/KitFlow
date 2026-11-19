@@ -1,6 +1,6 @@
 schema = 1
 migrated_box_version = 1
-box_version = 7
+box_version = 8
 
 [selection]
 components = ["python", "ruff", "ty", "vulture", "deptry", "nuitka", "rumdl", "pytest", "env-example", "agents"]
@@ -87,7 +87,7 @@ once = false
 path = "TOOLS.md"
 kind = "file"
 key = ""
-sha256 = "9d0a5634d47d8259f50e1c6194b0747cc7f144fd7bd22ba13ee1f369d5bfc2e2"
+sha256 = "dfe90a5ac98e0f9a7bbc0d07eef0a1f78d737bb93a725bc4098f8a0ab9a5b9bc"
 once = false
 
 [state.artifacts."defaults.base"]
