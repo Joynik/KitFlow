@@ -1,0 +1,5 @@
+[vars]
+django_test_settings_module = ""
+
+[env]
+DJANGO_TEST_SETTINGS_MODULE = "{{ env.DJANGO_TEST_SETTINGS_MODULE | default(value=vars.django_test_settings_module) }}"

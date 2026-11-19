@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.19.0 — 2026-11-19
+
+### Added
+
+- Preview generated tasks, files and defaults with the read-only `kitflow show` command.
+- Configure a Docker source directory and an optional Compose wrapper.
+- Configure remote SQLite connections and separate SQLite or PostgreSQL test databases.
+
 ## 0.18.1 — 2026-11-19
 
 ### Fixed

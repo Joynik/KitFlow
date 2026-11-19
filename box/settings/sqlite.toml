@@ -1,7 +1,13 @@
 [vars]
+sqlite_mode = "local"
 sqlite_database_path = "data/application.sqlite3"
 sqlite_init_sql = ""
+sqlite_remote_url = ""
+sqlite_remote_auth_token = ""
 
 [env]
+SQLITE_MODE = "{{ env.SQLITE_MODE | default(value=vars.sqlite_mode) }}"
+SQLITE_REMOTE_URL = "{{ env.SQLITE_REMOTE_URL | default(value=vars.sqlite_remote_url) }}"
+SQLITE_REMOTE_AUTH_TOKEN = "{{ env.SQLITE_REMOTE_AUTH_TOKEN | default(value=vars.sqlite_remote_auth_token) }}"
 SQLITE_DATABASE_PATH = '{% set path = env.SQLITE_DATABASE_PATH | default(value=vars.sqlite_database_path) %}{% if path is starting_with(pat="/") %}{{ path }}{% else %}{{ config_root }}/{{ path }}{% endif %}'
 SQLITE_INIT_SQL = "{{ env.SQLITE_INIT_SQL | default(value=vars.sqlite_init_sql) }}"

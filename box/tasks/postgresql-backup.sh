@@ -13,7 +13,7 @@ output=${usage_file:-${DATABASE_BACKUP_FILE:-backup.sql}}
 temporary=$(mktemp "$(dirname "$output")/.kitflow-backup.XXXXXX")
 trap 'rm -f "$temporary"' EXIT HUP INT TERM
 if [ "${DATABASE_EXECUTION_MODE:-native}" = docker ]; then
-    docker compose --env-file "$COMPOSE_ENV_FILE" -f "$COMPOSE_FILE" exec -T "$DATABASE_DOCKER_SERVICE" pg_dump --clean --if-exists --no-owner --no-privileges > "$temporary"
+    run_compose exec -T "$DATABASE_DOCKER_SERVICE" pg_dump --clean --if-exists --no-owner --no-privileges > "$temporary"
 else
     pg_dump --clean --if-exists --no-owner --no-privileges > "$temporary"
 fi

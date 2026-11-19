@@ -11,7 +11,7 @@ esac
 input=${usage_file:-${DATABASE_RESTORE_FILE:-}}
 [ -n "$input" ] && [ -f "$input" ] || { echo "Specify an existing SQL restore file" >&2; exit 2; }
 if [ "${DATABASE_EXECUTION_MODE:-native}" = docker ]; then
-    docker compose --env-file "$COMPOSE_ENV_FILE" -f "$COMPOSE_FILE" exec -T "$DATABASE_DOCKER_SERVICE" psql --quiet --no-psqlrc --set ON_ERROR_STOP=1 --single-transaction < "$input"
+    run_compose exec -T "$DATABASE_DOCKER_SERVICE" psql --quiet --no-psqlrc --set ON_ERROR_STOP=1 --single-transaction < "$input"
 else
     psql --quiet --no-psqlrc --set ON_ERROR_STOP=1 --single-transaction --file "$input"
 fi

@@ -1,0 +1,6 @@
+[vars]
+test_database_url = ""
+
+[env]
+TEST_DATABASE_BACKEND = "postgresql"
+TEST_DATABASE_URL = "{{ env.TEST_DATABASE_URL | default(value=vars.test_database_url) }}"

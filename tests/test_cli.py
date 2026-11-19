@@ -21,6 +21,30 @@ def test_cli_reports_package_version(flag, capsys):
     assert capsys.readouterr().out == f"KitFlow {version}\n"
 
 
+def test_show_renders_saved_or_hypothetical_selection_without_writing(tmp_path):
+    box = Path(__file__).parents[1] / "box"
+    options = ["--box", str(box), "--project", str(tmp_path)]
+
+    def run(*args):
+        return subprocess.run(
+            [sys.executable, "-m", "kitflow", *args, *options], capture_output=True, check=True
+        ).stdout
+
+    run("init", "--components", "python,pytest,env-example", "--yes")
+    (tmp_path / "pytest.ini").write_text("# local customization\n")
+    (tmp_path / ".env").write_text("LOCAL_SENTINEL=do-not-print\n")
+    before = {path.name: path.read_bytes() for path in tmp_path.iterdir() if path.is_file()}
+    assert b"[pytest]" in run("show", "file", "pytest.ini")
+    assert b"local customization" not in run("show", "file", "pytest.ini")
+    assert b"LOCAL_SENTINEL" not in run("show", "file", ".env.example")
+    assert b".env.example" in run("show", "files")
+    assert b"pytest\tselected\t" in run("show", "components")
+    assert b"[vars]" in run("show", "defaults")
+    assert "test" in tomllib.loads(run("show", "file", "mise.toml").decode())["tasks"]
+    assert b"run_compose up" in run("show", "--components", "docker", "task", "docker:up")
+    assert {path.name: path.read_bytes() for path in tmp_path.iterdir() if path.is_file()} == before
+
+
 def test_update_rejects_config_edit_after_loading_selection(tmp_path, monkeypatch):
     init = ["init", "-b", str(CATALOG), "-p", str(tmp_path), "-c", "python", "-y"]
     assert cli.run(cli.parser().parse_args(init)) == 0

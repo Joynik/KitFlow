@@ -182,18 +182,34 @@ Use `db:backup FILE` and `db:restore FILE` for SQLite or PostgreSQL. Defaults ar
 stages restores in a temporary database and refuses pending WAL files. PostgreSQL restores in a
 transaction.
 
-- **SQLite.** Set `sqlite_database_path` or override it with `SQLITE_DATABASE_PATH` in `.env`. Use
-  an absolute path or a path relative to the project root. `db:prepare` creates a new database
-  without overwriting an existing one. `SQLITE_INIT_SQL` supplies initial SQL for this task.
+- **SQLite.** With `SQLITE_MODE="local"`, set `SQLITE_DATABASE_PATH` to an absolute path or a path
+  relative to mise.toml. `db:prepare` creates a new file and accepts initial SQL via
+  `SQLITE_INIT_SQL`. With `SQLITE_MODE="remote"`, configure your application driver to read
+  `SQLITE_REMOTE_URL` and, when required, `SQLITE_REMOTE_AUTH_TOKEN`. Use the provider's tools for
+  initialization, backup and restore. KitFlow's SQLite file tasks stop in remote mode.
 - **PostgreSQL.** Set `PGHOST`, `PGPORT`, `PGDATABASE` and `PGUSER`. Keep passwords in `.pgpass` or
   local environment settings.
-- **Docker.** Set `compose_file` and `compose_env_file`. Tasks include `docker:build`,
+- **Docker.** Set `DOCKER_SOURCE="deployment"` to find `compose.yml` in that folder. A relative
+  `COMPOSE_FILE` is resolved inside `DOCKER_SOURCE`. An absolute path selects a file directly.
+  `COMPOSE_ENV_FILE` defaults to `.env` next to mise.toml. Set
+  `COMPOSE_WRAPPER="deployment/compose.sh"` to pass Compose subcommands to your own shell script.
+  Tasks include `docker:build`,
   `docker:check`, `docker:up`, `docker:status`, `docker:logs` and `docker:down`. Down preserves
   volumes. Use `docker:db:backup FILE`, `docker:db:restore FILE`, or `--docker` on the ordinary
   database task. `DATABASE_EXECUTION_MODE` selects `native` or `docker`. Set
   `database_docker_service` and, for SQLite, `SQLITE_CONTAINER_PATH`. The running container needs
   the database client and its connection settings. SQLite restore also needs a POSIX shell in the
   container.
+
+### Test databases
+
+After selecting a Python test runner, choose SQLite or PostgreSQL under **Test database**. Leave
+both unselected to use the test runner's existing configuration. SQLite defaults to `:memory:`.
+Set `TEST_SQLITE_DATABASE_PATH` for a separate file. For PostgreSQL, set `TEST_DATABASE_URL` in
+`.env` with a dedicated database and a user restricted to that database. The test task checks
+these values before invoking the runners. Configure your fixtures or test settings to read them.
+For Django, set `DJANGO_TEST_SETTINGS_MODULE` to a dedicated module that reads
+`TEST_DATABASE_BACKEND` and the corresponding test connection settings.
 
 **Prisma ORM** is available under **Data access** with JavaScript/TypeScript and PostgreSQL or
 SQLite. Install Prisma 7 and its runtime dependencies separately. Tasks use `bunx --no-install`.
@@ -220,12 +236,18 @@ nested apps, move the initial files and set `prisma_config`, `prisma_schema_path
 | `kitflow status` / `kitflow diff` | List pending changes / show proposed differences |
 | `kitflow config` | Show configuration paths without creating the box |
 | `kitflow check` | Validate the box and connected project |
+| `kitflow show` | Print what the local Box generates for the selected components |
 | `kitflow -i` / `-h` / `-v` | Read the offline guide / show help / show the version |
 
 - `--project/-p PATH` targets another project. `--box/-b PATH` selects a box containing
   `kitflow-box.toml` for one command. Pass it each time you want that box.
 - `init --components/-c IDS` supplies the complete comma-separated selection. Dependencies are added
   and omitted components are removed. Example: `kitflow init -c python,ruff,ty -y`.
+- Use `show files`, `show tasks` and `show components` to discover names. Then run
+  `kitflow show file pytest.ini`, `kitflow show file .env.example`,
+  `kitflow show task docker:up` or `kitflow show defaults`. Pass the complete hypothetical
+  selection with `--components` to preview an addition or removal. Show reads the local Box and
+  the saved selection without reading project values from `.env` or changing files.
 - `--yes/-y` confirms the plan, including pending migrations. `update -y` keeps the saved selection.
   Conflicts stop unattended updates.
 - In **User-owned files and blocks**, the setup wizard groups files, mise tasks and environment

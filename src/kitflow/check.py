@@ -49,6 +49,7 @@ BOX_FIELDS = {
         "id",
         "name",
         "template",
+        "preamble",
         "when",
         "when_any",
         "when_not",

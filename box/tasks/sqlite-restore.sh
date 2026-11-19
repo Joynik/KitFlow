@@ -1,3 +1,8 @@
+case "${SQLITE_MODE:-local}" in
+    local) ;;
+    remote) echo "This task requires a local SQLite file; use the remote service's database tools." >&2; exit 2 ;;
+    *) echo "SQLITE_MODE must be local or remote." >&2; exit 2 ;;
+esac
 if [ "${usage_docker:-false}" = true ]; then DATABASE_EXECUTION_MODE=docker; fi
 case "${DATABASE_EXECUTION_MODE:-native}" in
     native) ;;
@@ -13,7 +18,7 @@ input=${usage_file:-${DATABASE_RESTORE_FILE:-}}
 [ -n "$input" ] && [ -f "$input" ] || { echo "Specify an existing SQL restore file" >&2; exit 2; }
 if [ "${DATABASE_EXECUTION_MODE:-native}" = docker ]; then
     : "${SQLITE_CONTAINER_PATH:?Set vars.sqlite_container_path}"
-    docker compose --env-file "$COMPOSE_ENV_FILE" -f "$COMPOSE_FILE" exec -T "$DATABASE_DOCKER_SERVICE" sh -eu -c '
+    run_compose exec -T "$DATABASE_DOCKER_SERVICE" sh -eu -c '
 SQLITE_DATABASE_PATH=$1
 [ ! -e "$SQLITE_DATABASE_PATH" ] || [ -f "$SQLITE_DATABASE_PATH" ] || { echo "SQLite target is not a regular file" >&2; exit 2; }
 [ ! -L "$SQLITE_DATABASE_PATH" ] || { echo "Refusing to replace a SQLite symbolic link" >&2; exit 2; }

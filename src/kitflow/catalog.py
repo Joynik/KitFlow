@@ -183,6 +183,12 @@ class Catalog:
                     )
                 ):
                     raise KitFlowError("example_section requires a single-line title")
+                if (
+                    section == "tasks"
+                    and "preamble" in row
+                    and not isinstance(row["preamble"], str)
+                ):
+                    raise KitFlowError("Task preamble requires a template path")
                 if section == "files" and row.get("mode", "managed") not in {
                     "managed",
                     "once",
@@ -512,6 +518,8 @@ class Catalog:
         for row in self.data.get("tasks", []):
             if self.enabled(row, chosen):
                 fragment = self.template(row["template"]).decode().strip()
+                if "preamble" in row:
+                    fragment = self.template(row["preamble"]).decode().strip() + "\n" + fragment
                 directory = row.get("directory_env")
                 if directory is not None:
                     if not isinstance(directory, str) or not re.fullmatch(

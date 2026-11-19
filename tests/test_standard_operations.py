@@ -141,28 +141,29 @@ def test_sqlite_backup_restore_preserves_data_and_refuses_overwrites(tmp_path, t
     }
 
     def run(name, expected=0):
-        result = subprocess.run(
-            ["/bin/sh", "-eu", str(BOX / "tasks" / name)], env=env, capture_output=True, text=True
-        )
+        artifact = Catalog(BOX).render(["sqlite", "docker"])[f"task.db:{name}"]
+        assert isinstance(artifact.content, bytes)
+        script = tomllib.loads(artifact.content.decode())["tasks"][f"db:{name}"]["run"]
+        result = subprocess.run(["/bin/sh", "-c", script], env=env, capture_output=True, text=True)
         assert result.returncode == expected, result.stdout + result.stderr
 
-    run("sqlite-backup.sh")
+    run("backup")
     content = backup.read_bytes()
-    run("sqlite-backup.sh", 2)
+    run("backup", 2)
     assert backup.read_bytes() == content
     with sqlite3.connect(database) as connection:
         connection.execute("UPDATE item SET value='changed'")
-    run("sqlite-restore.sh")
+    run("restore")
     with sqlite3.connect(database) as connection:
         assert connection.execute("SELECT value FROM item").fetchone() == ("original",)
     backup.write_text("invalid SQL;")
     before = database.read_bytes()
-    run("sqlite-restore.sh", 1)
+    run("restore", 1)
     assert database.read_bytes() == before
     assert not list(tmp_path.glob(".kitflow-restore.*"))
     backup.write_bytes(content)
     Path(str(database) + "-wal").touch()
-    run("sqlite-restore.sh", 2)
+    run("restore", 2)
     assert database.read_bytes() == before
 
 
@@ -194,15 +195,117 @@ def test_xcode_backend_preserves_workspace_and_scheme_arguments(tmp_path):
     assert arguments[-1] == "test"
 
 
+def test_compose_wrapper_handles_project_and_database_tasks(tmp_path):
+    wrapper = tmp_path / "docker wrapper.sh"
+    wrapper.write_text('printf "%s\\n" "$@"\n')
+    catalog = Catalog(BOX)
+    artifacts = catalog.render(["docker", "sqlite"])
+    database = tmp_path / "backup.sql"
+    env = {
+        **os.environ,
+        "COMPOSE_WRAPPER": str(wrapper),
+        "COMPOSE_FILE": "compose.yml",
+        "COMPOSE_ENV_FILE": ".env",
+        "DATABASE_DOCKER_SERVICE": "db",
+        "DATABASE_EXECUTION_MODE": "docker",
+        "SQLITE_MODE": "local",
+        "SQLITE_DATABASE_PATH": str(tmp_path / "app.sqlite3"),
+        "SQLITE_CONTAINER_PATH": "/data/application.sqlite3",
+        "usage_file": str(database),
+    }
+
+    def run(task, **overrides):
+        content = artifacts[f"task.{task}"].content
+        assert isinstance(content, bytes)
+        script = tomllib.loads(content.decode())["tasks"][task]["run"]
+        return subprocess.run(
+            ["/bin/sh", "-c", script], env={**env, **overrides}, capture_output=True, text=True
+        )
+
+    result = run("docker:up")
+    assert result.returncode == 0
+    assert result.stdout.splitlines() == ["up", "--detach"]
+    result = run("db:backup", SQLITE_MODE="remote")
+    assert result.returncode == 2
+    assert "requires a local SQLite file" in result.stderr
+    assert not database.exists()
+    result = run("db:backup")
+    assert result.returncode == 0
+    assert database.read_text().splitlines() == [
+        "exec",
+        "-T",
+        "db",
+        "sqlite3",
+        "-readonly",
+        "-bail",
+        "/data/application.sqlite3",
+        ".dump",
+    ]
+
+
+def test_database_guard_runs_before_tests_and_uses_django_test_settings(tmp_path):
+    uv = tmp_path / "uv"
+    uv.write_text(
+        "#!/bin/sh\n"
+        'if [ "$2" = --project ]; then exec "$TEST_PYTHON" -; fi\n'
+        'printf "%s\\n" "$DJANGO_SETTINGS_MODULE"\n'
+    )
+    uv.chmod(0o755)
+    artifact = Catalog(BOX).render(["django-tests", "test-postgresql"])["task.test"]
+    assert isinstance(artifact.content, bytes)
+    script = tomllib.loads(artifact.content.decode())["tasks"]["test"]["run"]
+    env = {
+        **os.environ,
+        "PATH": f"{tmp_path}:{os.environ['PATH']}",
+        "TEST_PYTHON": sys.executable,
+        "TEST_DATABASE_BACKEND": "postgresql",
+        "PGDATABASE": "application",
+        "PGUSER": "app_user",
+        "TEST_DATABASE_URL": "postgresql://tester:placeholder@localhost/application_test",
+        "DJANGO_SETTINGS_MODULE": "config.settings",
+        "DJANGO_TEST_SETTINGS_MODULE": "config.test_settings",
+        "PYTHON_SOURCE": str(tmp_path),
+    }
+
+    def run(**overrides):
+        return subprocess.run(
+            ["/bin/sh", "-c", script], env={**env, **overrides}, capture_output=True, text=True
+        )
+
+    assert run().stdout.strip() == "config.test_settings"
+    for url in ("", "postgresql://tester:placeholder@localhost/application"):
+        result = run(TEST_DATABASE_URL=url)
+        assert result.returncode != 0
+        assert not result.stdout
+        assert "placeholder" not in result.stderr
+    primary = str(tmp_path / "app.sqlite3")
+    result = run(
+        TEST_DATABASE_BACKEND="sqlite",
+        TEST_SQLITE_DATABASE_PATH=primary,
+        SQLITE_DATABASE_PATH=primary,
+    )
+    assert result.returncode != 0
+    assert "points to the application database" in result.stderr
+
+
 @pytest.mark.skipif(shutil.which("mise") is None, reason="mise executable not installed")
 def test_generated_environment_uses_dotenv_before_fallbacks(tmp_path):
     from kitflow.engine import apply, load_config, plan
 
     project = tmp_path / "project"
     project.mkdir()
-    apply(plan(project, Catalog(BOX), ["granian", "babel-i18n", "rust"], load_config(project)), {})
+    apply(
+        plan(
+            project,
+            Catalog(BOX),
+            ["granian", "babel-i18n", "rust", "docker", "test-sqlite", "pytest"],
+            load_config(project),
+        ),
+        {},
+    )
     (project / ".env").write_text(
         'SERVER_PORT=9876\nPYTHON_APP=sample:app\nI18N_LANGUAGES="fr uk"\nSERVER_RELOAD_IGNORE_DIRS="media\ncache"\nPROJECT_RUST_DIRECTORY="rust directory"\n'
+        'DOCKER_SOURCE="deployment files"\nCOMPOSE_FILE="custom.yml"\nCOMPOSE_WRAPPER="deployment files/compose.sh"\n'
     )
     result = subprocess.run(
         ["mise", "env", "--json"],
@@ -219,6 +322,10 @@ def test_generated_environment_uses_dotenv_before_fallbacks(tmp_path):
     assert result.returncode == 0, result.stderr
     environment = json.loads(result.stdout)
     assert environment["SERVER_PORT"] == "9876"
+    assert environment["COMPOSE_FILE"] == str(project.resolve() / "deployment files/custom.yml")
+    assert environment["COMPOSE_ENV_FILE"] == str(project.resolve() / ".env")
+    assert environment["COMPOSE_WRAPPER"] == str(project.resolve() / "deployment files/compose.sh")
+    assert environment["TEST_SQLITE_DATABASE_PATH"] == ":memory:"
     assert environment["SERVER_RELOAD_IGNORE_DIRS"] == "media\ncache"
     assert environment["SERVER_RELOAD_IGNORE_PATTERNS"] == ""
     assert environment["PYTHON_APP"] == "sample:app"

@@ -177,6 +177,7 @@ when = ["python"]
 ```
 
 - **Tasks.** Matching fragments with the same `name` form one marked task, such as `task.test`.
+  Use `preamble` to prepend a shared shell template to a fragment.
   Names allow letters, digits, underscores, hyphens and colons. Fragments run in catalog order and
   stop on failure. Use shell commands without table headers or triple single quotes. Run from the
   project root by default. `directory_env` names an exported path and isolates the directory change

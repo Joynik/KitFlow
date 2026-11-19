@@ -1,3 +1,8 @@
+case "${SQLITE_MODE:-local}" in
+    local) ;;
+    remote) echo "This task requires a local SQLite file; use the remote service's database tools." >&2; exit 2 ;;
+    *) echo "SQLITE_MODE must be local or remote." >&2; exit 2 ;;
+esac
 if [ "${usage_docker:-false}" = true ]; then DATABASE_EXECUTION_MODE=docker; fi
 case "${DATABASE_EXECUTION_MODE:-native}" in
     native) ;;
@@ -16,7 +21,7 @@ temporary=$(mktemp "$(dirname "$output")/.kitflow-backup.XXXXXX")
 trap 'rm -f "$temporary"' EXIT HUP INT TERM
 if [ "${DATABASE_EXECUTION_MODE:-native}" = docker ]; then
     : "${SQLITE_CONTAINER_PATH:?Set vars.sqlite_container_path}"
-    docker compose --env-file "$COMPOSE_ENV_FILE" -f "$COMPOSE_FILE" exec -T "$DATABASE_DOCKER_SERVICE" sqlite3 -readonly -bail "$SQLITE_CONTAINER_PATH" .dump > "$temporary"
+    run_compose exec -T "$DATABASE_DOCKER_SERVICE" sqlite3 -readonly -bail "$SQLITE_CONTAINER_PATH" .dump > "$temporary"
 else
     sqlite3 -readonly -bail "$SQLITE_DATABASE_PATH" .dump > "$temporary"
 fi

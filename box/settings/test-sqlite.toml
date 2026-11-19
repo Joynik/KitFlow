@@ -1,0 +1,6 @@
+[vars]
+test_sqlite_database_path = ":memory:"
+
+[env]
+TEST_DATABASE_BACKEND = "sqlite"
+TEST_SQLITE_DATABASE_PATH = '{% set path = env.TEST_SQLITE_DATABASE_PATH | default(value=vars.test_sqlite_database_path) %}{% if path == ":memory:" or not path %}{{ path }}{% else %}{{ [config_root, path] | join_path | absolute }}{% endif %}'

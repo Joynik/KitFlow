@@ -458,6 +458,24 @@ requires = ["swift"]
 conflicts = []
 recommended = true
 
+[[components]]
+id = "test-sqlite"
+label = "SQLite"
+category = "Test database"
+description = "Use a separate SQLite database for Python tests."
+requires = ["python"]
+conflicts = ["test-postgresql"]
+when_any = ["pytest", "unittest", "django-tests"]
+
+[[components]]
+id = "test-postgresql"
+label = "PostgreSQL"
+category = "Test database"
+description = "Use a separate PostgreSQL database for Python tests."
+requires = ["python"]
+conflicts = ["test-sqlite"]
+when_any = ["pytest", "unittest", "django-tests"]
+
 # Components: migrations
 
 [[components]]
@@ -1346,6 +1364,21 @@ description = "Check selected project types and native builds"
 # Tasks: tests
 
 [[tasks]]
+id = "test-database-guard"
+name = "test"
+template = "tasks/test-database.sh"
+when_any = ["test-sqlite", "test-postgresql"]
+description = "Run selected test runners"
+
+[[tasks]]
+id = "django-test-database-settings"
+name = "test"
+template = "tasks/django-test-settings.sh"
+when = ["django"]
+when_any = ["test-sqlite", "test-postgresql"]
+description = "Run selected test runners"
+
+[[tasks]]
 id = "rust-test"
 name = "test"
 template = "tasks/rust-test.sh"
@@ -1700,6 +1733,7 @@ description = "Db prepare"
 id = "sqlite-backup"
 name = "db:backup"
 template = "tasks/sqlite-backup.sh"
+preamble = "tasks/compose.sh"
 when = ["sqlite"]
 usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
 description = "Back up the database to a new SQL file"
@@ -1708,6 +1742,7 @@ description = "Back up the database to a new SQL file"
 id = "postgresql-backup"
 name = "db:backup"
 template = "tasks/postgresql-backup.sh"
+preamble = "tasks/compose.sh"
 when = ["postgresql"]
 usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
 description = "Back up the database to a new SQL file"
@@ -1716,6 +1751,7 @@ description = "Back up the database to a new SQL file"
 id = "sqlite-restore"
 name = "db:restore"
 template = "tasks/sqlite-restore.sh"
+preamble = "tasks/compose.sh"
 when = ["sqlite"]
 usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
 description = "Restore the database from SQL; stop application writes first"
@@ -1724,6 +1760,7 @@ description = "Restore the database from SQL; stop application writes first"
 id = "postgresql-restore"
 name = "db:restore"
 template = "tasks/postgresql-restore.sh"
+preamble = "tasks/compose.sh"
 when = ["postgresql"]
 usage = "arg \"[file]\" help=\"SQL file path; defaults to mise settings\"; flag \"--docker\" help=\"Run in the configured Compose service\""
 description = "Restore the database from SQL; stop application writes first"
@@ -1760,6 +1797,7 @@ description = "Update and compile selected translations"
 id = "docker-up"
 name = "docker:up"
 template = "tasks/docker-up.sh"
+preamble = "tasks/compose.sh"
 when = ["docker"]
 description = "Docker up"
 
@@ -1767,6 +1805,7 @@ description = "Docker up"
 id = "docker-down"
 name = "docker:down"
 template = "tasks/docker-down.sh"
+preamble = "tasks/compose.sh"
 when = ["docker"]
 description = "Docker down"
 
@@ -1774,6 +1813,7 @@ description = "Docker down"
 id = "docker-logs"
 name = "docker:logs"
 template = "tasks/docker-logs.sh"
+preamble = "tasks/compose.sh"
 when = ["docker"]
 description = "Docker logs"
 
@@ -1781,6 +1821,7 @@ description = "Docker logs"
 id = "docker-build"
 name = "docker:build"
 template = "tasks/docker-build.sh"
+preamble = "tasks/compose.sh"
 when = ["docker"]
 description = "Docker build"
 
@@ -1788,6 +1829,7 @@ description = "Docker build"
 id = "docker-check"
 name = "docker:check"
 template = "tasks/docker-check.sh"
+preamble = "tasks/compose.sh"
 when = ["docker"]
 description = "Docker check"
 
@@ -1795,6 +1837,7 @@ description = "Docker check"
 id = "docker-status"
 name = "docker:status"
 template = "tasks/docker-status.sh"
+preamble = "tasks/compose.sh"
 when = ["docker"]
 description = "Docker status"
 
@@ -2048,6 +2091,25 @@ example_section = "Nuitka build"
 template = "settings/nuitka.toml"
 when = ["nuitka"]
 
+[[defaults]]
+id = "test-sqlite"
+example_section = "Test database"
+template = "settings/test-sqlite.toml"
+when = ["test-sqlite"]
+
+[[defaults]]
+id = "test-postgresql"
+example_section = "Test database"
+template = "settings/test-postgresql.toml"
+when = ["test-postgresql"]
+
+[[defaults]]
+id = "django-test-settings"
+example_section = "Test database"
+template = "settings/django-test-settings.toml"
+when = ["django"]
+when_any = ["test-sqlite", "test-postgresql"]
+
 # Wizard: navigation steps
 
 [[steps]]
@@ -2112,6 +2174,13 @@ label = "Testing"
 categories = ["Tests"]
 description = "Choose independent test runners. They can be combined."
 order = 80
+
+[[steps]]
+id = "test-database"
+label = "Test database"
+categories = ["Test database"]
+description = "Choose an isolated database for Python tests, or leave both unselected."
+order = 85
 
 [[steps]]
 id = "migrations"

@@ -26,7 +26,7 @@ def parser() -> argparse.ArgumentParser:
         description="KitFlow — project standards over mise", add_help=False
     )
     result.add_argument("--help", "-h", action="help", help="show this help message and exit")
-    result.add_argument("--version", "-v", action="version", version="KitFlow 0.18.1")
+    result.add_argument("--version", "-v", action="version", version="KitFlow 0.19.0")
     result.add_argument(
         "--instruction",
         "-i",
@@ -36,9 +36,11 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument(
         "command",
         nargs="?",
-        choices=["init", "update", "status", "diff", "config", "check", "upgrade"],
+        choices=["init", "update", "status", "diff", "config", "check", "upgrade", "show"],
         help="Action to perform; omit to prepare your local box",
     )
+    result.add_argument("show_kind", nargs="?", metavar="KIND", help=argparse.SUPPRESS)
+    result.add_argument("show_target", nargs="?", metavar="TARGET", help=argparse.SUPPRESS)
     result.epilog = """Commands:
   init    Choose or change project components and apply the plan
   update  Update project files, review individual changes, or change the project setup
@@ -47,6 +49,8 @@ def parser() -> argparse.ArgumentParser:
   config  Show the local box location without creating it
   check   Validate the box and connected project without changing files
   upgrade Download and replace only the standard box in default/
+  show    Print generated content: show task NAME, show file PATH, show defaults
+          List available names with show tasks, show files or show components
 
 Without a command, prepare the local box. User overrides stay in its root directory.
 """
@@ -66,7 +70,7 @@ Without a command, prepare the local box. User overrides stay in its root direct
         "--components",
         "-c",
         metavar="IDS",
-        help="Complete component selection without the wizard, e.g. python,ruff (init only)",
+        help="Complete component selection for init or show, e.g. python,ruff",
     )
     result.add_argument(
         "--manage",
@@ -147,6 +151,18 @@ def show_plan(result):
 
 
 def run(args: argparse.Namespace) -> int:
+    if args.command == "show":
+        from kitflow.preview import preview
+
+        if args.instruction or args.manage or args.yes:
+            raise KitFlowError("show accepts --box, --project and --components")
+        root = args.project.resolve()
+        box = args.box.resolve() if args.box else box_path()
+        content = preview(root, box, args.components, args.show_kind, args.show_target)
+        sys.stdout.buffer.write(content)
+        return 0
+    if args.show_kind is not None:
+        raise KitFlowError("Extra arguments are only supported by show")
     if args.command == "upgrade":
         if args.instruction or args.components is not None or args.manage:
             raise KitFlowError("upgrade does not accept project actions")
@@ -380,7 +396,7 @@ def run(args: argparse.Namespace) -> int:
 
 def main() -> int:
     try:
-        return run(parser().parse_args())
+        return run(parser().parse_intermixed_args())
     except (KitFlowError, OSError, UnicodeError) as error:
         console.print(f"Error: {error}", style="red", markup=False)
         return 2

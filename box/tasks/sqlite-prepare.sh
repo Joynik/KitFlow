@@ -1,3 +1,8 @@
+case "${SQLITE_MODE:-local}" in
+    local) ;;
+    remote) echo "This task requires a local SQLite file; use the remote service's database tools." >&2; exit 2 ;;
+    *) echo "SQLITE_MODE must be local or remote." >&2; exit 2 ;;
+esac
 [ "${DATABASE_EXECUTION_MODE:-native}" = native ] || { echo "Prepare SQLite in the container explicitly" >&2; exit 2; }
 : "${SQLITE_DATABASE_PATH:?Set vars.sqlite_database_path}"
 [ ! -e "$SQLITE_DATABASE_PATH" ] && [ ! -L "$SQLITE_DATABASE_PATH" ] || { echo "SQLite database already exists" >&2; exit 2; }

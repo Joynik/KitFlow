@@ -1,1 +1,1 @@
-docker compose --env-file "$COMPOSE_ENV_FILE" -f "$COMPOSE_FILE" config --quiet
+run_compose config --quiet

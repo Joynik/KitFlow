@@ -1,1 +1,1 @@
-docker compose --env-file "$COMPOSE_ENV_FILE" -f "$COMPOSE_FILE" down
+run_compose down
