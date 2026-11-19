@@ -1,6 +1,6 @@
 schema = 1
 migrated_box_version = 1
-box_version = 6
+box_version = 7
 
 [selection]
 components = ["python", "ruff", "ty", "vulture", "deptry", "nuitka", "rumdl", "pytest", "env-example", "agents"]
@@ -220,7 +220,7 @@ once = false
 path = ".env.example"
 kind = "file"
 key = ""
-sha256 = "7ce9e6603e4c5a9096ccbbca74b4738fcf85f86241b0561f93fd3205c63df984"
+sha256 = "8a7a245eed4cf94cc3cdbf3c5544d4636a991a5fc63d57610fb9c7e60aa21b2f"
 once = false
 
 [state.artifacts."task.env:local"]
