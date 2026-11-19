@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.18.1 — 2026-11-19
+
+### Fixed
+
+- Double-quote text and lists in generated environment examples while keeping numbers unquoted.
+
 ## 0.18.0 — 2026-11-19
 
 ### Added

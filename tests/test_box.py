@@ -57,14 +57,16 @@ def test_environment_example_uses_selected_mise_defaults():
     for expected in (
         "# Django:",
         "# Python server",
-        "SERVER_INTERFACE=asginl",
-        "SERVER_RELOAD_IGNORE_PATTERNS=",
+        'SERVER_INTERFACE="asginl"',
+        'SERVER_RELOAD_IGNORE_PATTERNS=""',
+        "SERVER_PORT=8000",
+        'DJANGO_SECRET_KEY="replace-locally"',
         "# Translations",
-        "I18N_SOURCE_LANGUAGE=en",
+        'I18N_SOURCE_LANGUAGE="en"',
         "# JavaScript and TypeScript",
-        "JAVASCRIPT_BUILD_SCRIPT=build",
+        'JAVASCRIPT_BUILD_SCRIPT="build"',
         "# Docker Compose",
-        "COMPOSE_FILE=compose.yml",
+        'COMPOSE_FILE="compose.yml"',
     ):
         assert expected in text
     assert text.count("PYTHON_APP=") == 1
@@ -73,7 +75,7 @@ def test_environment_example_uses_selected_mise_defaults():
 
     flask = catalog.render(["flask", "granian", "env-example"])["env-example"].content
     assert isinstance(flask, bytes)
-    assert b"SERVER_INTERFACE=wsgi\n" in flask
+    assert b'SERVER_INTERFACE="wsgi"\n' in flask
     assert b"JAVASCRIPT_BUILD_SCRIPT" not in flask
 
 

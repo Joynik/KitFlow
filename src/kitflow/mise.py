@@ -56,13 +56,15 @@ def dotenv_examples(defaults: list[tuple[dict, bytes]], env_rows: list[dict]) ->
         if name in seen or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
             return
         seen.add(name)
-        if isinstance(value, bool):
-            value = str(value).lower()
+        if isinstance(value, (bool, list)):
+            value = json.dumps(value, ensure_ascii=False)
         if not isinstance(value, (str, int, float)):
             return
-        text = str(value)
-        if not re.fullmatch(r"[A-Za-z0-9_./:-]*", text):
-            text = json.dumps(text, ensure_ascii=False).replace("$", r"\$")
+        text = (
+            json.dumps(value, ensure_ascii=False).replace("$", r"\$")
+            if isinstance(value, str)
+            else str(value)
+        )
         groups.setdefault(section, []).append(f"{name}={text}")
 
     for row, document in documents:

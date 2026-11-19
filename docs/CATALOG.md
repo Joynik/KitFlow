@@ -150,6 +150,8 @@ Set `mise_defaults = true` on a dotenv file to include the selected mise setting
 Map environment keys to literal `vars` defaults in the settings template. Read the matching
 environment key in the expression so `.env` can override it. Use fragments for application
 variables that have no mise setting. The example uses Box defaults and skips `PYTHONUNBUFFERED`.
+String values use double quotes, including empty strings. Numbers stay unquoted and lists become
+double-quoted JSON text. Follow the same convention in dotenv fragments.
 
 ## Mise rules
 
