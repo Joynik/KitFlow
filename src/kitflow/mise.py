@@ -43,16 +43,19 @@ def parse(text: str) -> dict:
 
 def dotenv_examples(defaults: list[tuple[dict, bytes]], env_rows: list[dict]) -> tuple[str, ...]:
     """Render public Box defaults in the same order used to seed mise."""
-    documents = [(row, parse(content.decode())) for row, content in defaults]
+    import tomlkit
+    from tomlkit.items import InlineTable, Table
+
+    documents = [(row, tomlkit.parse(content.decode())) for row, content in defaults]
     variables = {}
     for _, document in documents:
-        for name, value in document.get("vars", {}).items():
+        for name, value in document.unwrap().get("vars", {}).items():
             variables.setdefault(name, value)
 
     groups: dict[str, list[str]] = {}
     seen = {"PYTHONUNBUFFERED"}
 
-    def add(section: str, name: str, value: object):
+    def add(section: str, name: str, value: object, comment: str = ""):
         if name in seen or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name):
             return
         seen.add(name)
@@ -65,18 +68,22 @@ def dotenv_examples(defaults: list[tuple[dict, bytes]], env_rows: list[dict]) ->
             if isinstance(value, str)
             else str(value)
         )
-        groups.setdefault(section, []).append(f"{name}={text}")
+        suffix = f" {comment}" if comment else ""
+        groups.setdefault(section, []).append(f"{name}={text}{suffix}")
 
     for row, document in documents:
         section = row.get("example_section", row["id"].replace("-", " ").capitalize())
-        for name, value in document.get("env", {}).items():
+        environment = document.get("env")
+        if not isinstance(environment, (Table, InlineTable)):
+            continue
+        for name, value in environment.unwrap().items():
             if isinstance(value, str) and ("{{" in value or "{%" in value):
                 # Export the configured fallback, without evaluating paths or the local environment.
                 match = re.search(r"\bvars\.([A-Za-z_][A-Za-z0-9_]*)", value)
                 if not match or match[1] not in variables:
                     continue
                 value = variables[match[1]]
-            add(section, name, value)
+            add(section, name, value, environment.item(name).trivia.comment)
     for row in env_rows:
         add("Environment", row["name"], row["value"])
     return tuple("\n".join([f"# {section}", *entries]) for section, entries in groups.items())

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.19.1 — 2026-11-19
+
+### Fixed
+
+- Show the SQLite modes and Docker service name examples next to their defaults in `.env.example`.
+
 ## 0.19.0 — 2026-11-19
 
 ### Added
