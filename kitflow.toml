@@ -80,7 +80,7 @@ once = false
 path = "STANDARDS.md"
 kind = "file"
 key = ""
-sha256 = "516e6629f5a21a169440c91237549074806e32e1de98eeba7ff53b8bb5b47bb8"
+sha256 = "3d48c5a1a5ac072836259a6deee59dcbe2fea667daaae91cf430c717f4af3bfc"
 once = false
 
 [state.artifacts.tools]
