@@ -14,15 +14,15 @@ tasks/             Shell fragments
 
 ## Layers and schema
 
-The user box root overlays `default/`. Use `schema = 4` for new catalogs. KitFlow reads schemas 1–3
-and warns on older user schemas during updates. Migrate them by hand. Upgrade KitFlow before
-downloading a standard box that requires a newer schema or catalog feature.
+The `personal/` Box overlays `standard/`. Use `schema = 4` for new catalogs. KitFlow reads schemas
+1–3 and warns on older user schemas during updates. Migrate them by hand. Upgrade KitFlow before
+downloading a standard Box with a newer schema.
 
 - Sections `components`, `steps`, `files`, `tasks`, `defaults` and `env` merge by ID. A replacement
   takes the original position and replaces the entire entry. New IDs append. IDs must be unique
   within a section and layer. Legacy task IDs use the template stem; legacy env IDs use `name`.
-- A user template overrides the same relative path in `default/`. Directories merge file by file. An
-  empty override supplies an empty file. Remove an override to restore the standard version.
+- A user template overrides the same relative path in `standard/`. Directories merge file by file.
+  An empty override supplies an empty file. Remove an override to restore the standard version.
 - To omit a standard entry, list its ID under `[disabled]` in the corresponding section. For
   example, `tasks = ["ruff-lint"]`. Unknown or duplicate IDs fail validation. Fix references to
   disabled components. Disabling a directory rule also disables its children.
@@ -146,12 +146,12 @@ standard box uses block management for ignore files and whole-file management fo
 Docker enables `.dockerignore`, and VS Code Extension enables `.vscodeignore`.
 
 Set `mise_defaults = true` on a dotenv file to include the selected mise settings. Give a
-`[[defaults]]` entry an `example_section` title to group its variables in the example.
-Map environment keys to literal `vars` defaults in the settings template. Read the matching
-environment key in the expression so `.env` can override it. Use fragments for application
-variables that have no mise setting. The example uses Box defaults and skips `PYTHONUNBUFFERED`.
-String values use double quotes, including empty strings. Numbers stay unquoted and lists become
-double-quoted JSON text. Follow the same convention in dotenv fragments.
+`[[defaults]]` entry an `example_section` title to group its variables in the example. Map
+environment keys to literal `vars` defaults in the settings template. Read the matching environment
+key in the expression so `.env` can override it. Use fragments for application variables that have
+no mise setting. The example uses Box defaults and skips `PYTHONUNBUFFERED`. String values use
+double quotes, including empty strings. Numbers stay unquoted and lists become double-quoted JSON
+text. Follow the same convention in dotenv fragments.
 
 ## Mise rules
 
@@ -176,12 +176,12 @@ value = "1"
 when = ["python"]
 ```
 
-- **Tasks.** Matching fragments with the same `name` form one marked task, such as `task.test`.
-  Use `preamble` to prepend a shared shell template to a fragment.
-  Names allow letters, digits, underscores, hyphens and colons. Fragments run in catalog order and
-  stop on failure. Use shell commands without table headers or triple single quotes. Run from the
-  project root by default. `directory_env` names an exported path and isolates the directory change
-  in a subshell. Paths with spaces work. Missing or invalid directories fail.
+- **Tasks.** Matching fragments with the same `name` form one marked task, such as `task.test`. Use
+  `preamble` to prepend a shared shell template to a fragment. Names allow letters, digits,
+  underscores, hyphens and colons. Fragments run in catalog order and stop on failure. Use shell
+  commands without table headers or triple single quotes. Run from the project root by default.
+  `directory_env` names an exported path and isolates the directory change in a subshell. Paths with
+  spaces work. Missing or invalid directories fail.
 - **Metadata.** `description`, `alias` and `usage` are strings; `hide` and `quiet` are booleans.
   Fragments of the same task must agree where they declare metadata. For example,
   `usage = 'arg "[name]" help="Migration name"'` exposes `usage_name` to the shell.

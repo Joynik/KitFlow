@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.20.0 — 2026-11-20
+
+### Changed
+
+- Store downloaded Box files in `standard/` and overrides in `personal/`.
+- Read linked Box directories and stop updates when a Box link target is unavailable.
+
 ## 0.19.1 — 2026-11-19
 
 ### Fixed

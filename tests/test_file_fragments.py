@@ -97,18 +97,20 @@ def test_invalid_fragments_are_rejected(tmp_path, fragment):
 
 def test_fragment_overlay_and_binary_directory_templates_coexist(tmp_path):
     root = box(tmp_path)
-    standard = root / "default"
+    standard = root / "standard"
+    personal = root / "personal"
+    personal.mkdir()
     standard.mkdir()
     for name in ("kitflow-box.toml", "base.txt", "extra.txt"):
         (root / name).rename(standard / name)
-    (root / "kitflow-box.toml").write_text("""schema = 4
+    (personal / "kitflow-box.toml").write_text("""schema = 4
 [[files]]
 id = "folder"
 path = ".editor"
 template = "templates/editor"
 """)
-    (root / "base.txt").write_text("BASE=user\n")
-    directory = root / "templates/editor/.nested"
+    (personal / "base.txt").write_text("BASE=user\n")
+    directory = personal / "templates/editor/.nested"
     directory.mkdir(parents=True)
     (directory / "binary.pdf").write_bytes(b"\x00\xff\x01")
     (directory / "link").symlink_to("binary.pdf")

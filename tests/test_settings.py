@@ -15,7 +15,8 @@ def test_user_box_location(tmp_path, monkeypatch):
 
 def test_project_updates_use_shared_local_box_without_network(tmp_path, monkeypatch):
     fixture = Path(__file__).parent / "fixtures/catalog"
-    shutil.copytree(fixture, settings.box_path())
+    shutil.copytree(fixture, settings.box_path() / "standard")
+    source.prepare_user_directories(settings.box_path() / "personal")
 
     def network_forbidden(_url):
         raise AssertionError("Project operations must not contact GitHub after bootstrap")
@@ -27,7 +28,7 @@ def test_project_updates_use_shared_local_box_without_network(tmp_path, monkeypa
         args = ["init", "--components", "python,ruff", "--yes", "--project", str(project)]
         assert cli.run(cli.parser().parse_args(args)) == 0
         assert load_config(project)["source"] == {"kind": "user-box"}
-    (settings.box_path() / "templates/ruff.toml").write_text("line-length = 120\n")
+    (settings.box_path() / "personal/templates/ruff.toml").write_text("line-length = 120\n")
     for project in projects:
         args = ["update", "--yes", "--project", str(project)]
         assert cli.run(cli.parser().parse_args(args)) == 0
@@ -35,7 +36,8 @@ def test_project_updates_use_shared_local_box_without_network(tmp_path, monkeypa
 
 
 def test_existing_remote_metadata_does_not_select_a_remote_source(tmp_path, monkeypatch):
-    shutil.copytree(Path(__file__).parent / "fixtures/catalog", settings.box_path())
+    shutil.copytree(Path(__file__).parent / "fixtures/catalog", settings.box_path() / "standard")
+    source.prepare_user_directories(settings.box_path() / "personal")
     project = tmp_path / "project"
     project.mkdir()
     assert (

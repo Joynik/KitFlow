@@ -88,11 +88,13 @@ class Artifact:
 
 class Catalog:
     def __init__(self, root: Path, *, standard: Path | None = None):
-        self.root = root.resolve()
-        default = safe_path(self.root, "default")
-        self.standard = (
-            standard if standard is not None else (default if default.exists() else None)
-        )
+        from kitflow.box_layout import layer_paths, resolve_layer
+
+        personal, installed = layer_paths(root)
+        self.standard = standard if standard is not None else installed
+        if self.standard is not None:
+            self.standard = resolve_layer(self.standard)
+        self.root = resolve_layer(personal)
         version_root = self.standard or self.root
         self.version = box_number(version_root, ".version")
         self.required_migration = box_number(version_root, ".migration")
@@ -351,7 +353,7 @@ class Catalog:
         return dict(sorted(entries.items()))
 
     def template(self, name: str) -> bytes:
-        return self.source_path(name).read_bytes()
+        return self.source_path(name, allow_link=True).read_bytes()
 
     @staticmethod
     def link_target(path: Path) -> str:

@@ -10,6 +10,7 @@ from rich.markdown import Markdown
 from rich.syntax import Syntax
 from rich.table import Table
 
+from kitflow.box_layout import validate_box_links
 from kitflow.box_migrations import plan_migrations, require_supported_migration
 from kitflow.box_update import refresh_box
 from kitflow.catalog import CURRENT_SCHEMA, Catalog, KitFlowError
@@ -26,7 +27,7 @@ def parser() -> argparse.ArgumentParser:
         description="KitFlow — project standards over mise", add_help=False
     )
     result.add_argument("--help", "-h", action="help", help="show this help message and exit")
-    result.add_argument("--version", "-v", action="version", version="KitFlow 0.19.1")
+    result.add_argument("--version", "-v", action="version", version="KitFlow 0.20.0")
     result.add_argument(
         "--instruction",
         "-i",
@@ -48,7 +49,7 @@ def parser() -> argparse.ArgumentParser:
   diff    Show proposed file differences without applying them
   config  Show the local box location without creating it
   check   Validate the box and connected project without changing files
-  upgrade Download and replace only the standard box in default/
+  upgrade Download and replace only the standard box in standard/
   show    Print generated content: show task NAME, show file PATH, show defaults
           List available names with show tasks, show files or show components
 
@@ -166,11 +167,12 @@ def run(args: argparse.Namespace) -> int:
     if args.command == "upgrade":
         if args.instruction or args.components is not None or args.manage:
             raise KitFlowError("upgrade does not accept project actions")
-        destination = args.box.resolve() if args.box else box_path()
+        destination = args.box.absolute() if args.box else box_path()
 
         count = refresh_box(destination, lambda *_: True)
-        warn_box_schema(destination)
-        console.print(f"Standard Box version: {Catalog(destination).version}")
+        catalog = Catalog(destination)
+        warn_box_schema(catalog.root)
+        console.print(f"Standard Box version: {catalog.version}")
         console.print(
             f"Standard box files changed: {count}. User overrides and projects were preserved."
         )
@@ -214,9 +216,7 @@ def run(args: argparse.Namespace) -> int:
             raise KitFlowError("Use init to select project components or apply a plan")
         catalog, _ = load_box(args.box)
         console.print(f"Box ready: {catalog.root} (version {catalog.version})", markup=False)
-        console.print(
-            "Edit user overrides in this box. Run kitflow upgrade to refresh default/. Run kitflow init in a project."
-        )
+        console.print("Run kitflow upgrade to refresh standard/. Run kitflow init in a project.")
         return 0
     root = args.project.resolve()
     if not root.is_dir():
@@ -238,7 +238,7 @@ def run(args: argparse.Namespace) -> int:
     ):
         raise KitFlowError("Use --components for non-interactive init")
     document = parse_config(root, config_snapshot)
-    catalog, source = load_box(args.box)
+    catalog, source = load_box(args.box, check_links=command == "update")
     if command in {"init", "update"}:
         require_supported_migration(catalog.required_migration)
     applied_version = document.get("box_version", 0)
@@ -267,6 +267,7 @@ def run(args: argparse.Namespace) -> int:
                 ):
                     console.print("Cancelled. No files were changed.")
                     return 0
+            validate_box_links(args.box or box_path())
             apply(migration, source)
             config_snapshot = read_file(root / CONFIG)
             document = parse_config(root, config_snapshot)
@@ -315,6 +316,8 @@ def run(args: argparse.Namespace) -> int:
             console.print(cancelled)
             return 0
         select_reset(result, candidates, selected_files)
+        if command == "update":
+            validate_box_links(args.box or box_path())
         apply(result, source)
         console.print(f"Files updated: {len(selected_files)}.")
         return 0
@@ -352,6 +355,7 @@ def run(args: argparse.Namespace) -> int:
     if command == "status":
         return 1 if result.changes else 0
     if command == "update" and not configure and not result.changes:
+        validate_box_links(args.box or box_path())
         apply(result, source)
         return 0
     for change in result.changes:
@@ -389,6 +393,8 @@ def run(args: argparse.Namespace) -> int:
         ):
             console.print(cancelled)
             return 0
+    if command == "update":
+        validate_box_links(args.box or box_path())
     apply(result, source)
     console.print("Configuration saved.", style="green")
     return 0

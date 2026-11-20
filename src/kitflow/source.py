@@ -19,6 +19,7 @@ from pathlib import Path
 
 import certifi
 
+from kitflow.box_layout import layer_paths, validate_box_links
 from kitflow.catalog import CURRENT_SCHEMA, Catalog, KitFlowError, safe_path
 from kitflow.settings import box_path
 
@@ -45,7 +46,11 @@ def standard_box_archive() -> bytes:
 def read_instructions(local: Path | None = None) -> str:
     """Prefer user instructions; fall back to the bundled usage guide offline."""
     root = local if local is not None else box_path()
-    for instruction in (root / "INSTRUCTION.md", root / "default/INSTRUCTION.md"):
+    personal, standard = layer_paths(root)
+    for directory in (personal, standard):
+        if directory is None:
+            continue
+        instruction = directory / "INSTRUCTION.md"
         if instruction.is_file():
             return instruction.read_text(encoding="utf-8")
     compiled = globals().get("__compiled__")
@@ -170,6 +175,7 @@ def seed_box(destination: Path):
 
 
 def prepare_user_directories(destination: Path):
+    destination.mkdir(exist_ok=True)
     for name in ("tasks", "templates"):
         directory = safe_path(destination, name)
         directory.mkdir(exist_ok=True)
@@ -177,7 +183,7 @@ def prepare_user_directories(destination: Path):
     if not manifest.exists():
         with manifest.open("x", encoding="utf-8") as stream:
             stream.write(
-                f"# User overrides for the standard box in default/.\nschema = {CURRENT_SCHEMA}\n"
+                f"# User overrides for the standard box in standard/.\nschema = {CURRENT_SCHEMA}\n"
             )
 
 
@@ -187,18 +193,25 @@ def initialize_box(destination: Path):
     with tempfile.TemporaryDirectory(prefix=".box-initialize-", dir=destination.parent) as folder:
         staging = Path(folder) / "box"
         staging.mkdir()
-        seed_box(staging / "default")
-        prepare_user_directories(staging)
+        seed_box(staging / "standard")
+        prepare_user_directories(staging / "personal")
         Catalog(staging)
         if destination.exists() or destination.is_symlink():
             raise KitFlowError("The box appeared during initialization; retry")
         staging.rename(destination)
 
 
-def load_box(local: Path | None = None) -> tuple[Catalog, dict]:
+def load_box(local: Path | None = None, *, check_links: bool = False) -> tuple[Catalog, dict]:
     if local is not None:
-        return Catalog(local.resolve()), {"local": str(local.resolve())}
+        if check_links:
+            validate_box_links(local)
+        return Catalog(local), {"local": str(local.resolve())}
     destination = box_path()
     if not destination.exists() and not destination.is_symlink():
         initialize_box(destination)
+    if check_links:
+        validate_box_links(destination)
+    personal, standard = layer_paths(destination)
+    if personal == destination or standard is None:
+        raise KitFlowError(f"Expected standard/ and personal/ in {destination}")
     return Catalog(destination), {"kind": "user-box"}

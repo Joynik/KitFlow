@@ -10,13 +10,14 @@ from kitflow.check import configuration_issues
 @pytest.fixture
 def layered(tmp_path):
     root = tmp_path / "box"
-    shutil.copytree(Path(__file__).parent / "fixtures/catalog", root / "default")
-    (root / "kitflow-box.toml").write_text("schema = 1\n")
+    shutil.copytree(Path(__file__).parent / "fixtures/catalog", root / "standard")
+    (root / "personal").mkdir()
+    (root / "personal/kitflow-box.toml").write_text("schema = 1\n")
     return root
 
 
 def test_user_records_replace_whole_entries_and_add_components(layered):
-    (layered / "kitflow-box.toml").write_text("""schema = 1
+    (layered / "personal/kitflow-box.toml").write_text("""schema = 1
 [[components]]
 id = "ruff"
 label = "My Ruff"
@@ -34,13 +35,13 @@ category = "Checks"
 
 
 def test_templates_merge_hidden_binary_and_links_without_traversal(layered):
-    for base in (layered, layered / "default"):
+    for base in (layered / "personal", layered / "standard"):
         (base / "templates/editor/nested").mkdir(parents=True)
-    (layered / "default/templates/editor/.hidden").write_bytes(b"\x00\xff")
-    (layered / "default/templates/editor/nested/shared").write_text("standard")
-    (layered / "templates/editor/nested/shared").write_text("user")
-    (layered / "templates/editor/link").symlink_to("../missing")
-    with (layered / "kitflow-box.toml").open("a") as stream:
+    (layered / "standard/templates/editor/.hidden").write_bytes(b"\x00\xff")
+    (layered / "standard/templates/editor/nested/shared").write_text("standard")
+    (layered / "personal/templates/editor/nested/shared").write_text("user")
+    (layered / "personal/templates/editor/link").symlink_to("../missing")
+    with (layered / "personal/kitflow-box.toml").open("a") as stream:
         stream.write("""[[files]]
 id = "editor"
 path = ".vscode"
@@ -54,18 +55,18 @@ template = "templates/editor"
 
 
 def test_task_fragment_ids_replace_one_fragment_only(layered):
-    with (layered / "default/kitflow-box.toml").open("a") as stream:
+    with (layered / "standard/kitflow-box.toml").open("a") as stream:
         stream.write("""[[tasks]]
 id = "additional"
 name = "lint"
 template = "tasks/additional.sh"
 when = ["ruff"]
 """)
-    (layered / "default/tasks").mkdir()
-    (layered / "default/tasks/additional.sh").write_text("echo additional")
-    (layered / "tasks").mkdir()
-    (layered / "tasks/custom.sh").write_text("echo custom")
-    with (layered / "kitflow-box.toml").open("a") as stream:
+    (layered / "standard/tasks").mkdir()
+    (layered / "standard/tasks/additional.sh").write_text("echo additional")
+    (layered / "personal/tasks").mkdir()
+    (layered / "personal/tasks/custom.sh").write_text("echo custom")
+    with (layered / "personal/kitflow-box.toml").open("a") as stream:
         stream.write("""[[tasks]]
 id = "ruff"
 name = "lint"
@@ -80,14 +81,14 @@ when = ["ruff"]
 
 
 def test_steps_override_and_disable(layered):
-    for base, label in [(layered / "default", "Standard"), (layered, "User")]:
+    for base, label in [(layered / "standard", "Standard"), (layered / "personal", "User")]:
         path = base / "kitflow-box.toml"
         path.write_text(
             path.read_text()
             + f'\n[[steps]]\nid="setup"\nlabel="{label}"\ncategories=["Languages"]\n'
         )
     assert Catalog(layered).data["steps"][0]["label"] == "User"
-    with (layered / "kitflow-box.toml").open("a") as stream:
+    with (layered / "personal/kitflow-box.toml").open("a") as stream:
         stream.write('[disabled]\nsteps=["setup"]\nfiles=["ruff"]\ntasks=["ruff"]\n')
     catalog = Catalog(layered)
     assert catalog.data["steps"] == []
@@ -104,14 +105,14 @@ def test_steps_override_and_disable(layered):
     ],
 )
 def test_invalid_overrides_rejected(layered, text):
-    with (layered / "kitflow-box.toml").open("a") as stream:
+    with (layered / "personal/kitflow-box.toml").open("a") as stream:
         stream.write(text)
     with pytest.raises(KitFlowError):
         Catalog(layered)
 
 
 def test_check_reports_unknown_fields_even_in_replaced_standard_entries(layered, tmp_path):
-    manifest = layered / "default/kitflow-box.toml"
+    manifest = layered / "standard/kitflow-box.toml"
     manifest.write_text(
         manifest.read_text().replace('label = "Python"', 'label = "Python"\nunknown = true')
     )
@@ -119,8 +120,8 @@ def test_check_reports_unknown_fields_even_in_replaced_standard_entries(layered,
 
 
 def test_removing_file_override_restores_standard(layered):
-    (layered / "templates").mkdir()
-    override = layered / "templates/ruff.toml"
+    (layered / "personal/templates").mkdir()
+    override = layered / "personal/templates/ruff.toml"
     override.write_bytes(b"")
     assert Catalog(layered).render(["ruff"])["ruff"].content == b""
     override.unlink()
@@ -128,17 +129,17 @@ def test_removing_file_override_restores_standard(layered):
 
 
 def test_check_validates_standard_templates_even_when_overridden(layered, tmp_path):
-    (layered / "default/templates/ruff.toml").write_text("broken = [")
-    (layered / "templates").mkdir()
-    (layered / "templates/ruff.toml").write_text("line-length = 100")
+    (layered / "standard/templates/ruff.toml").write_text("broken = [")
+    (layered / "personal/templates").mkdir()
+    (layered / "personal/templates/ruff.toml").write_text("line-length = 100")
     assert any(
-        path == layered / "default/templates/ruff.toml"
+        path == layered / "standard/templates/ruff.toml"
         for path, _ in configuration_issues(layered, tmp_path)
     )
 
 
 def test_environment_override_uses_id_not_variable_name(layered):
-    with (layered / "kitflow-box.toml").open("a") as stream:
+    with (layered / "personal/kitflow-box.toml").open("a") as stream:
         stream.write("""[[env]]
 id = "PYTHONUNBUFFERED"
 name = "CUSTOM"
@@ -150,9 +151,9 @@ value = "yes"
 
 
 def test_user_directory_replaces_standard_file(layered):
-    (layered / "default/templates/editor").write_text("standard file")
-    (layered / "templates/editor").mkdir(parents=True)
-    (layered / "templates/editor/user.txt").write_text("user")
-    with (layered / "kitflow-box.toml").open("a") as stream:
+    (layered / "standard/templates/editor").write_text("standard file")
+    (layered / "personal/templates/editor").mkdir(parents=True)
+    (layered / "personal/templates/editor/user.txt").write_text("user")
+    with (layered / "personal/kitflow-box.toml").open("a") as stream:
         stream.write('[[files]]\nid="editor"\npath=".editor"\ntemplate="templates/editor"\n')
     assert Catalog(layered).render([])["editor/user.txt"].content == b"user"

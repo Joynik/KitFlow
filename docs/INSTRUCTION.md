@@ -8,18 +8,20 @@ Prepare the box → Choose project components → Configure mise → Run tasks �
 
 ## Box setup
 
-Run `kitflow` once. It downloads the standard box to `~/.config/kitflow/default/` and creates a user
-box alongside it. With `XDG_CONFIG_HOME` set, KitFlow uses `$XDG_CONFIG_HOME/kitflow` instead.
+Run `kitflow` once. It downloads the standard Box to `~/.config/kitflow/standard/` and creates
+`personal/` alongside it. With `XDG_CONFIG_HOME` set, the root is `$XDG_CONFIG_HOME/kitflow`.
 
-Edit and back up the user box. For example, copy `default/templates/ruff.toml` to
-`templates/ruff.toml` at the box root and edit the copy. Use the root `kitflow-box.toml` to add,
-replace or disable rules. See the
+Copy `standard/templates/ruff.toml` to `personal/templates/ruff.toml` to customize Ruff. Use
+`personal/kitflow-box.toml` to add, replace or disable rules. See the
 [catalog reference](https://github.com/Joynik/KitFlow/blob/main/docs/CATALOG.md).
 
-`kitflow upgrade` downloads and validates a new standard box with your overrides. It replaces
-`default/` and removes obsolete standard files without a prompt or diff. A failed update leaves the
-old box intact. User files and projects stay unchanged. Later bare `kitflow` runs use your local
-box. Legacy flat boxes work offline; their first upgrade keeps their existing files as overrides.
+You can point `personal/` at a directory in your Obsidian vault with a symbolic link. Move your
+personal Box into the vault first, then create the link at its former location. KitFlow can also
+read a linked `standard/` directory. Keep `standard/` as an ordinary directory for
+`kitflow upgrade`.
+
+`kitflow upgrade` replaces only the downloaded standard Box. Both `update` and `upgrade` stop and
+identify any inaccessible Box link.
 
 ## Project setup and updates
 
@@ -88,9 +90,9 @@ files are adopted and skipping an untracked file leaves it user-owned.
 - **Environment files** are optional. In **Environments**, select **Create .env.example** to
   generate an example from the selected mise defaults and application fragments. To configure the
   project through `.env`, run `mise run env:local` once and edit the copy. Leave **Create .env**
-  unchecked for this workflow. Select it to start with an empty local file instead. KitFlow preserves
-  an existing `.env`. Edit custom fragments in your box under
-  `templates/gitignore/`, `templates/dockerignore/`, `templates/vscodeignore/` or `templates/env/`.
+  unchecked for this workflow. Select it to start with an empty local file instead. KitFlow
+  preserves an existing `.env`. Edit custom fragments in your box under `templates/gitignore/`,
+  `templates/dockerignore/`, `templates/vscodeignore/` or `templates/env/`.
 
 ## Run and configure mise tasks
 
@@ -147,14 +149,14 @@ entry point. Leave both build options unchecked to omit Python builds.
 
 - **Python servers.** The wizard offers Granian, Gunicorn, Uvicorn or Gunicorn + Uvicorn for Django,
   Granian or Uvicorn for FastAPI, and Granian or Gunicorn for Flask. Set `python_app` to
-  `module:object` using the interface your server expects. In the combined Django mode, use the
-  ASGI entry point. `dev` uses Uvicorn and `run` uses Gunicorn with the `uvicorn-worker` package.
-- **Reload exclusions.** For Granian and Uvicorn-based development, set
-  `server_reload_ignore_dirs` and `server_reload_ignore_patterns` in mise `[vars]`, one entry per
-  line. Override them in `.env` with `SERVER_RELOAD_IGNORE_DIRS` and `SERVER_RELOAD_IGNORE_PATTERNS`.
-  Granian needs `granian[reload]` and takes directory names and regular expressions. Uvicorn needs
-  `watchfiles` (included in `uvicorn[standard]`) and takes existing directories relative to
-  `python_source` or absolute paths, plus glob patterns. Gunicorn's built-in reload has no exclusions.
+  `module:object` using the interface your server expects. In the combined Django mode, use the ASGI
+  entry point. `dev` uses Uvicorn and `run` uses Gunicorn with the `uvicorn-worker` package.
+- **Reload exclusions.** For Granian and Uvicorn-based development, set `server_reload_ignore_dirs`
+  and `server_reload_ignore_patterns` in mise `[vars]`, one entry per line. Override them in `.env`
+  with `SERVER_RELOAD_IGNORE_DIRS` and `SERVER_RELOAD_IGNORE_PATTERNS`. Granian needs
+  `granian[reload]` and takes directory names and regular expressions. Uvicorn needs `watchfiles`
+  (included in `uvicorn[standard]`) and takes existing directories relative to `python_source` or
+  absolute paths, plus glob patterns. Gunicorn's built-in reload has no exclusions.
 - **Run modes.** `dev` enables reload; `run` does not. Set `build_before_run = "true"` to build
   first. Use `server_host_default` and `server_port_default`, or override them with `SERVER_HOST`
   and `SERVER_PORT`. Django also has `django:runserver`. FastAPI's `app-check` imports the app and
@@ -193,23 +195,22 @@ transaction.
   `COMPOSE_FILE` is resolved inside `DOCKER_SOURCE`. An absolute path selects a file directly.
   `COMPOSE_ENV_FILE` defaults to `.env` next to mise.toml. Set
   `COMPOSE_WRAPPER="deployment/compose.sh"` to pass Compose subcommands to your own shell script.
-  Tasks include `docker:build`,
-  `docker:check`, `docker:up`, `docker:status`, `docker:logs` and `docker:down`. Down preserves
-  volumes. Use `docker:db:backup FILE`, `docker:db:restore FILE`, or `--docker` on the ordinary
-  database task. `DATABASE_EXECUTION_MODE` selects `native` or `docker`. Set
-  `database_docker_service` and, for SQLite, `SQLITE_CONTAINER_PATH`. The running container needs
-  the database client and its connection settings. SQLite restore also needs a POSIX shell in the
-  container.
+  Tasks include `docker:build`, `docker:check`, `docker:up`, `docker:status`, `docker:logs` and
+  `docker:down`. Down preserves volumes. Use `docker:db:backup FILE`, `docker:db:restore FILE`, or
+  `--docker` on the ordinary database task. `DATABASE_EXECUTION_MODE` selects `native` or `docker`.
+  Set `database_docker_service` and, for SQLite, `SQLITE_CONTAINER_PATH`. The running container
+  needs the database client and its connection settings. SQLite restore also needs a POSIX shell in
+  the container.
 
 ### Test databases
 
 After selecting a Python test runner, choose SQLite or PostgreSQL under **Test database**. Leave
-both unselected to use the test runner's existing configuration. SQLite defaults to `:memory:`.
-Set `TEST_SQLITE_DATABASE_PATH` for a separate file. For PostgreSQL, set `TEST_DATABASE_URL` in
-`.env` with a dedicated database and a user restricted to that database. The test task checks
-these values before invoking the runners. Configure your fixtures or test settings to read them.
-For Django, set `DJANGO_TEST_SETTINGS_MODULE` to a dedicated module that reads
-`TEST_DATABASE_BACKEND` and the corresponding test connection settings.
+both unselected to use the test runner's existing configuration. SQLite defaults to `:memory:`. Set
+`TEST_SQLITE_DATABASE_PATH` for a separate file. For PostgreSQL, set `TEST_DATABASE_URL` in `.env`
+with a dedicated database and a user restricted to that database. The test task checks these values
+before invoking the runners. Configure your fixtures or test settings to read them. For Django, set
+`DJANGO_TEST_SETTINGS_MODULE` to a dedicated module that reads `TEST_DATABASE_BACKEND` and the
+corresponding test connection settings.
 
 **Prisma ORM** is available under **Data access** with JavaScript/TypeScript and PostgreSQL or
 SQLite. Install Prisma 7 and its runtime dependencies separately. Tasks use `bunx --no-install`.
@@ -244,10 +245,10 @@ nested apps, move the initial files and set `prisma_config`, `prisma_schema_path
 - `init --components/-c IDS` supplies the complete comma-separated selection. Dependencies are added
   and omitted components are removed. Example: `kitflow init -c python,ruff,ty -y`.
 - Use `show files`, `show tasks` and `show components` to discover names. Then run
-  `kitflow show file pytest.ini`, `kitflow show file .env.example`,
-  `kitflow show task docker:up` or `kitflow show defaults`. Pass the complete hypothetical
-  selection with `--components` to preview an addition or removal. Show reads the local Box and
-  the saved selection without reading project values from `.env` or changing files.
+  `kitflow show file pytest.ini`, `kitflow show file .env.example`, `kitflow show task docker:up` or
+  `kitflow show defaults`. Pass the complete hypothetical selection with `--components` to preview
+  an addition or removal. Show reads the local Box and the saved selection without reading project
+  values from `.env` or changing files.
 - `--yes/-y` confirms the plan, including pending migrations. `update -y` keeps the saved selection.
   Conflicts stop unattended updates.
 - In **User-owned files and blocks**, the setup wizard groups files, mise tasks and environment

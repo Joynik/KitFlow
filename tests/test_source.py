@@ -59,16 +59,16 @@ def test_standard_archive_uses_revision_commit(monkeypatch):
 def test_first_use_downloads_once_and_keeps_user_edits(monkeypatch):
     calls = downloads(monkeypatch)
     catalog, metadata = source.load_box()
-    assert catalog.root == settings.box_path().resolve()
+    assert catalog.root == (settings.box_path() / "personal").resolve()
     assert metadata == {"kind": "user-box"}
     assert len(calls) == 1
     assert (catalog.root / "kitflow-box.toml").read_text().endswith("schema = 4\n")
     assert all((catalog.root / name).is_dir() for name in ("tasks", "templates"))
     assert not any("empty.md" in url for url in calls)
     assert not (catalog.root / "snapshot.json").exists()
-    assert (catalog.root / "default/INSTRUCTION.md").read_text() == source.read_instructions(
-        Path("box")
-    )
+    assert (
+        settings.box_path() / "standard/INSTRUCTION.md"
+    ).read_text() == source.read_instructions(Path("box"))
     (catalog.root / "INSTRUCTION.md").write_text("My box instructions\n")
     (catalog.root / "templates/ruff.toml").write_text("line-length = 120\n")
     calls.clear()
@@ -84,8 +84,8 @@ def test_bare_command_prepares_the_box_without_touching_the_project(tmp_path, mo
     project.mkdir()
     monkeypatch.chdir(project)
     assert cli.run(cli.parser().parse_args([])) == 0
-    assert (settings.box_path() / "kitflow-box.toml").exists()
-    assert (settings.box_path() / "default/INSTRUCTION.md").exists()
+    assert (settings.box_path() / "personal/kitflow-box.toml").exists()
+    assert (settings.box_path() / "standard/INSTRUCTION.md").exists()
     assert not list(project.iterdir())
     calls.clear()
     assert cli.run(cli.parser().parse_args([])) == 0

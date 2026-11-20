@@ -53,9 +53,9 @@ def test_update_rejects_config_edit_after_loading_selection(tmp_path, monkeypatc
     assert updated != path.read_text()
     load_box = cli.load_box
 
-    def edit_then_load(box):
+    def edit_then_load(box, **options):
         path.write_text(updated)
-        return load_box(box)
+        return load_box(box, **options)
 
     monkeypatch.setattr(cli, "load_box", edit_then_load)
     args = cli.parser().parse_args(["update", "-b", str(CATALOG), "-p", str(tmp_path), "-y"])

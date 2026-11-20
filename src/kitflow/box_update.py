@@ -1,14 +1,14 @@
 """Replace the standard box snapshot while preserving user overrides."""
 
-import fcntl
 import os
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
 
-from kitflow.catalog import KitFlowError, safe_path
+from kitflow.box_layout import layer_paths, locked_box, validate_links
+from kitflow.catalog import KitFlowError
 from kitflow.check import configuration_issues
-from kitflow.source import prepare_user_directories, seed_box
+from kitflow.source import seed_box
 
 
 def snapshot(root: Path) -> dict[str, bytes | str]:
@@ -34,18 +34,23 @@ def refresh_box(
 ) -> int:
     if destination.is_symlink() or not destination.is_dir():
         raise KitFlowError("Initialize a real box directory with kitflow before updating it")
-    standard = safe_path(destination, "default")
-    descriptor = os.open(destination, os.O_RDONLY)
-    try:
-        try:
-            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError as error:
-            raise KitFlowError("Another KitFlow command is updating the standard box") from error
+    with locked_box(destination):
+        personal, standard = layer_paths(destination)
+        if personal == destination or standard is None:
+            raise KitFlowError(f"Expected standard/ and personal/ in {destination}")
+        validate_links(personal)
+        validate_links(standard)
+        if standard.is_symlink():
+            raise KitFlowError(f"Cannot upgrade a linked standard box: {standard}")
+        if personal.resolve().is_relative_to(
+            standard.resolve()
+        ) or standard.resolve().is_relative_to(personal.resolve()):
+            raise KitFlowError(f"Standard and personal Box directories overlap: {personal}")
         with tempfile.TemporaryDirectory(prefix=".box-refresh-", dir=destination.parent) as folder:
             staging = Path(folder)
             incoming = staging / "incoming"
             seed_box(incoming)
-            # Validate user overrides against the new standard before changing anything.
+            validate_links(incoming)
             validate_update(destination, incoming)
             before = snapshot(standard)
             after = snapshot(incoming)
@@ -55,32 +60,35 @@ def refresh_box(
             user_before = snapshot_user(destination)
             if not count or not review(before, after):
                 return 0
-            if snapshot(standard) != before:
+            if standard.is_symlink() or snapshot(standard) != before:
                 raise KitFlowError("Standard box changed during review; retry")
+            validate_links(personal)
+            validate_links(standard)
             validate_update(destination, incoming)
-            prepare_user_directories(destination)
             if snapshot_user(destination) != user_before:
-                # Directory scaffolding is allowed; existing user files must stay untouched.
                 raise KitFlowError("User box changed during update; retry")
             backup = staging / "previous"
-            had_standard = standard.exists()
-            if had_standard:
-                standard.rename(backup)
+            standard.rename(backup)
             try:
                 incoming.rename(standard)
+                try:
+                    validate_links(personal)
+                    validate_links(standard)
+                except BaseException:
+                    standard.rename(incoming)
+                    raise
             except BaseException:
-                if had_standard:
-                    backup.rename(standard)
+                backup.rename(standard)
                 raise
             return count
-    finally:
-        os.close(descriptor)
 
 
 def snapshot_user(root: Path) -> dict[str, bytes | str]:
-    return {
-        name: value for name, value in snapshot(root).items() if not name.startswith("default/")
-    }
+    personal = root / "personal"
+    result = snapshot(personal)
+    if personal.is_symlink():
+        result["."] = os.readlink(personal)
+    return result
 
 
 def validate_update(destination: Path, incoming: Path):

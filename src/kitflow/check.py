@@ -66,11 +66,14 @@ BOX_FIELDS = {
 
 
 def validate_box(root: Path, *, standard: Path | None = None) -> Catalog:
+    from kitflow.box_layout import layer_paths, resolve_layer
     from kitflow.layers import load_data
 
-    default = safe_path(root, "default")
-    standard = standard if standard is not None else (default if default.exists() else None)
-    _, sources = load_data(root, standard)
+    personal, installed = layer_paths(root)
+    standard = standard if standard is not None else installed
+    if standard is not None:
+        standard = resolve_layer(standard)
+    _, sources = load_data(resolve_layer(personal), standard)
     for source, data in sources:
         known_fields(data, {"schema", "disabled", *BOX_FIELDS}, str(source / "kitflow-box.toml"))
         for section, allowed in BOX_FIELDS.items():
@@ -101,12 +104,16 @@ def validate_syntax(path: Path, suffix: str | None = None):
 
 
 def configuration_issues(
-    box: Path, project: Path, *, standard: Path | None = None
+    box: Path, project: Path, *, standard: Path | None = None, check_standard: bool = True
 ) -> list[tuple[Path, str]]:
     issues = []
-    default = standard if standard is not None else box / "default"
-    if default.is_dir() and not default.is_symlink():
-        issues.extend(configuration_issues(default, default))
+    from kitflow.box_layout import layer_paths
+
+    _, installed = layer_paths(box)
+    default = standard if standard is not None else installed
+    if check_standard and default is not None and default.is_dir():
+        directory = default.resolve()
+        issues.extend(configuration_issues(directory, directory, check_standard=False))
     catalog = None
     errors = (KitFlowError, OSError, ValueError, TypeError)
     try:

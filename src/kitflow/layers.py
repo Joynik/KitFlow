@@ -10,7 +10,7 @@ SECTIONS = ("components", "files", "tasks", "env", "defaults", "steps")
 
 
 def read_data(root: Path) -> dict:
-    path = safe_path(root, "kitflow-box.toml")
+    path = safe_path(root, "kitflow-box.toml", allow_link=True)
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     if type(data.get("schema")) is not int or data["schema"] not in {1, 2, 3, 4}:
         raise KitFlowError(f"{path}: unsupported catalog schema; expected 1, 2, 3 or 4")
