@@ -1,6 +1,6 @@
 schema = 1
 migrated_box_version = 1
-box_version = 8
+box_version = 9
 
 [selection]
 components = ["python", "ruff", "ty", "vulture", "deptry", "nuitka", "rumdl", "pytest", "env-example", "agents"]
