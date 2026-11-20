@@ -13,6 +13,7 @@ with tempfile.TemporaryDirectory(prefix="kitflow-templates-") as temporary:
     templates = box / "templates"
     (templates / ".nested").mkdir(parents=True)
     (templates / ".nested/example.pdf").write_bytes(b"%PDF-1.7\n\x00\xff")
+    (box / "skills/example").mkdir(parents=True)
     (templates / ".skill").symlink_to("../skills/example")
     (box / "kitflow-box.toml").write_text("""schema = 1
 [[components]]
@@ -45,6 +46,7 @@ when = ["example"]
     run("check")
     (output / "personal.txt").write_text("Keep me")
     (templates / ".skill").unlink()
+    (box / "skills/updated").mkdir()
     (templates / ".skill").symlink_to("../skills/updated")
     assert "symlink -> ../skills/updated" in run("diff", expected=1)
     run("update", "-y")

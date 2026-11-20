@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.20.1 — 2026-11-20
+
+### Fixed
+
+- Verify relative links in standalone release archives using templates with existing link targets.
+
 ## 0.20.0 — 2026-11-20
 
 ### Changed
