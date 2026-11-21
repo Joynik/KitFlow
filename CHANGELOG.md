@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.21.1 — 2026-11-21
+
+### Fixed
+
+- Restore excluded mise blocks from Change setup, with an optional diff before applying the plan.
+
 ## 0.21.0 — 2026-11-21
 
 ### Added

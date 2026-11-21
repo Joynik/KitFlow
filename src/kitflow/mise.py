@@ -136,6 +136,34 @@ def collision(text: str, artifact: Artifact) -> bool:
     return artifact.key in data.get(section, {})
 
 
+def unmanaged_content(text: str, artifact: Artifact) -> bytes:
+    import tomlkit
+
+    section = "tasks" if artifact.kind == "task" else "env"
+    entry = {artifact.key: parse(text)[section][artifact.key]}
+    return tomlkit.dumps({section: entry} if artifact.kind == "task" else entry).encode()
+
+
+def reclaim(text: str, artifact: Artifact, content: bytes) -> str:
+    import tomlkit
+    from tomlkit.items import InlineTable
+
+    section = "tasks" if artifact.kind == "task" else "env"
+    protected, headers = protect_task_boundaries(text)
+    document = tomlkit.parse(protected)
+    table = document[section]
+    del table[artifact.key]
+    if isinstance(table, InlineTable):
+        expanded = tomlkit.table()
+        expanded.update(table)
+        document[section] = expanded
+    remaining = restore_task_boundaries(text, tomlkit.dumps(document), headers)
+    updated = replace(remaining, artifact, content)
+    parse(updated)
+    validate_span(updated, artifact, blocks(updated)[artifact.id])
+    return updated
+
+
 def missing_defaults(text: str, content: bytes) -> bytes:
     """Return only absent user settings, preserving every existing value."""
     import tomlkit
@@ -209,11 +237,7 @@ def protect_blocks(before: str, after: str):
         raise KitFlowError("Mise defaults cannot change managed task or environment blocks")
 
 
-def reset_defaults(text: str, content: bytes) -> str:
-    """Reset only keys defined by the current box, retaining other user settings."""
-    import tomlkit
-
-    source = content.decode()
+def protect_task_boundaries(text: str, source: str = "") -> tuple[str, list[str]]:
     owned = blocks(text)
     separator = "_kitflow_task_boundary"
     while separator in text or separator in source:
@@ -227,6 +251,22 @@ def reset_defaults(text: str, content: bytes) -> str:
             header = f"[{separator}_{len(headers)}]\n"
             headers.append(header)
             protected = protected[:start] + header + protected[start:]
+    return protected, headers
+
+
+def restore_task_boundaries(text: str, result: str, headers: list[str]) -> str:
+    for header in headers:
+        result = result.replace(header, "")
+    protect_blocks(text, result)
+    return result
+
+
+def reset_defaults(text: str, content: bytes) -> str:
+    """Reset only keys defined by the current box, retaining other user settings."""
+    import tomlkit
+
+    source = content.decode()
+    protected, headers = protect_task_boundaries(text, source)
     document = tomlkit.parse(protected)
     incoming = tomlkit.parse(source)
 
@@ -238,8 +278,4 @@ def reset_defaults(text: str, content: bytes) -> str:
                 target[name] = value
 
     merge(document, incoming)
-    result = tomlkit.dumps(document)
-    for header in headers:
-        result = result.replace(header, "")
-    protect_blocks(text, result)
-    return result
+    return restore_task_boundaries(text, tomlkit.dumps(document), headers)

@@ -27,7 +27,7 @@ def parser() -> argparse.ArgumentParser:
         description="KitFlow — project standards over mise", add_help=False
     )
     result.add_argument("--help", "-h", action="help", help="show this help message and exit")
-    result.add_argument("--version", "-v", action="version", version="KitFlow 0.21.0")
+    result.add_argument("--version", "-v", action="version", version="KitFlow 0.21.1")
     result.add_argument(
         "--instruction",
         "-i",
@@ -324,6 +324,7 @@ def run(args: argparse.Namespace) -> int:
     selection = document["selection"]
     selected = list(selection.get("components", []))
     excluded = list(selection.get("excluded", []))
+    previously_excluded = set(excluded)
     if args.manage:
         unknown = set(args.manage) - set(excluded)
         if unknown:
@@ -342,7 +343,14 @@ def run(args: argparse.Namespace) -> int:
             return 0
         selected, excluded = chosen.components, chosen.excluded
     selection["excluded"] = excluded
-    result = plan(root, catalog, selected, document, config_snapshot=config_snapshot)
+    result = plan(
+        root,
+        catalog,
+        selected,
+        document,
+        config_snapshot=config_snapshot,
+        reclaim_mise=frozenset(previously_excluded.difference(excluded)),
+    )
     if catalog.version and command == "update":
         result.box_version = catalog.version
     console.print(f"Project: {root}", markup=False)
@@ -385,12 +393,17 @@ def run(args: argparse.Namespace) -> int:
     if not args.yes:
         if not sys.stdin.isatty():
             raise KitFlowError("Use --yes to confirm a non-interactive plan")
-        if (
-            choose_action(
-                "Apply this plan?", [("apply", "Apply plan"), ("cancel", "Cancel")], "cancel"
-            )
-            != "apply"
-        ):
+        reclaimed = [change for change in result.changes if change.operation == "reclaim"]
+        actions = [("apply", "Apply plan"), ("cancel", "Cancel")]
+        if reclaimed:
+            actions.insert(1, ("review", "Review returned mise blocks"))
+        answer = choose_action("Apply this plan?", actions, "cancel")
+        if answer == "review":
+            for change in reclaimed:
+                console.print(change.artifact.id, markup=False)
+                show_diff(change)
+            answer = choose_action("Apply this plan?", [actions[0], actions[-1]], "cancel")
+        if answer != "apply":
             console.print(cancelled)
             return 0
     if command == "update":

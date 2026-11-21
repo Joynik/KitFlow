@@ -253,8 +253,10 @@ nested apps, move the initial files and set `prisma_config`, `prisma_schema_path
   Conflicts stop unattended updates.
 - In **User-owned files and blocks**, the setup wizard groups files, mise tasks and environment
   variables. File names omit directories. KitFlow tracks the paths internally.
-- `init --manage/-m ID` restores management with conflict review. Use the full file name without
-  directories or the mise block ID, such as `task.lint`. Repeat it for multiple entries.
+- Clear a mise block's checkbox to restore KitFlow management. Apply the plan directly or choose
+  **Review returned mise blocks** first. Applying restores the markers and uses the Box content.
+- `init --manage/-m ID` restores management. Use the full file name without directories or the mise
+  block ID, such as `task.lint`. Repeat it for multiple entries.
 
 `kitflow check -b /path/to/box -p /path/to/project` validates definitions, dependencies, paths,
 templates, wizard steps, TOML/JSON syntax and mise ownership blocks. It reports paths and reasons,

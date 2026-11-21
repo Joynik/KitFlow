@@ -202,6 +202,7 @@ def plan(
     *,
     reset: bool = False,
     config_snapshot: bytes | None | Literal[False] = False,
+    reclaim_mise: frozenset[str] = frozenset(),
 ) -> Plan:
     root = root.resolve()
     selected = catalog.resolve(selected)
@@ -331,6 +332,19 @@ def plan(
                 current = span[2].encode()
             else:
                 current = None
+                if target and identity in reclaim_mise:
+                    if mise.collision(text, artifact):
+                        result.changes.append(
+                            Change(
+                                artifact,
+                                mise.unmanaged_content(text, artifact),
+                                target.content,
+                                "reclaim",
+                                reason="Restore KitFlow management",
+                            )
+                        )
+                        continue
+                    record = None
                 if record or mise.collision(text, artifact):
                     result.changes.append(
                         Change(
@@ -459,6 +473,9 @@ def preview_files(result: Plan) -> dict[str, tuple[bytes | str | None, bytes | s
 
 def update_mise(text: str, change: Change) -> str:
     assert isinstance(change.after, bytes) or change.after is None
+    if change.operation == "reclaim":
+        assert change.after is not None
+        return mise.reclaim(text, change.artifact, change.after)
     if change.artifact.kind == "defaults":
         if change.operation == "cleanup-settings":
             return mise.remove_defaults(text, change.setting_keys)

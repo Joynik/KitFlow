@@ -194,6 +194,59 @@ def test_bundled_guide_matches_published_instructions():
     assert read_instructions() == (Path(__file__).parents[1] / "docs/INSTRUCTION.md").read_text()
 
 
+@pytest.mark.parametrize("review", [False, True])
+def test_change_setup_reclaims_detached_mise_blocks(tmp_path, monkeypatch, capsys, review):
+    from kitflow.tui import Configurator, Selection
+
+    options = ["-b", str(CATALOG), "-p", str(tmp_path)]
+
+    def run(*args):
+        return cli.run(cli.parser().parse_args([*args, *options]))
+
+    assert run("init", "-c", "ruff", "-y") == 0
+    mise = tmp_path / "mise.toml"
+    initial = tomllib.loads(mise.read_text())
+    detached = "".join(
+        line
+        for line in mise.read_text().splitlines(keepends=True)
+        if not line.startswith("# kitflow:")
+    )
+    original_run = initial["tasks"]["lint"]["run"]
+    detached = detached.replace("ruff", "custom-ruff").replace(
+        'PYTHONUNBUFFERED = "1"', 'PYTHONUNBUFFERED = "0"'
+    )
+    neighboring_block = (
+        '\n# kitflow:begin task.other\n[tasks.other]\nrun = "echo other"\n'
+        "# kitflow:end task.other\n"
+    )
+    detached += neighboring_block + '\n[tasks.custom]\nrun = "echo keep"\n'
+    mise.write_text(detached)
+    assert run("update", "-y") == 0
+    assert mise.read_text() == detached
+    config = tmp_path / "kitflow.toml"
+    assert set(tomllib.loads(config.read_text())["selection"]["excluded"]) == {
+        "task.lint",
+        "env.PYTHONUNBUFFERED",
+    }
+
+    monkeypatch.setattr(cli.sys.stdin, "isatty", lambda: True)
+    answers = iter(["setup", "review", "apply"] if review else ["setup", "apply"])
+    monkeypatch.setattr(cli, "choose_action", lambda *_args, **_kwargs: next(answers))
+    monkeypatch.setattr(Configurator, "run", lambda self: Selection(["python", "ruff"], []))
+    capsys.readouterr()
+    assert run("update") == 0
+    assert ("custom-ruff" in capsys.readouterr().out) == review
+    text = mise.read_text()
+    data = tomllib.loads(text)
+    assert data["tasks"]["lint"]["run"] == original_run
+    assert data["tasks"]["custom"]["run"] == "echo keep"
+    assert data["env"]["PYTHONUNBUFFERED"] == "1"
+    assert "# kitflow:begin task.lint" in text
+    assert "# kitflow:begin env.PYTHONUNBUFFERED" in text
+    assert neighboring_block in text
+    assert tomllib.loads(config.read_text())["selection"]["excluded"] == []
+
+
 def test_update_can_reconfigure_and_remove_components(tmp_path, monkeypatch):
     from kitflow.tui import Configurator, Selection
 
