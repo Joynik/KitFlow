@@ -2,10 +2,12 @@
 
 import itertools
 import json
+import re
 import tomllib
 from pathlib import Path
 
 from kitflow import mise
+from kitflow.box_layout import layer_paths
 from kitflow.catalog import Artifact, Catalog, KitFlowError, known_fields, safe_path
 from kitflow.engine import (
     CONFIG,
@@ -90,14 +92,59 @@ def validate_box(root: Path, *, standard: Path | None = None) -> Catalog:
     return Catalog(root, standard=standard)
 
 
-def validate_syntax(path: Path, suffix: str | None = None):
+def load_validation_rules(root: Path) -> dict[str, str]:
+    path = safe_path(root, "validation.toml")
+    content = read_file(path)
+    if content is None:
+        return {}
+    data = tomllib.loads(content.decode("utf-8"))
+    known_fields(data, {"files"}, str(path))
+    rules = data.get("files", {})
+    if not isinstance(rules, dict):
+        raise KitFlowError("[files] must be a table")
+    for name, mode in rules.items():
+        safe_path(root, name, allow_link=True)
+        if mode not in ("jsonc", "skip"):
+            raise KitFlowError(f"Invalid validation mode for {name}: expected jsonc or skip")
+    return rules
+
+
+def template_mode(path: Path, layers: tuple[Path, ...], rules: dict[str, str]) -> str | None:
+    for layer in layers:
+        if path.is_relative_to(layer):
+            return rules.get(path.relative_to(layer).as_posix())
+    return None
+
+
+JSON_STRING = r'"(?:[^"\\]|\\.)*"'
+JSONC_COMMENTS = re.compile(rf"{JSON_STRING}|//[^\r\n]*|/\*[\s\S]*?\*/")
+JSONC_TRAILING_COMMA = re.compile(rf'{JSON_STRING}|(?<=[\w"\]}}])[ \t\r\n]*,(?=[ \t\r\n]*[\]}}])')
+
+
+def jsonc_as_json(text: str) -> str:
+    # Replace comments with whitespace to preserve token boundaries and error positions.
+    text = JSONC_COMMENTS.sub(
+        lambda match: re.sub(r"[^\r\n]", " ", match[0]) if match[0].startswith("/") else match[0],
+        text,
+    )
+    # A trailing comma can follow a value, but cannot be the first item.
+    return JSONC_TRAILING_COMMA.sub(
+        lambda match: match[0][:-1] + " " if match[0].endswith(",") else match[0], text
+    )
+
+
+def validate_syntax(path: Path, suffix: str | None = None, mode: str | None = None):
+    if mode == "skip":
+        return
     suffix = suffix or path.suffix.lower()
-    if suffix not in {".toml", ".json"} or not path.exists():
+    if (mode != "jsonc" and suffix not in {".toml", ".json"}) or not path.exists():
         return
     content = read_file(path)
     if content is not None:
         text = content.decode("utf-8")
-        if suffix == ".toml":
+        if mode == "jsonc":
+            json.loads(jsonc_as_json(text))
+        elif suffix == ".toml":
             tomllib.loads(text)
         else:
             json.loads(text)
@@ -107,15 +154,20 @@ def configuration_issues(
     box: Path, project: Path, *, standard: Path | None = None, check_standard: bool = True
 ) -> list[tuple[Path, str]]:
     issues = []
-    from kitflow.box_layout import layer_paths
-
-    _, installed = layer_paths(box)
+    personal, installed = layer_paths(box)
     default = standard if standard is not None else installed
     if check_standard and default is not None and default.is_dir():
         directory = default.resolve()
         issues.extend(configuration_issues(directory, directory, check_standard=False))
     catalog = None
     errors = (KitFlowError, OSError, ValueError, TypeError)
+    layers = tuple(layer.resolve() for layer in (default, personal) if layer is not None)
+    rules = {}
+    for layer in layers:
+        try:
+            rules.update(load_validation_rules(layer))
+        except errors as error:
+            issues.append((layer / "validation.toml", str(error)))
     try:
         catalog = validate_box(box, standard=standard)
     except errors as error:
@@ -161,7 +213,7 @@ def configuration_issues(
                     continue
                 checked.add((target, suffix))
                 try:
-                    validate_syntax(target, suffix)
+                    validate_syntax(target, suffix, template_mode(target, layers, rules))
                 except errors as error:
                     issues.append((target, str(error)))
     if not project.is_dir():
@@ -187,8 +239,8 @@ def configuration_issues(
             artifacts = {}
         excluded = set(document["selection"].get("excluded", []))
         excluded_paths = set(document.get("state", {}).get("excluded_paths", []))
-        formats = {
-            identity: source.suffix.lower() if source is not None else ""
+        templates = {
+            identity: source
             for row in catalog.data.get("files", [])
             for identity, _, source in catalog.file_templates(row)
         }
@@ -196,10 +248,12 @@ def configuration_issues(
             if artifact.kind != "file" or is_excluded(artifact, excluded, excluded_paths):
                 continue
             try:
-                suffix = formats.get(identity)
+                template = templates.get(identity)
+                suffix = template.suffix.lower() if template is not None else None
                 if suffix not in {".toml", ".json"}:
                     suffix = None
-                validate_syntax(safe_path(project, artifact.path), suffix)
+                mode = template_mode(template, layers, rules) if template is not None else None
+                validate_syntax(safe_path(project, artifact.path), suffix, mode)
             except errors as error:
                 issues.append((project / artifact.path, str(error)))
     path = project / "mise.toml"
@@ -217,4 +271,4 @@ def configuration_issues(
                 )
     except errors as error:
         issues.append((path, str(error)))
-    return issues
+    return list(dict.fromkeys(issues))

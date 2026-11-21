@@ -1,0 +1,9 @@
+# Paths in [files] are relative to the Box and match individual templates.
+# "jsonc" checks JSON with comments and trailing commas.
+# "skip" skips syntax validation. The template must still exist.
+# Put this file in personal/ to add rules or override a standard rule for the same path.
+# Files without a rule use the usual checks based on their extensions.
+
+[files]
+"templates/vscode-extension/tsconfig.json" = "jsonc"
+# "templates/custom/config.json" = "skip"

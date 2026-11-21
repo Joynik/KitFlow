@@ -1,13 +1,13 @@
 [project]
 name = "kitflow"
-version = "0.20.1"
+version = "0.21.0"
 description = "Declarative project standards and composed mise tasks"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 requires-python = ">=3.14"
 authors = [{ name = "Joynik", email = "joynik@gmail.com" }]
 dependencies = [
-  "certifi>=2026.10.23",
+  "certifi>=2026.11.20",
   "rich>=15.0.0",
   "textual>=8.2.8",
   "tomlkit>=0.15.2",

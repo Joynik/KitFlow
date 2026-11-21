@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.21.0 — 2026-11-21
+
+### Added
+
+- Configure JSONC validation or skip syntax checks for individual templates with `validation.toml`.
+
 ## 0.20.1 — 2026-11-20
 
 ### Fixed

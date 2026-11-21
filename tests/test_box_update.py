@@ -5,6 +5,7 @@ import pytest
 
 from kitflow import box_update, cli, settings, source
 from kitflow.catalog import Catalog, KitFlowError
+from kitflow.check import configuration_issues
 
 
 @pytest.fixture
@@ -160,6 +161,32 @@ def test_invalid_standard_syntax_is_rejected_even_when_user_overrides_it(boxes):
     with pytest.raises(KitFlowError, match="Invalid standard box update"):
         box_update.refresh_box(destination, lambda *_: True)
     assert box_update.snapshot(destination) == before
+
+
+def test_upgrade_checks_jsonc_and_applies_personal_validation_rules(boxes):
+    destination, incoming = boxes
+    template = incoming / "templates/config.json"
+    template.write_text(
+        '{/* comment */ "url": "https://example.com", "items": [1 /* comment */ ,],}'
+    )
+    with (incoming / "kitflow-box.toml").open("a") as stream:
+        stream.write(
+            '\n[[files]]\nid="config"\npath="config.json"\ntemplate="templates/config.json"\n'
+        )
+    rules = '[files]\n"templates/config.json" = "jsonc"\n'
+    (incoming / "validation.toml").write_text(rules)
+    personal = destination / "personal"
+    (personal / "templates/config.json").write_text("{broken")
+    with pytest.raises(KitFlowError, match="personal/templates/config.json"):
+        box_update.refresh_box(destination, lambda *_: True)
+
+    (personal / "validation.toml").write_text(rules.replace('"jsonc"', '"skip"'))
+    assert box_update.refresh_box(destination, lambda *_: True) > 0
+    assert configuration_issues(destination, destination) == []
+
+    template.write_text('{"items": [,]}')
+    with pytest.raises(KitFlowError, match="incoming/templates/config.json"):
+        box_update.refresh_box(destination, lambda *_: True)
 
 
 def test_update_is_idempotent(boxes):

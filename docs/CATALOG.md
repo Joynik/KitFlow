@@ -7,6 +7,7 @@ A box describes which files and mise entries to generate for a project's compone
 
 ```text
 kitflow-box.toml   Components, wizard steps and rules
+validation.toml    Optional template syntax rules
 settings/          Initial mise settings
 templates/         Files, directories and text fragments
 tasks/             Shell fragments
@@ -26,6 +27,14 @@ downloading a standard Box with a newer schema.
 - To omit a standard entry, list its ID under `[disabled]` in the corresponding section. For
   example, `tasks = ["ruff-lint"]`. Unknown or duplicate IDs fail validation. Fix references to
   disabled components. Disabling a directory rule also disables its children.
+
+## Template validation
+
+Use `validation.toml` to override syntax checks by exact Box-relative template path. Its `[files]`
+table accepts `"jsonc"` for JSON with comments and trailing commas, and `"skip"` to skip syntax
+checks. The rule also applies to files generated from that template. Personal rules override
+standard rules for the same path. During upgrade, KitFlow first checks the incoming standard Box
+with its own rules, then checks the combined Box.
 
 ## Components and wizard steps
 
