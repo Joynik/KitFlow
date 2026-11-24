@@ -546,7 +546,7 @@ class Catalog:
         for name, fragments in tasks.items():
             if not re.fullmatch(r"[a-zA-Z0-9_:-]+", name):
                 raise KitFlowError(f"Invalid task name: {name}")
-            script = "set -eu\n" + "\n".join(fragments) + "\n"
+            script = "set -eu\n" + "\n".join(dict.fromkeys(fragments)) + "\n"
             if "'''" in script:
                 raise KitFlowError(f"Triple single quote in task: {name}")
             options = "".join(

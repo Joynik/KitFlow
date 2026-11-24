@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 0.21.2 — 2026-11-24
+
+### Fixed
+
+- Include identical mise task fragments only once when multiple components select them.
+
 ## 0.21.1 — 2026-11-21
 
 ### Fixed

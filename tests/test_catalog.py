@@ -26,6 +26,17 @@ template = "python.sh"
 name = "lint"
 when = ["django"]
 template = "django.sh"
+[[tasks]]
+id = "shared-lint"
+name = "lint"
+when = ["django"]
+template = "python.sh"
+[[tasks]]
+id = "nested-lint"
+name = "lint"
+when = ["django"]
+template = "python.sh"
+directory_env = "NESTED_SOURCE"
 """)
     catalog = Catalog(tmp_path)
     assert catalog.resolve(["django"]) == ["python", "django"]
@@ -33,6 +44,8 @@ template = "django.sh"
     assert isinstance(artifact.content, bytes)
     content = artifact.content.decode()
     assert content.index("ruff") < content.index("manage.py")
+    assert content.splitlines().count("ruff check .") == 2
+    assert 'cd "${NESTED_SOURCE:?Set NESTED_SOURCE in mise.toml}"\nruff check .' in content
     python = catalog.render(["python"])["task.lint"].content
     assert isinstance(python, bytes)
     assert "manage.py" not in python.decode()
